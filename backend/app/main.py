@@ -148,3 +148,6 @@ app.include_router(media_router)
 
 from app.creative_routes import router as creative_router
 app.include_router(creative_router)
+
+from app.inference_routes import router as inference_router
+app.include_router(inference_router)
