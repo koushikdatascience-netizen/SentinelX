@@ -113,3 +113,16 @@ def review_action(action_id: str,body: ReviewRequest):
     if rec is None:
         raise HTTPException(status_code=404,detail="Action not found")
     return rec
+
+
+@app.get("/api/v1/models")
+def list_model_capabilities():
+    from app.model_registry import catalog
+    configured = os.getenv("META_MODEL") if os.getenv("MODEL_API_KEY") else None
+    return {"models":[item.model_dump() for item in catalog(configured)],
+            "note":"Configured does not mean authorized, reachable or tested."}
+
+@app.post("/api/v1/workflows/preview")
+def preview_workflow(body: RunRequest):
+    from app.orchestrator import preview
+    return preview(body.goal)
