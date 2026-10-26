@@ -142,3 +142,6 @@ def initialize_workspace_database():
 @app.get("/api/v1/meta/capabilities")
 def meta_capability_status():
     return {"capabilities": [item.model_dump() for item in capabilities()]}
+
+from app.media_routes import router as media_router
+app.include_router(media_router)
