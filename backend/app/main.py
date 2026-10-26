@@ -126,3 +126,17 @@ def list_model_capabilities():
 def preview_workflow(body: RunRequest):
     from app.orchestrator import preview
     return preview(body.goal)
+
+# Authenticated workspace API (isolated from legacy prototype routes).
+from app.workspace_routes import router as workspace_router
+from app.workspace_store import init_db
+from app.meta_adapters import capabilities
+app.include_router(workspace_router)
+
+@app.on_event("startup")
+def initialize_workspace_database():
+    init_db()
+
+@app.get("/api/v1/meta/capabilities")
+def meta_capability_status():
+    return {"capabilities": [item.model_dump() for item in capabilities()]}
