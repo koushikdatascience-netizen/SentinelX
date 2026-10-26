@@ -18,6 +18,7 @@ class WorkspaceInput(BaseModel):
 class RunInput(BaseModel):
     website: HttpUrl
     goal: str = Field(min_length=10,max_length=1000)
+    use_inference: bool = False
 
 @router.post("/auth/register",status_code=201)
 def register(body:Credentials,db:Session=Depends(session)):
@@ -54,8 +55,19 @@ def list_runs(workspace_id:str,user:User=Depends(current_user),db:Session=Depend
 def create_run(workspace_id:str,body:RunInput,user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,workspace_id)
     from app.orchestrator import preview
-    result=preview(body.goal).model_dump()
-    run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,status="mock_completed",result_json=json.dumps(result))
+    if body.use_inference:
+        from app.providers import infer
+        try:
+            result=infer(f"Business website URL (not crawled): {body.website}\\nBusiness goal: {body.goal}\\nDevelop three testable recommendations. Clearly label assumptions.")
+        except ValueError as exc:
+            raise HTTPException(422,str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(502,f"Inference provider failed ({type(exc).__name__})") from exc
+        status = "inferred" if result["status"]=="completed" else "mock_completed"
+    else:
+        result=preview(body.goal).model_dump()
+        status="mock_completed"
+    run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,status=status,result_json=json.dumps(result))
     db.add(run);db.commit();db.refresh(run)
     return {"id":run.id,"workspace_id":workspace_id,"status":run.status,"result":result}
 @router.get("/workspaces/{workspace_id}/runs/{run_id}")
