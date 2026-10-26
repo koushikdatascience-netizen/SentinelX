@@ -145,3 +145,6 @@ def meta_capability_status():
 
 from app.media_routes import router as media_router
 app.include_router(media_router)
+
+from app.creative_routes import router as creative_router
+app.include_router(creative_router)
