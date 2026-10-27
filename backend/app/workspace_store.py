@@ -158,3 +158,10 @@ class DemoSession(Base):
     ip_hash: Mapped[str]=mapped_column(String(64),index=True)
     created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
     expires_at: Mapped[datetime]=mapped_column(DateTime(timezone=True))
+
+class MetaCapabilityCheck(Base):
+    """Metadata only, recorded after a real successful server-side Meta SDK call."""
+    __tablename__="meta_capability_checks"
+    capability: Mapped[str]=mapped_column(String(32),primary_key=True)
+    model: Mapped[str]=mapped_column(String(100))
+    succeeded_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
