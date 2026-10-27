@@ -30,7 +30,9 @@ class MetaClient:
     def _enabled(multimodal: bool) -> bool:
         return (
             os.getenv("ALLOW_PAID_INFERENCE", "false").lower() == "true"
-            and (not multimodal or os.getenv("ENABLE_LIVE_MULTIMODAL", "false").lower() == "true")
+            and os.getenv("ENABLE_LIVE_MULTIMODAL", "false").lower() == "true"
+            and os.getenv("INFERENCE_PROVIDER", "demo").lower() == "meta"
+            and os.getenv("SENTINELX_MODE", "demo").lower() == "live"
         )
 
     def _sdk(self):
