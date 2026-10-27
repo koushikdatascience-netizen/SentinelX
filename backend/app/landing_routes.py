@@ -3,6 +3,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
@@ -162,10 +163,10 @@ def published_page(slug:str,db:Session=Depends(session)):
 @router.post("/p/{slug}/lead")
 def submit_lead(slug:str,request:Request,name:str=Form(...,max_length=100),phone:str=Form(...,max_length=30),
                 message:str=Form(...,max_length=1500),consent:str=Form(""),db:Session=Depends(session)):
-    p=db.scalar(select(LandingPage).where(LandingPage.slug==slug,LandingPage.published.is_(True)))
+    p=db.scalar(select(LandingPage).where(LandingPage.slug==slug,LandingPage.published.is_(True)).with_for_update())
     if p is None:raise HTTPException(404,"Page not published")
     if consent!="yes":raise HTTPException(422,"Consent is required")
-    if len(name.strip())<2 or len(message.strip())<3 or not (8<=len(phone.strip())<=30):
+    if len(name.strip())<2 or len(message.strip())<3 or not re.fullmatch(r"\+?[0-9][0-9\s-]{7,25}",phone.strip()):
         raise HTTPException(422,"Invalid inquiry")
     # Do not trust client-supplied forwarding headers for rate limiting.
     ip=(request.client.host if request.client else "unknown")
