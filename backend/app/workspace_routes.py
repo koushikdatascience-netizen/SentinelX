@@ -68,6 +68,7 @@ def create_run(workspace_id:str,body:RunInput,user:User=Depends(current_user),db
     owned(db,user,workspace_id)
     from app.orchestrator import preview
     if body.use_inference:
+        if user.is_demo:raise HTTPException(403,"Demo sessions cannot call external inference")
         from app.providers import infer
         try:
             result=infer(f"Business website URL (not crawled): {body.website}\\nBusiness goal: {body.goal}\\nDevelop three testable recommendations. Clearly label assumptions.")
