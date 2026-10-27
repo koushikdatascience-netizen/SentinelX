@@ -24,6 +24,7 @@ def test_public_status_labels_unverified_capabilities_as_sample(monkeypatch):
     assert data["capabilities"]["text"]["state"]=="SAMPLE"
     assert data["capabilities"]["image"]["state"]=="SAMPLE"
     assert data["capabilities"]["vision"]["state"]=="SAMPLE"
+    assert data["capabilities"]["segmentation"]["state"]=="UNAVAILABLE"
     assert data["capabilities"]["text"]["last_success_at"] is None
     assert data["automatic_publishing"] is False
 def test_public_status_reports_only_explicitly_verified_live_capabilities(monkeypatch):

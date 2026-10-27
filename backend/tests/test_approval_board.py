@@ -15,6 +15,7 @@ def test_approval_history_and_approved_only_zip(authenticated_client):
     assert board.status_code==200,board.text
     approvals=[x for x in board.json() if x["target_kind"]=="campaign_item"]
     assert len(approvals)==7
+    assert all(x["title"].startswith("Day ") and len(x["description"])>=10 for x in approvals)
     approval=approvals[0]
     r=c.post(f"/api/v1/approvals/{approval['id']}/decide",params={"workspace_id":w["id"]},
         json={"decision":"approved","note":"Owner reviewed content"})

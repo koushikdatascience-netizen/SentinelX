@@ -1,37 +1,27 @@
-# SentinelX demo readiness — 28 October 2026
+# SentinelX verified product state — 28 October 2026
 
-## Implemented on draft PR #3 (not merged or deployed)
+The core owner workflow now uses real Meta inference. PR #10 was merged and release `a23217066465b06b2f6d96504fdbf17e9f6759ff` deployed through Hostinger run [40595722228](https://github.com/koushikdatascience-netizen/SentinelX/actions/runs/40595722228).
 
-- Central `MetaClient` for text, image-input analysis and Muse Image, behind explicit flags and prepaid reservations. SDK calls are **mock-tested**, not account-verified. SAM 3.1 and voice fail closed as unsupported.
-- Photo upload assessment: true pixel metrics with documented heuristic readiness; Meta rating only after real call. Original uploaded photo is not retained.
-- Workspace-scoped 7-day campaign, English/Bengali/Hindi sample fixtures, edit provenance, per-workspace inference attempt quota.
-- Bounded creative variants; local sample gradients or opted-in Meta generation; selected variant is only an owner decision.
-- Validated landing specs and three autoescaped responsive templates; publication requires recorded approval, consented lead capture and limited inquiry intake.
-- Audit trail for approval/reject/reopen, export ZIP with approved-only posts, selected approved creatives, landing HTML and evidence appendix.
-- Six-step Next.js Business Studio, interactive guest demo (operator enabled, rate-limited, 20 minute expiry, no paid inference), static `/demo` fallback.
-- Public `/api/v1/status` reports live capability only after a recent verified Meta call recorded on the active server; no API key or credits alone count.
+## Real runtime evidence
 
-## Verification gates
+One credit-conscious run in the owner's existing workspace created:
 
-- Only claim passing CI on the **exact head commit** once GitHub Actions concludes successfully. Backend tests, migrations, Chromium journey and Next.js build must all pass.
-- Confirm manual text/vision/image capability smoke through GitHub's `meta-live-test` environment, each invocation requiring the operator's explicit approval. Prior 35-token Spark response was nonempty in usage but gave no visible answer; it was **not a verified usable generation**.
-- Verify deployed HTTPS host, public demo, page CSP, consent and approval isolation, export correctness.
-- Confirm billing consumption in Meta's Usage page after each authorized smoke; reservation caps do not replace provider spend limits.
-- Validate owner-supplied campaign example, not scraped customer information.
-- Review accessibility and mobile screenshots; inspect browser console and server logs.
-- Record the 2-minute script in `docs/DEMO_SCRIPT.md` and complete official submission.
+- Campaign `0539ada8-b38e-4b9a-b352-5e247e53d120`: real Muse Spark audit and seven distinct daily posts, provenance `live_meta`.
+- Creative `8f6a6a21-6db6-47f8-9478-f1d4ea4dd659`: real Muse Image output, 1600 × 1600 WebP, with a separate Muse Spark image-input assessment. Model brief match was 96/100; this is a subjective assessment, not measured business impact.
+- Landing draft `e35ab857-c318-41fa-b8f7-588703fec0a9`: real Muse Spark copy, selected generated hero image, authenticated HTML preview returned 200. It remains unpublished for owner review.
 
-## Remaining blockers and limitations
+Exactly four provider requests were used: campaign, image generation, image assessment, landing copy. The shared database recorded $0.20 of conservative reservations. Actual provider billing was not independently reconciled.
 
-- PR #2 from Codex is still a draft; PR #3 targets PR #2's branch and therefore **cannot merge directly into main without landing PR #2 first**.
-- No real SAM segmentation or Muse Voice capability; no actual Meta service verification for text/vision/image on the final deployed runtime.
-- Example creatives are labeled samples; local metrics are not a calibrated marketing score.
-- Campaign URL is accepted but **not crawled**; source is owner description only.
-- Public guest experience is opt-in and should not be enabled before live rate-limit and data-expiry cleanup is verified; expired records remain in DB until cleanup is added.
-- Lead data retention policy, true account-level cost reconciliation, provider quotas, password reset, stronger abuse controls and backups need work.
-- No deployment to Oracle, DNS/TLS configuration or real live demo has been performed; existing Kamal Woodcraft website must remain untouched.
-- Browser end-to-end test can be considered reliable only when it passes on the PR head.
+A deployed Chrome check opened the existing owner session and verified the real audit, generated image, landing preview and saved campaign restoration after reload. It made no paid calls. Public capability status recorded successful text, vision and image requests. Main CI [40595388852](https://github.com/koushikdatascience-netizen/SentinelX/actions/runs/40595388852) reported 135 tests passing on SQLite, 135 on PostgreSQL, 4 browser journeys passing, both Docker builds and the frontend production build.
 
-## Safety defaults
+## Owner experience
 
-`INFERENCE_PROVIDER=demo`, `SENTINELX_MODE=demo`, `ALLOW_PAID_INFERENCE=false`, `ENABLE_LIVE_MULTIMODAL=false`, `CAMPAIGN_WORKSPACE_MAX_ATTEMPTS=0`, `ENABLE_PUBLIC_DEMO_SESSION=false`.
+Sign in with the owner account and open Business Studio. The green Live Meta Studio banner confirms that the server key and gates are configured. The saved campaign selector loads stored work; changing days restores the corresponding saved visuals. Approval cards identify actual copy and pages. Approval is a recorded decision; publishing a self-hosted landing page is a separate action. Approved-only export is a real ZIP.
+
+Guest workspaces and the explicit sample checkbox use labeled fixtures and cannot call paid models. Requested live generation fails clearly instead of silently substituting a sample.
+
+## Operational limits and remaining scope
+
+The owner explicitly activated live inference. Unconfigured installations still default to demo with paid calls off. Initial cumulative reservation ceilings are $2 per app/workspace and $0.50 per run, with 20 generation attempts per workspace. These are application controls, not a provider-enforced billing limit.
+
+SAM masks and voice transcription remain unsupported and must not be presented as implemented. Website URLs are not crawled by the Studio. Source evidence is owner supplied and unverified. Social account publishing and measured ROI are not implemented. Broader production account recovery, abuse controls and provider billing reconciliation remain separate engineering work.

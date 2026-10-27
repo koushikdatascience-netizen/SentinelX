@@ -1,6 +1,14 @@
 # SentinelX on Hostinger
 
-## Current audited deployment
+## Current verified application release
+
+The owner explicitly authorized bounded live Meta inference on 28 October 2026. PR #10 deployed release `a23217066465b06b2f6d96504fdbf17e9f6759ff` in successful run [40595722228](https://github.com/koushikdatascience-netizen/SentinelX/actions/runs/40595722228). The actual owner workflow then generated a real campaign, creative, vision assessment and landing draft. See [DEMO_READINESS.md](DEMO_READINESS.md) for evidence and limits.
+
+The Meta key is transferred from the `hostinger-production` environment secret over pinned SSH, installed in the root-only server env file, and removed from the temporary release transfer. It is not present in committed source or workflow artifacts. Unconfigured deployments retain demo defaults. Initial live app/workspace reservations are capped at $2, run reservations at $0.50.
+
+The baseline below is historical and does not describe the current source SHA or mode.
+
+## Historical deployment baseline (before CI releases)
 
 Audited on 28 October 2026. The public URL is [https://sentinelx.kamalwoodcraft.in](https://sentinelx.kamalwoodcraft.in).
 

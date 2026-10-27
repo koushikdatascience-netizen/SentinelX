@@ -4,7 +4,7 @@
 
 SentinelX turns a small-business brief into an evidence-aware marketing plan, measured product imagery, creative concepts, an editable landing page and an approved export pack. Business owners stay in control: **no social account is automatically posted to, no order is placed, and approvals are recorded decisions, not external execution.**
 
-> Development / hackathon demonstration software. Full production hardening and end-to-end Meta model validation remain incomplete. All sample fixtures are visibly labeled.
+> Development / hackathon demonstration software. The real Meta text, vision, image and landing workflow is runtime-verified; broader production hardening remains incomplete. All sample fixtures are visibly labeled.
 
 ## The product loop
 
@@ -46,8 +46,8 @@ flowchart LR
 | Local image pixel measurements | Real, deterministic, no provider charge | Testable offline |
 | Owner-scoped campaigns / approvals / ZIP | Persistent DB and authenticated APIs | Automated tests in feature PR |
 | Landing previews, exports and lead forms | Script-free templates; owner approval before publishing | Automated tests in feature PR |
-| Muse Spark structured text / image input | Central `MetaClient` via documented Chat Completions | **Requires real successful capability test** |
-| Muse Image generation | Central `MetaClient` via Images API | **Requires real successful capability test** |
+| Muse Spark structured text / image input | Central `MetaClient` via documented Chat Completions | **Verified on Hostinger, 28 October 2026** |
+| Muse Image generation | Central `MetaClient` via Images API | **Verified on Hostinger, 28 October 2026** |
 | SAM 3.1 segmentation | Raises `NotSupported` for live calls | **Not implemented** |
 | Muse Voice transcription | Fail-closed for live requests pending verification | **Not implemented** |
 | Open-weight Spark Open / Glimmer | Future eligible inference infrastructure | **Not deployed** |
@@ -93,7 +93,7 @@ For PostgreSQL, use Alembic migrations with backups and review before changing a
 
 ## Live Meta API safety
 
-The owner reported that **$150 promotional credits were active** in Meta Billing on October 27, 2026. A prior smoke request returned no visible answer within a small reasoning budget; the new three-capability smoke workflow remains manually gated and has not been authorized by this README.
+The owner reported that **$150 promotional credits were active** in Meta Billing on October 27, 2026. A prior smoke request returned no visible answer within a small reasoning budget; the later deployed owner workflow successfully generated real campaign, image and landing artifacts; the separate smoke workflow remains manual.
 
 The application defaults to:
 - `INFERENCE_PROVIDER=demo`
