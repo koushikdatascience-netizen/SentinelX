@@ -34,11 +34,8 @@ async def score_photo(workspace_id:str=Form(...),business_context:str=Form(""),
     payload=await file.read(5_000_001)
     try: local=measure_image(payload)
     except ValueError as exc: raise HTTPException(422,str(exc)) from exc
-    fmt=local["width"],local["height"]
-    mime={"PNG":"image/png","JPEG":"image/jpeg","WEBP":"image/webp"}.get(
-        (file.content_type or "").split("/")[-1].upper(),"")
-    # The image parser validates actual file bytes; MIME must also match a supported type.
-    if file.content_type not in ("image/png","image/jpeg","image/webp"):
+    # The declared MIME must match the parsed file format, not just be on an allowlist.
+    if file.content_type != {"PNG":"image/png","JPEG":"image/jpeg","WEBP":"image/webp"}[local["format"]]:
         raise HTTPException(415,"Unsupported content type")
     schema=Scores.model_json_schema()
     prompt=("Assess this consented product image for marketing use, relative to the business description. "
