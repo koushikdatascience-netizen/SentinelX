@@ -25,7 +25,7 @@ def build_plan(page: dict, goal: str) -> AuditPlan:
     # These are text-presence observations, NOT proof that elements are absent
     # from the real website (the excerpt may not represent the entire page).
     contact_terms=("contact","call us","phone","whatsapp","request a quote","get a quote","book","enquire","inquire")
-    pricing_expression=r"\\b(?:price|prices|pricing|quote|quotation|quotations)\\b|₹|\\brs\\.\\s*\\d"
+    pricing_expression=r"\b(?:price|prices|pricing|quote|quotation|quotations)\b|₹|\brs\.\s*\d"
     has_contact=any(token in normalized for token in contact_terms)
     has_pricing=bool(re.search(pricing_expression,normalized))
     actions=[
