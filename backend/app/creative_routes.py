@@ -14,7 +14,7 @@ class ImagePrompt(BaseModel):
 
 @router.post("/generate")
 def generate_image(body:ImagePrompt,user:User=Depends(current_user)):
-    if os.getenv("SENTINELX_MODE") != "live":
+    if user.is_demo or os.getenv("SENTINELX_MODE") != "live":
         return {"status":"demo","provenance":"sample","image":None,"prompt":body.prompt,
                 "note":"No image generated; no external model invoked."}
     try:
