@@ -37,3 +37,4 @@
 @media(prefers-reduced-motion:reduce){.product-app button,.product-modal button{transition:none}.spinner{animation:none;border-color:#b0bee0;border-top-color:#647ed0}}
 
 .product-app .tool-card-copy small,.product-app .product-page-head p,.product-app .field-help,.product-app .section-heading>span{color:#65728a}.auth-form .muted,.auth-form .footnote{color:#65748b}.product-modal{margin:auto}
+`n.product-app .skip-link{clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap;top:8px;padding:0}.product-app .skip-link:focus{clip-path:none;width:auto;height:auto;padding:12px}
