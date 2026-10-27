@@ -1,9 +1,10 @@
-"""Opt-in Muse Image generation. No automatic API spending."""
+"""Bounded opt-in Muse Image route. All paid Meta calls use MetaClient."""
 import os
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from app.auth import current_user
 from app.workspace_store import User
+from app.meta_client import MetaClient, MetaResponseError
 
 router=APIRouter(prefix="/api/v1/creative",tags=["Creative"])
 
@@ -13,20 +14,18 @@ class ImagePrompt(BaseModel):
 
 @router.post("/generate")
 def generate_image(body:ImagePrompt,user:User=Depends(current_user)):
-    if os.getenv("SENTINELX_MODE")!="live":
-        return {"status":"demo","image":None,"prompt":body.prompt,
-                "note":"No image was generated; enable live mode only with a funded key and approved budget."}
-    if os.getenv("ENABLE_LIVE_MULTIMODAL") != "true":
-        raise HTTPException(403,"Live multimodal calls disabled pending verified metering and approved billing limits")
-    key=os.getenv("MODEL_API_KEY")
-    if not key: raise HTTPException(503,"MODEL_API_KEY not configured")
+    if os.getenv("SENTINELX_MODE") != "live":
+        return {"status":"demo","provenance":"sample","image":None,"prompt":body.prompt,
+                "note":"No image generated; no external model invoked."}
     try:
-        from openai import OpenAI
-        client=OpenAI(api_key=key,base_url="https://api.meta.ai/v1",timeout=60,max_retries=0)
-        result=client.images.generate(model="muse-image-1.0",prompt=body.prompt,size=body.size,n=1)
-        item=result.data[0]
-        return {"status":"completed","image_b64":getattr(item,"b64_json",None),
-                "image_url":getattr(item,"url",None),
-                "note":"One paid image generation request completed."}
+        result=MetaClient().image(body.prompt,body.size)
+        if result["provenance"]=="sample":
+            return {"status":"demo","provenance":"sample","image":None,"prompt":body.prompt,
+                    "note":"Paid multimodal inference is disabled."}
+        return {"status":"completed","provenance":"live_meta","model":result["model"],
+                "image_b64":result["data"]["image_b64"],
+                "note":"One Meta image request completed; account billing must be reconciled separately."}
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(502,f"Muse Image request failed ({type(exc).__name__})") from exc
+        raise HTTPException(502,f"Muse Image failed ({type(exc).__name__})") from exc
