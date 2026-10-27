@@ -45,13 +45,30 @@ def ensure_board(db:Session,cid:str,wid:str):
             ).on_conflict_do_nothing(index_elements=["target_kind","target_id"]))
     db.commit()
 
+def review_preview(db:Session,record:ApprovalRecord)->dict:
+    if record.target_kind=="campaign_item":
+        item=db.get(CampaignItem,record.target_id)
+        if item and item.campaign_id==record.campaign_id:
+            data=json.loads(item.item_json)
+            return {"title":f"Day {item.day} · {data.get('platform','Post')}","description":data.get("caption","")[:400]}
+    if record.target_kind=="landing":
+        page=db.get(LandingPage,record.target_id)
+        if page and page.campaign_id==record.campaign_id:
+            data=json.loads(page.spec_json)
+            return {"title":data.get("headline","Landing page"),"description":data.get("offer","")[:400]}
+    if record.target_kind=="creative":
+        creative=db.get(CampaignCreative,record.target_id)
+        if creative and creative.campaign_id==record.campaign_id:
+            return {"title":"Selected campaign visual","description":creative.prompt[:400]}
+    return {"title":"Unavailable artifact","description":"Refresh the campaign before reviewing."}
+
 @router.get("/api/v1/campaigns/{campaign_id}/board")
 def campaign_board(campaign_id:str,workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
     authorized_campaign(db,campaign_id,workspace_id,user)
     ensure_board(db,campaign_id,workspace_id)
     records=db.scalars(select(ApprovalRecord).where(ApprovalRecord.campaign_id==campaign_id)
                       .order_by(ApprovalRecord.created_at)).all()
-    return [{"id":r.id,"target_kind":r.target_kind,"target_id":r.target_id,
+    return [{"id":r.id,"target_kind":r.target_kind,"target_id":r.target_id,**review_preview(db,r),
              "state":r.state,"evidence_source":"user_supplied_unverified",
              "events":[{"decision":e.decision,"note":e.note,"reviewer_id":e.reviewer_id,
                         "at":e.created_at.isoformat()} for e in db.scalars(select(ApprovalEvent)

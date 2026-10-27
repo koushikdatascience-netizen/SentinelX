@@ -1,6 +1,6 @@
 # Meta API contracts and verification notes
 
-Reviewed October 28, 2026. **Documentation-verified and mock-tested does not mean live-account verified.** No paid request was made during this change. The earlier smoke received usage and empty text; it does not certify useful output or multimodal access.
+Reviewed October 28, 2026. **Documentation-verified and mock-tested does not mean live-account verified.** The deployed owner workflow was verified with four real requests on 28 October 2026: campaign text, image generation, image-input assessment and landing text. See DEMO_READINESS.md for stored artifact IDs and test evidence.
 
 ## Contracts implemented in app/meta_client.py
 
@@ -41,7 +41,7 @@ Each dispatch has its own accounting DB, so it is not a cross-dispatch billing c
 
 ## Status
 
-Documentation and mocked HTTP shapes: text, structured output, vision, single-image generation. Live-account success, model entitlement, useful output quality and actual cost reconciliation: **UNVERIFIED**. SAM/voice live adapters: explicitly unsupported. Defaults remain demo/paid-off. Hostinger staging has been audited; the CD workflow is prepared but remains disabled pending merge and restricted deployment credentials. See [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
+Documentation and mocked HTTP shapes: text, structured output, vision, single-image generation. Live-account text, structured output, vision and image generation: **VERIFIED on Hostinger**. Actual provider cost reconciliation remains unimplemented. SAM/voice live adapters: explicitly unsupported. Defaults remain demo/paid-off. Hostinger CI/CD is active and the owner explicitly enabled bounded live inference using the production environment secret. See [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
 
 
 ### Compatibility changes

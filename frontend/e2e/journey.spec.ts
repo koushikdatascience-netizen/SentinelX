@@ -84,7 +84,17 @@ test("Business Studio creates campaign, landing, approval and export in offline 
  await expect(page.getByText("sample",{exact:true}).first()).toBeVisible();
  await page.getByRole("button",{name:/Review seven-day plan/}).click();
  await expect(page.locator(".studio-day")).toHaveCount(7);
- await page.getByRole("button",{name:/Build a landing page/}).click();
+ await page.getByRole("button",{name:/Create visuals/}).first().click();
+ await page.getByRole("button",{name:"Generate & compare creatives",exact:true}).click();
+ await expect(page.locator(".studio-creative")).toHaveCount(1);
+ const days=page.getByLabel("Choose campaign day");
+ const dayOne=await days.inputValue();
+ const dayTwo=await days.locator("option").nth(1).getAttribute("value");
+ await days.selectOption(dayTwo!);
+ await expect(page.locator(".studio-creative")).toHaveCount(0);
+ await days.selectOption(dayOne);
+ await expect(page.locator(".studio-creative")).toHaveCount(1);
+ await page.getByRole("button",{name:/Continue to landing page/}).click();
  await page.getByRole("button",{name:/Generate page draft/}).click();
  await expect(page.locator("iframe[title='Landing preview']")).toBeVisible();
  await page.getByRole("button",{name:/Review approvals/}).click();

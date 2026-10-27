@@ -17,6 +17,10 @@ def capability_status(db:Session=Depends(session)):
               "image":"muse-image-1.0",
               "segmentation":"sam-3.1"}
     for name,model in expected.items():
+        if name=="segmentation":
+            modes[name]={"state":"UNAVAILABLE","model":model,"last_success_at":None,
+                         "note":"SAM segmentation adapter is not implemented; no masks are generated"}
+            continue
         row=db.get(MetaCapabilityCheck,name)
         checked=None
         fresh=False
