@@ -32,3 +32,12 @@ def current_user(credentials:HTTPAuthorizationCredentials|None=Depends(bearer),d
     user=db.get(User,uid)
     if not user: raise HTTPException(401,"User not found")
     return user
+
+def owned_run(db, user, workspace_id, run_id):
+    """Resolve tenant scope before any model input is processed."""
+    from app.workspace_store import Workspace, WorkflowRun
+    workspace = db.get(Workspace, workspace_id)
+    run = db.get(WorkflowRun, run_id)
+    if not workspace or workspace.owner_id != user.id or not run or run.workspace_id != workspace_id:
+        raise HTTPException(404, "Workspace/run not found")
+    return run

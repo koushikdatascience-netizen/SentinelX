@@ -1,13 +1,15 @@
-"""Validated media inspection; opt-in real Muse Voice transcription.
+"""Validated media inspection and scoped Meta vision; voice adapter unsupported.
 No media is persisted in this prototype.
 """
 import io
-import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.auth import current_user
 from app.workspace_store import User
 from PIL import Image, UnidentifiedImageError
-import httpx
+from app.meta_client import MetaClient, NotSupported
+from app.auth import owned_run
+from app.workspace_store import session
+from sqlalchemy.orm import Session
 
 router=APIRouter(prefix="/api/v1/media",tags=["Media"])
 MAX_IMAGE=5_000_000
@@ -28,7 +30,7 @@ async def inspect_image(file:UploadFile=File(...),user:User=Depends(current_user
         raise HTTPException(413,"Too many pixels")
     except (UnidentifiedImageError,OSError,ValueError):
         raise HTTPException(415,"Invalid image data")
-    return {"filename":file.filename,"format":fmt,"width":width,"height":height,
+    return {"provenance":"user_supplied","filename":file.filename,"format":fmt,"width":width,"height":height,
             "bytes":len(payload),"inference":"not_run","note":"Image validated locally. SAM inference requires a separate explicit API call."}
 
 @router.post("/voice/transcribe")
@@ -38,19 +40,21 @@ async def transcribe_audio(file:UploadFile=File(...),user:User=Depends(current_u
     allowed={"audio/wav","audio/x-wav","audio/mpeg","audio/mp4","audio/ogg","audio/webm"}
     if file.content_type not in allowed: raise HTTPException(415,"Unsupported audio type")
     if not payload: raise HTTPException(422,"Empty recording")
-    if os.getenv("SENTINELX_MODE")!="live":
-        return {"status":"demo","transcript":None,"note":"Audio upload accepted; transcription was not run."}
-    if os.getenv("ENABLE_LIVE_MULTIMODAL") != "true":
-        raise HTTPException(403,"Live multimodal calls disabled pending verified metering and approved billing limits")
-    key=os.getenv("MODEL_API_KEY")
-    if not key: raise HTTPException(503,"Meta Model API key not configured")
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            response=await client.post("https://api.meta.ai/v1/asr/transcribe",
-                headers={"Authorization":f"Bearer {key}"},
-                files={"file":(file.filename or "recording.wav",payload,file.content_type)},
-                data={"model":"muse-voice-transcribe-1.0"})
-            response.raise_for_status()
-            return {"status":"completed","result":response.json()}
-    except (httpx.HTTPError,ValueError) as exc:
-        raise HTTPException(502,f"Meta transcription request failed ({type(exc).__name__})") from exc
+        result=MetaClient().transcribe(payload,file.content_type)
+        return {**result,"status":"demo","transcript":None,"note":"Sample intake only; no speech recognition performed."}
+    except NotSupported as exc:
+        raise HTTPException(501,str(exc)) from None
+
+
+@router.post("/image/analyze")
+def analyze_image(workspace_id:str,run_id:str,prompt:str="Describe visible product details without inventing business facts.",
+                  file:UploadFile=File(...),user:User=Depends(current_user),db:Session=Depends(session)):
+    owned_run(db,user,workspace_id,run_id)
+    payload=file.file.read(MAX_IMAGE+1)
+    try:
+        return MetaClient(owner_id=user.id,workspace_id=workspace_id,run_id=run_id).vision(payload,file.content_type,prompt)
+    except NotSupported as exc:
+        raise HTTPException(501,str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from None

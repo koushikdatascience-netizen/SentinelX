@@ -34,3 +34,8 @@ Meta's [reasoning documentation](https://dev.meta.ai/docs/reasoning) confirms th
 The [Chat Completions schema](https://dev.meta.ai/docs/protocols/chat-completions) documents `max_completion_tokens` and the `choices[0].message.content` response shape. The app now requests minimal Meta reasoning, rejects empty or incomplete answers without retry, and returns token counts on success. Conservative app reservations are retained on failure because tokens may already have been consumed.
 
 Regression checks use mocked responses and spend no credits. No further live request is required to run those checks. Keep demo defaults until one deliberate follow-up produces a complete visible answer; do not rerun the old script expecting its 35-token behavior to change.
+
+
+## Central client update (October 28)
+
+The manual workflow now selects exactly one capability per dispatch: text, vision or image. It uses MetaClient and ephemeral scoped accounting. Both ALLOW_PAID_INFERENCE and ENABLE_LIVE_MULTIMODAL must be true even for text, along with INFERENCE_PROVIDER=meta. Scope caps default to zero in the application; see [META_API_NOTES.md](META_API_NOTES.md) for ownership, required per-workspace/run budgets and unsupported SAM/voice boundaries. The workflow supplies tightly scoped test flags only for its own job. No live call was made to validate this refactor.

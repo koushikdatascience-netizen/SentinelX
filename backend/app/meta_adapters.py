@@ -9,10 +9,10 @@ class CapabilityStatus(BaseModel):
     note:str
 
 def capabilities():
-    active=os.getenv("SENTINELX_MODE","demo")=="live" and bool(os.getenv("MODEL_API_KEY"))
+    active=os.getenv("INFERENCE_PROVIDER","demo")=="meta" and os.getenv("ALLOW_PAID_INFERENCE")=="true" and os.getenv("ENABLE_LIVE_MULTIMODAL")=="true" and bool(os.getenv("MODEL_API_KEY"))
     return [
-        CapabilityStatus(capability="reasoning",mode="configured_not_tested" if active else "mock",note="Meta text responses endpoint; actual authorization not verified"),
-        CapabilityStatus(capability="image",mode="not_implemented",note="Muse Image adapter pending account access and verified API schema"),
+        CapabilityStatus(capability="reasoning",mode="configured_not_tested" if active else "mock",note="MetaClient Chat Completions contract documented; live-account output unverified"),
+        CapabilityStatus(capability="image",mode="configured_not_tested" if active else "sample",note="MetaClient single-image contract documented; live-account output unverified"),
         CapabilityStatus(capability="voice",mode="not_implemented",note="Muse Voice transcription adapter pending account access and verified API schema"),
         CapabilityStatus(capability="segmentation",mode="not_implemented",note="SAM 3.1 adapter pending account access and verified API schema"),
     ]

@@ -115,7 +115,7 @@ def test_duplicate_while_pending_does_not_call_provider_again(setup_draft):
     path = f"/api/v1/workspaces/{wid}/evidence-draft"
     result = provider.return_value
 
-    def in_flight(prompt):
+    def in_flight(prompt, **scope):
         assert client.post(path, json=body).status_code == 409
         return result
 

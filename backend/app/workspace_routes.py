@@ -67,19 +67,23 @@ def list_runs(workspace_id:str,user:User=Depends(current_user),db:Session=Depend
 def create_run(workspace_id:str,body:RunInput,user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,workspace_id)
     from app.orchestrator import preview
+    run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,status="pending",result_json="{}")
+    db.add(run);db.commit();db.refresh(run)
     if body.use_inference:
         from app.providers import infer
         try:
-            result=infer(f"Business website URL (not crawled): {body.website}\\nBusiness goal: {body.goal}\\nDevelop three testable recommendations. Clearly label assumptions.")
+            result=infer(f"Business website URL (not crawled): {body.website}\\nBusiness goal: {body.goal}\\nDevelop three testable recommendations. Clearly label assumptions.", owner_id=user.id, workspace_id=workspace_id, run_id=run.id)
         except ValueError as exc:
+            run.status="failed";db.commit()
             raise HTTPException(422,str(exc)) from exc
         except Exception as exc:
+            run.status="failed";db.commit()
             raise HTTPException(502,f"Inference provider failed ({type(exc).__name__})") from exc
         status = "inferred" if result["status"]=="completed" else "mock_completed"
     else:
-        result=preview(body.goal).model_dump()
+        result={**preview(body.goal).model_dump(),"provenance":"sample"}
         status="mock_completed"
-    run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,status=status,result_json=json.dumps(result))
+    run.status=status;run.result_json=json.dumps(result)
     db.add(run);db.commit();db.refresh(run)
     return {"id":run.id,"workspace_id":workspace_id,"status":run.status,"result":result}
 @router.get("/workspaces/{workspace_id}/runs/{run_id}")
@@ -102,9 +106,9 @@ def analyze_supplied_evidence(workspace_id:str,body:EvidenceRunInput,user:User=D
     from app.agents import build_plan
     page={"evidence_source":str(body.website),"title":body.page_title,"text":body.page_excerpt}
     plan=build_plan(page,body.goal).model_dump()
-    evidence={"source_url":str(body.website),"source_type":"user_supplied_unverified","excerpt":body.page_excerpt[:400],
+    evidence={"provenance":"user_supplied","source_url":str(body.website),"source_type":"user_supplied_unverified","excerpt":body.page_excerpt[:400],
               "fetched_by_server":False}
-    result={"mode":"owner_supplied_evidence","evidence":[evidence],"plan":plan,
+    result={"provenance":"user_supplied","mode":"owner_supplied_evidence","evidence":[evidence],"plan":plan,
             "approval_required":True,"external_actions_performed":0}
     run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,
                     status="proposed",result_json=json.dumps(result))

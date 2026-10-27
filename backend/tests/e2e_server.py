@@ -14,7 +14,7 @@ from app import evidence_drafts
 from app.providers import ProviderConfig
 
 
-def offline_infer(prompt):
+def offline_infer(prompt, **scope):
     evidence = json.JSONDecoder().raw_decode(prompt.split("JSON:\n", 1)[1])[0]["E1"]["excerpt"]
     return {"status": "completed", "finish_reason": "stop", "usage": None,
             "text": json.dumps({

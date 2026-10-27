@@ -1,7 +1,9 @@
 """Authenticated, tightly bounded inference smoke-test endpoint."""
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from app.auth import current_user
+from app.auth import current_user, owned_run
+from app.workspace_store import session
+from sqlalchemy.orm import Session
 from app.workspace_store import User
 from app.providers import configured_provider, infer
 from app.budget import budget_status
@@ -9,6 +11,8 @@ from app.budget import budget_status
 router = APIRouter(prefix="/api/v1/inference", tags=["Inference"])
 
 class InferenceRequest(BaseModel):
+    workspace_id: str | None = None
+    run_id: str | None = None
     prompt: str = Field(min_length=10,max_length=2000)
 
 @router.get("/status")
@@ -21,9 +25,11 @@ def status(user: User = Depends(current_user)):
             "model":config.model if config else None,"note":"Configured does not guarantee live availability or free remaining quota."}
 
 @router.post("/test")
-def test_inference(body: InferenceRequest, user: User = Depends(current_user)):
+def test_inference(body: InferenceRequest, user: User = Depends(current_user), db: Session = Depends(session)):
+    if body.workspace_id or body.run_id:
+        owned_run(db,user,body.workspace_id,body.run_id)
     try:
-        return infer(body.prompt)
+        return infer(body.prompt, owner_id=getattr(user,"id",None), workspace_id=body.workspace_id, run_id=body.run_id)
     except ValueError as exc:
         raise HTTPException(422,str(exc)) from exc
     except Exception as exc:
