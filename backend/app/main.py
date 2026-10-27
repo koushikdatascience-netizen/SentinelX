@@ -2,9 +2,10 @@ import os
 import uuid
 from typing import Literal
 from urllib.parse import urlparse
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, Field, HttpUrl
 from app.workflows import State, ActionRecord, action_store
+from app.auth import current_user
 
 app = FastAPI(title="SentinelX API", version="0.4.0")
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,7 +39,7 @@ counts = {"live_requests": 0}
 def health():
     return {"status":"ok","model":os.getenv("META_MODEL","muse-spark-1.3"),"mode":"live" if os.getenv("MODEL_API_KEY") and os.getenv("SENTINELX_MODE") == "live" else "demo"}
 
-@app.post("/api/v1/analyze",response_model=RunResponse)
+@app.post("/api/v1/analyze",response_model=RunResponse, dependencies=[Depends(current_user)])
 def analyze(body: RunRequest):
     run_id = str(uuid.uuid4())
     domain = urlparse(str(body.website)).hostname or ""
@@ -75,7 +76,7 @@ class ResearchResponse(BaseModel):
     plan: dict
     note: str
 
-@app.post("/api/v1/research",response_model=ResearchResponse)
+@app.post("/api/v1/research",response_model=ResearchResponse, dependencies=[Depends(current_user)])
 def research(body: RunRequest):
     from app.research import snapshot
     from app.agents import build_plan
@@ -97,18 +98,18 @@ class ProposalRequest(BaseModel):
 class ReviewRequest(BaseModel):
     decision: Literal["approved","rejected"]
 
-@app.post("/api/v1/actions",response_model=ActionRecord,status_code=201)
+@app.post("/api/v1/actions",response_model=ActionRecord,status_code=201, dependencies=[Depends(current_user)])
 def propose_action(body: ProposalRequest):
     return action_store.propose(body.run_id,body.kind,body.description,str(body.source_url))
 
-@app.get("/api/v1/actions/{action_id}",response_model=ActionRecord)
+@app.get("/api/v1/actions/{action_id}",response_model=ActionRecord, dependencies=[Depends(current_user)])
 def get_action(action_id: str):
     record = action_store.get(action_id)
     if record is None:
         raise HTTPException(status_code=404,detail="Action not found")
     return record
 
-@app.post("/api/v1/actions/{action_id}/review",response_model=ActionRecord)
+@app.post("/api/v1/actions/{action_id}/review",response_model=ActionRecord, dependencies=[Depends(current_user)])
 def review_action(action_id: str,body: ReviewRequest):
     try:
         rec = action_store.decide(action_id,State(body.decision))
@@ -126,7 +127,7 @@ def list_model_capabilities():
     return {"models":[item.model_dump() for item in catalog(configured)],
             "note":"Configured does not mean authorized, reachable or tested."}
 
-@app.post("/api/v1/workflows/preview")
+@app.post("/api/v1/workflows/preview", dependencies=[Depends(current_user)])
 def preview_workflow(body: RunRequest):
     from app.orchestrator import preview
     return preview(body.goal)
