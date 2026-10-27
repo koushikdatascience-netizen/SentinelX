@@ -1,4 +1,8 @@
-"""Auditable proposed-action planner. Plans do not execute anything."""
+"""Source-bound deterministic recommendations for the no-credit hackathon demo.
+
+No competitor or business claim is treated as verified without independent sources.
+"""
+import re
 from pydantic import BaseModel, Field
 
 class ProposedAction(BaseModel):
@@ -16,13 +20,32 @@ class AuditPlan(BaseModel):
     actions: list[ProposedAction] = Field(default_factory=list)
 
 def build_plan(page: dict, goal: str) -> AuditPlan:
+    text=page.get("text","")
+    normalized=re.sub(r"\s+"," ",text).lower()
+    # These are text-presence observations, NOT proof that elements are absent
+    # from the real website (the excerpt may not represent the entire page).
+    contact_terms=("contact","call us","phone","whatsapp","request a quote","get a quote","book","enquire","inquire")
+    pricing_terms=("price","pricing","starting at","₹","rs.","quote")
+    has_contact=any(token in normalized for token in contact_terms)
+    has_pricing=any(token in normalized for token in pricing_terms)
+    actions=[
+        ProposedAction(
+            agent="conversion",
+            action="Review the consultation or contact call-to-action against the stated goal",
+            reason="The supplied excerpt "+("contains contact-related language; verify its prominence in the rendered site." if has_contact else "does not show contact-related language; inspect the complete page before concluding it is absent.")
+        ),
+        ProposedAction(
+            agent="offer",
+            action="Review pricing clarity, project scope and quotation expectations",
+            reason="The supplied excerpt "+("mentions prices or quotations; assess whether customers can understand the next step." if has_pricing else "does not show prices or quotations; confirm against the full catalogue before recommending changes.")
+        ),
+        ProposedAction(
+            agent="research",
+            action="Gather independently sourced competitor and customer evidence before claiming market differences",
+            reason="Only the owner-supplied excerpt is available; competitor comparisons and sales impact are unverified."
+        )
+    ]
     return AuditPlan(
-        source_url=page["evidence_source"],
-        source_title=page["title"],
-        evidence_excerpt=page["text"][:400],
-        actions=[
-            ProposedAction(agent="research", action="Investigate public competitors and positioning", reason="Competitive claims require independent sources"),
-            ProposedAction(agent="seo", action="Review page titles and conversion messaging", reason="Compare website evidence with the stated goal"),
-            ProposedAction(agent="creative", action="Prepare two campaign concepts", reason="Test ideas before requesting approval"),
-        ],
+        source_url=page["evidence_source"],source_title=page["title"],
+        evidence_excerpt=text[:400],confidence="low",actions=actions
     )
