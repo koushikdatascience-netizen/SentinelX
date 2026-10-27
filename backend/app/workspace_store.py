@@ -67,3 +67,25 @@ class ImageAssessment(Base):
     filename: Mapped[str] = mapped_column(String(180))
     assessment_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
+
+class CampaignProject(Base):
+    __tablename__ = "campaign_projects"
+    id: Mapped[str] = mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id"),index=True)
+    business_description: Mapped[str] = mapped_column(Text)
+    goal: Mapped[str] = mapped_column(Text)
+    language: Mapped[str] = mapped_column(String(2))
+    audit_json: Mapped[str] = mapped_column(Text)
+    provenance: Mapped[str] = mapped_column(String(24),default="sample")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
+
+class CampaignItem(Base):
+    __tablename__ = "campaign_items"
+    id: Mapped[str] = mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaign_projects.id"),index=True)
+    day: Mapped[int] = mapped_column(Integer)
+    platform: Mapped[str] = mapped_column(String(24))
+    item_json: Mapped[str] = mapped_column(Text)
+    provenance: Mapped[str] = mapped_column(String(24),default="sample")
+    state: Mapped[str] = mapped_column(String(24),default="proposed")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
