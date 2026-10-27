@@ -1,4 +1,5 @@
 """Scoped, HTML-safe campaign landing pages and consented lead intake."""
+import base64
 import hashlib
 import json
 import os
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import current_user
 from app.workspace_routes import owned
-from app.workspace_store import CampaignProject, LandingPage, LandingLead, User, session
+from app.workspace_store import CampaignProject, CampaignCreative, LandingPage, LandingLead, User, session
 from app.landing import LandingSpec, SECURITY_HEADERS, render_landing, sample_landing
 from app.meta_client import MetaClient
 from app.campaign import unsupported_claims
@@ -25,6 +26,7 @@ class CreateLanding(BaseModel):
     business_name: str=Field(min_length=2,max_length=100)
     theme: str=Field(default="modern",pattern="^(modern|warm|bold)$")
     whatsapp_number: str | None=None
+    hero_image_variant_id: str | None=None
 
 class UpdateLanding(BaseModel):
     spec: LandingSpec | None=None
@@ -36,6 +38,15 @@ def _owned_page(db:Session,workspace_id:str,page_id:str,user:User)->LandingPage:
        .where(LandingPage.id==page_id,CampaignProject.workspace_id==workspace_id))
     if page is None:raise HTTPException(404,"Landing page not found")
     return page
+
+def hero_image_for_page(db:Session,page:LandingPage,spec:LandingSpec)->str|None:
+    vid=spec.hero_image_variant_id
+    if not vid:return None
+    variant=db.scalar(select(CampaignCreative).where(CampaignCreative.id==vid,
+        CampaignCreative.campaign_id==page.campaign_id,CampaignCreative.selected.is_(True)))
+    if variant is None:return None
+    if len(variant.image_blob)>5_000_000:return None
+    return "data:"+variant.mime+";base64,"+base64.b64encode(variant.image_blob).decode("ascii")
 
 def _info(db:Session,page:LandingPage)->dict:
     leads=db.scalar(select(func.count()).select_from(LandingLead).where(LandingLead.page_id==page.id)) or 0
@@ -73,6 +84,13 @@ def generate(body:CreateLanding,user:User=Depends(current_user),db:Session=Depen
     content["theme"]=body.theme
     if body.whatsapp_number:
         content["whatsapp_number"]=body.whatsapp_number
+    if body.hero_image_variant_id:
+        candidate=db.scalar(select(CampaignCreative).where(CampaignCreative.id==body.hero_image_variant_id,
+            CampaignCreative.campaign_id==campaign.id,CampaignCreative.selected.is_(True)))
+        if candidate is None:raise HTTPException(422,"Hero image must be a selected creative in this campaign")
+        content["hero_image_variant_id"]=body.hero_image_variant_id
+    else:
+        content["hero_image_variant_id"]=None
     try: spec=LandingSpec.model_validate(content)
     except ValueError as exc:raise HTTPException(422,"Landing configuration invalid") from exc
     claims=unsupported_claims(" ".join([spec.headline,spec.offer,spec.subheadline]+spec.trust_points))
@@ -98,6 +116,10 @@ def update_page(page_id:str,workspace_id:str,body:UpdateLanding,
                 user:User=Depends(current_user),db:Session=Depends(session)):
     page=_owned_page(db,workspace_id,page_id,user)
     if body.spec is not None:
+        if body.spec.hero_image_variant_id:
+            candidate=db.scalar(select(CampaignCreative).where(CampaignCreative.id==body.spec.hero_image_variant_id,
+                CampaignCreative.campaign_id==page.campaign_id,CampaignCreative.selected.is_(True)))
+            if candidate is None:raise HTTPException(422,"Hero image is not a selected creative")
         if page.approval_state!="proposed":
             raise HTTPException(409,"Reopen reviewed landing page before editing")
         if unsupported_claims(" ".join([body.spec.headline,body.spec.offer,body.spec.subheadline]+body.spec.trust_points)):
@@ -117,13 +139,15 @@ def update_page(page_id:str,workspace_id:str,body:UpdateLanding,
 @router.get("/api/v1/landing/{page_id}/preview")
 def preview(page_id:str,workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
     p=_owned_page(db,workspace_id,page_id,user)
-    return HTMLResponse(render_landing(LandingSpec.model_validate_json(p.spec_json),p.slug,p.provenance),
+    spec=LandingSpec.model_validate_json(p.spec_json)
+    return HTMLResponse(render_landing(spec,p.slug,p.provenance,hero_image_for_page(db,p,spec)),
                         headers=SECURITY_HEADERS)
 
 @router.get("/api/v1/landing/{page_id}/export")
 def export(page_id:str,workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
     p=_owned_page(db,workspace_id,page_id,user)
-    html=render_landing(LandingSpec.model_validate_json(p.spec_json),p.slug,p.provenance)
+    spec=LandingSpec.model_validate_json(p.spec_json)
+    html=render_landing(spec,p.slug,p.provenance,hero_image_for_page(db,p,spec))
     return Response(content=html,media_type="text/html",headers={
        **SECURITY_HEADERS,"Content-Disposition":f'attachment; filename="sentinelx-{p.id}.html"'})
 
