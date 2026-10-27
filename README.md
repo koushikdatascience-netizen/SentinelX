@@ -36,7 +36,7 @@ flowchart LR
 ```
 
 **Backend:** Python 3.11, FastAPI, Pydantic, SQLAlchemy, Alembic, PostgreSQL/SQLite dev, Pillow, Jinja2.
-**Frontend:** Next.js / React / TypeScript, responsive stepper dashboard.
+**Frontend:** Next.js / React / TypeScript, responsive dashboard with dedicated tool views and modal editors.
 **CI:** GitHub Actions backend tests, PostgreSQL migration checks and Playwright Chromium journeys.
 
 ## Real versus sample capabilities
@@ -78,7 +78,7 @@ npm run dev
 
 Open http://localhost:3000. Windows PowerShell users should replace `export KEY=value` with `$env:KEY="value"`.
 
-Demo defaults make **zero paid Meta requests**. For a real operator-authenticated workspace, create a local account and choose **Business Studio**. Optional guest sample sessions can be enabled with `ENABLE_PUBLIC_DEMO_SESSION=true`; they expire in 20 minutes, are rate-limited and cannot make paid requests. The public `/demo` static walkthrough does not need the backend.
+Demo defaults make **zero paid Meta requests**. For a real operator-authenticated workspace, create a local account and open the **Dashboard**. Optional guest sample sessions can be enabled with `ENABLE_PUBLIC_DEMO_SESSION=true`; they expire in 20 minutes, are rate-limited and cannot make paid requests. The public `/demo` static walkthrough does not need the backend.
 
 ### Running tests
 
