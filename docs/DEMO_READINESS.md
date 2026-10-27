@@ -23,7 +23,7 @@
 Meta's $150 promotional credits were visible in the owner's Billing interface on October 27, 2026. Actual API requests and permissions remain unverified. Keep `SENTINELX_MODE=demo`, `INFERENCE_PROVIDER=demo`, `ALLOW_PAID_INFERENCE=false`, `ENABLE_LIVE_MULTIMODAL=false`, `ENABLE_LEGACY_ENDPOINTS=false`. The `/api/v1/meta/readiness` endpoint does not make API calls. Do not advertise unavailable models as running.
 
 ## GitHub CI
-Backend Python tests plus Next.js production build run automatically. Final live deployment requires access to the target Oracle VM and DNS provider; no such deployment has been executed.
+GitHub Actions runs backend Python tests, PostgreSQL migrations and integration tests, a Next.js production build, and Chromium journeys. Hostinger staging is live at `https://sentinelx.kamalwoodcraft.in`; its active commit and current main commit are recorded in [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md). A Hostinger CD workflow is prepared but stays disabled until the protected GitHub Environment is configured.
 
 ## Evidence-draft milestone
 

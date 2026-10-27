@@ -1,5 +1,6 @@
 # New independent vhost; leave Kamal Woodcraft vhost unchanged.
-# DNS A record: sentinelx.kamalwoodcraft.in -> Oracle public IP
+# Historical Nginx example only; the live Hostinger site uses Caddy.
+# Do not install this file on the current host. Leave Kamal Woodcraft vhost unchanged.
 server {
     listen 80;
     server_name sentinelx.kamalwoodcraft.in;

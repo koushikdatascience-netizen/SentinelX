@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily SentinelX database backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 UTC
+Persistent=true
+Unit=sentinelx-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,84 @@
+name: sentinelx-stage
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sentinelx_stage
+      POSTGRES_USER: sentinelx_stage
+      POSTGRES_PASSWORD: ${SENTINELX_POSTGRES_PASSWORD:?Set SENTINELX_POSTGRES_PASSWORD}
+    volumes:
+      - sentinelx_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinelx_stage -d sentinelx_stage"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 384m
+    cpus: 0.5
+
+  backend:
+    image: sentinelx-stage-backend:${SENTINELX_RELEASE:?Set SENTINELX_RELEASE}
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://sentinelx_stage:${SENTINELX_POSTGRES_PASSWORD}@postgres:5432/sentinelx_stage
+      JWT_SECRET: ${SENTINELX_JWT_SECRET:?Set SENTINELX_JWT_SECRET}
+      SENTINELX_RELEASE: ${SENTINELX_RELEASE:?Set SENTINELX_RELEASE}
+      SENTINELX_MODE: demo
+      INFERENCE_PROVIDER: demo
+      ALLOW_PAID_INFERENCE: "false"
+      META_APP_BUDGET_CENTS: "0"
+      META_WORKSPACE_BUDGET_CENTS: "0"
+      META_RUN_BUDGET_CENTS: "0"
+      OTHER_APP_BUDGET_CENTS: "0"
+      ENABLE_LEGACY_ENDPOINTS: "false"
+      ENABLE_LEGACY_META_ANALYZE: "false"
+      ENABLE_LIVE_MULTIMODAL: "false"
+      ENABLE_EVIDENCE_INFERENCE: "false"
+      EVIDENCE_WORKSPACE_MAX_REQUESTS: "0"
+      AUTO_CREATE_SCHEMA: "false"
+      ALLOW_PUBLIC_REGISTRATION: "false"
+      REGISTRATION_ALLOWED_EMAILS: ${SENTINELX_REGISTRATION_ALLOWED_EMAILS:-}
+      CORS_ORIGINS: ${SENTINELX_PUBLIC_ORIGIN:?Set SENTINELX_PUBLIC_ORIGIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18080:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    mem_limit: 640m
+    cpus: 0.8
+
+  frontend:
+    image: sentinelx-stage-frontend:${SENTINELX_RELEASE:?Set SENTINELX_RELEASE}
+    build:
+      context: ../..
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:13000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+    mem_limit: 384m
+    cpus: 0.5
+
+volumes:
+  sentinelx_pg:
+    external: true
+    name: sentinelx-stage_sentinelx_pg

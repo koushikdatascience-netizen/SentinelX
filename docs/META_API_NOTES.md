@@ -41,7 +41,7 @@ Each dispatch has its own accounting DB, so it is not a cross-dispatch billing c
 
 ## Status
 
-Documentation and mocked HTTP shapes: text, structured output, vision, single-image generation. Live-account success, model entitlement, useful output quality and actual cost reconciliation: **UNVERIFIED**. SAM/voice live adapters: explicitly unsupported. Defaults remain demo/paid-off; no deployment files or infrastructure were changed.
+Documentation and mocked HTTP shapes: text, structured output, vision, single-image generation. Live-account success, model entitlement, useful output quality and actual cost reconciliation: **UNVERIFIED**. SAM/voice live adapters: explicitly unsupported. Defaults remain demo/paid-off. Hostinger staging has been audited; the CD workflow is prepared but remains disabled pending merge and restricted deployment credentials. See [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
 
 
 ### Compatibility changes

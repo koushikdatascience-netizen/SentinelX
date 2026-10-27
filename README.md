@@ -1,6 +1,6 @@
 # SentinelX — Meta AI Developer Hackathon 2026
 
-Evidence-first, human-supervised business intelligence dashboard. Development software; deployment and hosted Meta inference remain unverified.
+Evidence-first, human-supervised business intelligence dashboard. Isolated Hostinger staging is verified; a production release and hosted Meta inference remain unverified.
 
 ## Implemented
 
@@ -50,7 +50,7 @@ npm ci
 npm run build
 ```
 
-GitHub Actions runs backend tests and a production frontend build. See [readiness](docs/DEMO_READINESS.md), [dashboard release](docs/DASHBOARD_RELEASE.md), [manual Meta smoke setup](docs/META_GITHUB_ONLY_SETUP.md), and [isolated Oracle staging](deploy/ORACLE_STAGING.md).
+GitHub Actions runs backend tests, PostgreSQL migrations and integration checks, Python dependency consistency checks, a frontend advisory audit and production build, and Chromium journeys. The live staging host is Hostinger. See [readiness](docs/DEMO_READINESS.md), [dashboard release](docs/DASHBOARD_RELEASE.md), [Hostinger deployment and release audit](docs/HOSTINGER_DEPLOYMENT.md), and [manual Meta smoke setup](docs/META_GITHUB_ONLY_SETUP.md). The Oracle deployment files are retained as historical references only.
 
 The [evidence-draft milestone guide](docs/EVIDENCE_DRAFT_MILESTONE.md) describes the API, safe defaults, migration adoption and browser tests. Fresh container databases use Alembic migrations; existing databases need backup and schema review before adopting migration revisions. CI also runs PostgreSQL checks and offline Chromium journeys.
 

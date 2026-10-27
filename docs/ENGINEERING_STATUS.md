@@ -27,6 +27,6 @@ Tests used local SQLite. PostgreSQL concurrency behavior and deployed browser be
 | Public crawler | Pinned DNS plus egress restrictions and adversarial SSRF tests; keep legacy routes disabled |
 | Public service hardening | Durable auth rate limits, account recovery/revocation, email verification, migrations and tested backup/restore |
 | Browser E2E and demo recording | Running stack, full account/workspace/audit/review/export journey and accurate simulation/inference labels |
-| Oracle TLS staging | Host access, capacity and resource review, backups, isolated DNS/TLS setup and health checks |
+| Hostinger CD and release | Add the restricted deployment account and GitHub Environment secrets, enable the protected workflow, verify first release and scheduled backups |
 
-No paid request, external publishing, Oracle deployment or Kamal Woodcraft infrastructure change was performed during this review. Demo and paid-off defaults remain in place.
+No paid request or external publishing was performed during this review. The current Hostinger staging audit and prepared CD workflow are recorded in [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md). Kamal Woodcraft's main site and other Hostinger services remain outside deployment scope. Demo and paid-off defaults remain in place.
