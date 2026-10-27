@@ -73,3 +73,28 @@ test("public sample works without authentication or provider requests",async({pa
  expect((await promise).suggestedFilename()).toBe("sentinelx-sample-campaign.md");
  expect(apiCalls).toEqual([]);
 });
+
+test("Business Studio creates campaign, landing, approval and export in offline fixture mode",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("button",{name:"Business Studio",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"From business insight to launch-ready assets."})).toBeVisible();
+ await page.getByRole("button",{name:/Generate business audit & campaign/}).click();
+ await expect(page.getByRole("heading",{name:"Business opportunity audit"})).toBeVisible();
+ await expect(page.getByText("sample",{exact:true}).first()).toBeVisible();
+ await page.getByRole("button",{name:/Review seven-day plan/}).click();
+ await expect(page.locator(".studio-day")).toHaveCount(7);
+ await page.getByRole("button",{name:/Build a landing page/}).click();
+ await page.getByRole("button",{name:/Generate page draft/}).click();
+ await expect(page.locator("iframe[title='Landing preview']")).toBeVisible();
+ await page.getByRole("button",{name:/Review approvals/}).click();
+ await expect(page.getByRole("heading",{name:/Approval board & delivery pack/})).toBeVisible();
+ const landing=page.locator(".studio-review").filter({hasText:"landing"}).first();
+ await landing.getByRole("button",{name:"Approve"}).click();
+ await expect(page.getByText(/Decision approved recorded/)).toBeVisible();
+ const promise=page.waitForEvent("download");
+ await page.getByRole("button",{name:/Download approved campaign pack/}).click();
+ expect((await promise).suggestedFilename()).toBe("sentinelx-approved-pack.zip");
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/business-studio-mobile.png",fullPage:true});
+});
