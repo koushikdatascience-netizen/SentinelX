@@ -16,6 +16,8 @@ def generate_image(body:ImagePrompt,user:User=Depends(current_user)):
     if os.getenv("SENTINELX_MODE")!="live":
         return {"status":"demo","image":None,"prompt":body.prompt,
                 "note":"No image was generated; enable live mode only with a funded key and approved budget."}
+    if os.getenv("ENABLE_LIVE_MULTIMODAL") != "true":
+        raise HTTPException(403,"Live multimodal calls disabled pending verified metering and approved billing limits")
     key=os.getenv("MODEL_API_KEY")
     if not key: raise HTTPException(503,"MODEL_API_KEY not configured")
     try:
