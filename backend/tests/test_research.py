@@ -14,6 +14,7 @@ def test_credentials_rejected():
 def test_research_auth_required():
     assert TestClient(app).post("/api/v1/research",json={"website":"https://example.com","goal":"Improve customer inquiries"}).status_code==401
 def test_research_stub(monkeypatch,authenticated_client):
+    monkeypatch.setenv("ENABLE_LEGACY_ENDPOINTS","true")
     monkeypatch.setattr("app.research.snapshot",lambda url:{"evidence_source":url,"title":"Retailer","text":"Shoes and offers"})
     r=authenticated_client.post("/api/v1/research",json={"website":"https://example.com","goal":"Improve local customer inquiries"})
     assert r.status_code==200,r.text
