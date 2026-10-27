@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.auth import current_user, hash_password, check_password, issue_token
-from app.workspace_store import User, Workspace, WorkflowRun, session
+from app.workspace_store import User, Workspace, WorkflowRun, ReviewableAction, utcnow, session
 
 router=APIRouter(prefix="/api/v1",tags=["Workspaces"])
 
@@ -98,3 +98,38 @@ def analyze_supplied_evidence(workspace_id:str,body:EvidenceRunInput,user:User=D
                     status="proposed",result_json=json.dumps(result))
     db.add(run);db.commit();db.refresh(run)
     return {"id":run.id,"workspace_id":workspace_id,"status":run.status,"result":result}
+
+class ActionInput(BaseModel):
+    description: str = Field(min_length=10,max_length=1200)
+
+class ActionDecision(BaseModel):
+    decision: str = Field(pattern="^(approved|rejected)$")
+
+@router.get("/workspaces/{workspace_id}/runs/{run_id}/actions")
+def actions_for_run(workspace_id:str,run_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
+    owned(db,user,workspace_id)
+    run=db.scalar(select(WorkflowRun).where(WorkflowRun.id==run_id,WorkflowRun.workspace_id==workspace_id))
+    if not run: raise HTTPException(404,"Run not found")
+    return [{"id":a.id,"description":a.description,"state":a.state,"created_at":a.created_at.isoformat()} for a in db.scalars(select(ReviewableAction).where(ReviewableAction.run_id==run_id)).all()]
+
+@router.post("/workspaces/{workspace_id}/runs/{run_id}/actions",status_code=201)
+def new_action(workspace_id:str,run_id:str,body:ActionInput,user:User=Depends(current_user),db:Session=Depends(session)):
+    owned(db,user,workspace_id)
+    run=db.scalar(select(WorkflowRun).where(WorkflowRun.id==run_id,WorkflowRun.workspace_id==workspace_id))
+    if not run: raise HTTPException(404,"Run not found")
+    action=ReviewableAction(run_id=run.id,description=body.description)
+    db.add(action);db.commit();db.refresh(action)
+    return {"id":action.id,"description":action.description,"state":action.state,"executed":False}
+
+@router.post("/workspaces/{workspace_id}/actions/{action_id}/review")
+def decide_action(workspace_id:str,action_id:str,body:ActionDecision,user:User=Depends(current_user),db:Session=Depends(session)):
+    owned(db,user,workspace_id)
+    action=db.scalar(select(ReviewableAction).join(WorkflowRun,ReviewableAction.run_id==WorkflowRun.id).where(
+        ReviewableAction.id==action_id,WorkflowRun.workspace_id==workspace_id))
+    if not action: raise HTTPException(404,"Action not found")
+    if action.state!="proposed": raise HTTPException(409,"Action was already reviewed")
+    action.state=body.decision
+    action.reviewed_at=utcnow()
+    db.commit()
+    return {"id":action.id,"description":action.description,"state":action.state,"executed":False,
+            "note":"Approval is a recorded decision only. No external action has been executed."}
