@@ -50,27 +50,7 @@ def analyze(body: RunRequest):
             findings=[Finding(title="Digital presence review required",detail="Demo placeholder: website not crawled; claims not verified.")],
             recommended_actions=["Review homepage conversion messaging","Research relevant competitors","Prepare a measurable seven-day experiment"],
             note="Demonstration only. No external research or AI inference performed.")
-    if os.getenv("ENABLE_LEGACY_META_ANALYZE") != "true":
-        raise HTTPException(status_code=403,detail="Legacy paid inference disabled: use budgeted workspace inference")
-    if not os.getenv("MODEL_API_KEY"):
-        raise HTTPException(status_code=503,detail="MODEL_API_KEY missing")
-    if counts["live_requests"] >= MAX_REQUESTS:
-        raise HTTPException(status_code=429,detail="Local live request guard reached")
-    counts["live_requests"] += 1
-    try:
-        from openai import OpenAI
-        client = OpenAI(base_url="https://api.meta.ai/v1",api_key=os.environ["MODEL_API_KEY"],timeout=45.0,max_retries=0)
-        prompt = ("You are a cautious business strategist. The supplied URL has NOT been fetched. "
-                  "Never claim to have inspected the website. Identify assumptions. "
-                  f"Website: {body.website}; Industry: {body.industry or 'unknown'}; Goal: {body.goal}")
-        response = client.responses.create(model=os.getenv("META_MODEL","muse-spark-1.3"),input=prompt,max_output_tokens=550)
-        detail = (getattr(response,"output_text","") or "No text returned")[:3500]
-    except Exception as exc:
-        raise HTTPException(status_code=502,detail=f"Model API failed ({type(exc).__name__})") from exc
-    return RunResponse(run_id=run_id,mode="live",status="completed",business_domain=domain,objective=body.goal,
-        findings=[Finding(title="Preliminary AI assessment",detail=detail)],
-        recommended_actions=["Research with citations","Review findings before actions","Define success metric"],
-        note="Model assessment only. Website has not been fetched.")
+    raise HTTPException(status_code=410,detail="Direct legacy inference removed. Use budgeted workspace evidence and campaign APIs.")
 
 class ResearchResponse(BaseModel):
     run_id: str
