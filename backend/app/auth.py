@@ -7,7 +7,7 @@ from fastapi import HTTPException, Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from app.workspace_store import User, session
+from app.workspace_store import User, DemoSession, session
 
 bearer=HTTPBearer(auto_error=False)
 def secret():
@@ -20,8 +20,9 @@ def hash_password(password: str)->str:
     return bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode()
 def check_password(password: str, hashed: str)->bool:
     return len(password.encode())<=72 and bcrypt.checkpw(password.encode(),hashed.encode())
-def issue_token(user_id:str)->str:
-    return jwt.encode({"sub":user_id,"exp":datetime.now(timezone.utc)+timedelta(hours=8)},secret(),algorithm="HS256")
+def issue_token(user_id:str,ttl_minutes:int=480)->str:
+    if not 1<=ttl_minutes<=480: raise ValueError("Token lifetime out of bounds")
+    return jwt.encode({"sub":user_id,"exp":datetime.now(timezone.utc)+timedelta(minutes=ttl_minutes)},secret(),algorithm="HS256")
 def current_user(credentials:HTTPAuthorizationCredentials|None=Depends(bearer),db:Session=Depends(session))->User:
     if not credentials: raise HTTPException(401,"Authentication required")
     try:
@@ -31,4 +32,11 @@ def current_user(credentials:HTTPAuthorizationCredentials|None=Depends(bearer),d
         raise HTTPException(401,"Invalid or expired token")
     user=db.get(User,uid)
     if not user: raise HTTPException(401,"User not found")
+    if user.is_demo:
+        demo=db.scalar(select(DemoSession).where(DemoSession.user_id==user.id))
+        if demo is None:raise HTTPException(401,"Demo session not found")
+        expiry=demo.expires_at
+        if expiry.tzinfo is None: expiry=expiry.replace(tzinfo=timezone.utc)
+        if expiry<=datetime.now(timezone.utc):
+            raise HTTPException(401,"Demo session has expired")
     return user
