@@ -75,13 +75,14 @@ def sample_landing(business:str,goal:str,language:str="en")->dict:
 ENV=Environment(loader=FileSystemLoader(str(Path(__file__).parent/"landing_templates")),
                 autoescape=select_autoescape(enabled_extensions=("html",)),auto_reload=False)
 
-def render_landing(spec:LandingSpec,slug:str,provenance:str)->str:
+def render_landing(spec:LandingSpec,slug:str,provenance:str,hero_image_data:str|None=None)->str:
     # No user-supplied CSS or HTML is accepted. All fields are escaped by Jinja.
     phone=re.sub(r"\D","",spec.whatsapp_number or "")
     if phone and not 8<=len(phone)<=15:phone=""
     return ENV.get_template(spec.theme+".html").render(**spec.model_dump(),slug=slug,
         whatsapp_link=("https://wa.me/"+phone if phone else None),
         sample=(provenance!="live_meta" and provenance!="user_edited"),
+        hero_image_data=hero_image_data,
         provenance=provenance)
 
 SECURITY_HEADERS={
