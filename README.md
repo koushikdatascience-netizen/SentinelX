@@ -119,7 +119,7 @@ The manual GitHub Actions smoke workflow allows exactly one explicitly authorize
 - Photo readiness weights are transparent engineering heuristics, **not** validated attractiveness, sales likelihood or customer impact.
 - Image assessment uploads are not retained after scoring; generated creative variants are stored as bounded database blobs.
 - Password login now has a shared database-backed per-account throttle. Email verification, account recovery/deletion, broader network-level abuse controls, and operational security review remain outstanding.
-- PostgreSQL backup/restore was exercised and the Hostinger daily backup timer is enabled. The automated deploy account and GitHub secrets are configured, but the first CI-driven release has not run.
+- PostgreSQL backup/restore was exercised and the Hostinger daily backup timer is enabled. The first CI-driven Hostinger release passed on run 40591394185, including public HTTPS health verification.
 - Workspace/run model budgets and campaign attempt limits are app-side controls; provider charge reconciliation and a provider-enforced hard cap remain unimplemented. Concurrency tests and production monitoring still need expansion.
 
 ## Documentation

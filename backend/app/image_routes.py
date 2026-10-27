@@ -1,5 +1,6 @@
 """Workspace-owned validated product photo scores. No persistent photo blobs yet."""
 import json
+from typing import Literal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
@@ -28,6 +29,7 @@ class Scores(BaseModel):
 
 @router.post("/score",status_code=201)
 async def score_photo(workspace_id:str=Form(...),business_context:str=Form(""),
+                      generation_mode:Literal["auto","sample","live"]=Form("auto"),
                       file:UploadFile=File(...),user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,workspace_id)
     if len(business_context)>1500: raise HTTPException(422,"Business context too long")
@@ -37,21 +39,22 @@ async def score_photo(workspace_id:str=Form(...),business_context:str=Form(""),
     # The declared MIME must match the parsed file format, not just be on an allowlist.
     if file.content_type != {"PNG":"image/png","JPEG":"image/jpeg","WEBP":"image/webp"}[local["format"]]:
         raise HTTPException(415,"Unsupported content type")
-    live=(not user.is_demo) and MetaClient._enabled(True)
+    from app.campaign_routes import generation_is_live
+    live=generation_is_live(user,generation_mode)
     model_run=None
     client=MetaClient(owner_id=user.id,workspace_id=workspace_id)
     if live:
         from app.campaign_routes import claim_attempt
         claim_attempt(db,workspace_id)
         model_run=create_model_run(db,workspace_id,"user-supplied-image",business_context or "Product image assessment")
-        client=MetaClient(owner_id=user.id,workspace_id=workspace_id,run_id=model_run.id)
+        client=MetaClient(owner_id=user.id,workspace_id=workspace_id,run_id=model_run.id,max_tokens=1200)
     schema=Scores.model_json_schema()
     prompt=("Assess this consented product image for marketing use, relative to the business description. "
             "Give concrete suggestions; do not claim sales outcomes or unobserved facts. "
             f"Business description: {business_context}")
     try:
         result=(client.vision(payload,file.content_type,prompt,schema)
-                if not user.is_demo else {"provenance":"sample","data":{"note":"Demo sessions cannot call paid models"}})
+                if live else {"provenance":"sample","data":{"note":"Local image measurements only"}})
         model_scores=Scores.model_validate(result["data"]).model_dump() if result["provenance"]=="live_meta" else None
         if model_run:
             finish_model_run(db,model_run,"inferred","live_meta")

@@ -5,6 +5,7 @@ import json
 import os
 import re
 import secrets
+from typing import Literal
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
@@ -28,6 +29,7 @@ class CreateLanding(BaseModel):
     theme: str=Field(default="modern",pattern="^(modern|warm|bold)$")
     whatsapp_number: str | None=None
     hero_image_variant_id: str | None=None
+    generation_mode: Literal["auto","sample","live"]="auto"
 
 class UpdateLanding(BaseModel):
     spec: LandingSpec | None=None
@@ -61,7 +63,8 @@ def generate(body:CreateLanding,user:User=Depends(current_user),db:Session=Depen
     campaign=db.scalar(select(CampaignProject).where(CampaignProject.id==body.campaign_id,
                     CampaignProject.workspace_id==body.workspace_id))
     if campaign is None:raise HTTPException(404,"Campaign not found")
-    live=(not user.is_demo) and MetaClient._enabled(True)
+    from app.campaign_routes import generation_is_live
+    live=generation_is_live(user,body.generation_mode)
     model_run=None
     client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id)
     if live:
@@ -70,7 +73,7 @@ def generate(body:CreateLanding,user:User=Depends(current_user),db:Session=Depen
         from app.campaign_routes import claim_attempt
         claim_attempt(db,body.workspace_id)
         model_run=create_model_run(db,body.workspace_id,"user-supplied-campaign",campaign.goal)
-        client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=model_run.id)
+        client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=model_run.id,max_tokens=2600)
         try:
             result=client.text(
                 "Create a useful conversion-oriented landing page without invented statistics, testimonials, awards, prices or third-party claims. "

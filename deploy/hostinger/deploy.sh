@@ -16,6 +16,7 @@ test -f "$incoming"
 test -f "$env_file"
 test "$(stat -c '%a' "$env_file")" = "600"
 test -f "$compose"
+python3 "$release_dir/deploy/hostinger/configure-runtime.py" "$env_file" "$release_dir/.sentinelx-meta-key"
 
 current_file="$root/current-release"
 previous="legacy"

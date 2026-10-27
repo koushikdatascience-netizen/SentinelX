@@ -6,8 +6,8 @@ Reviewed October 28, 2026. **Documentation-verified and mock-tested does not mea
 
 | Capability | Official contract | Client behavior |
 | --- | --- | --- |
-| Text | `POST https://api.meta.ai/v1/chat/completions`, `muse-spark-1.3`, Bearer MODEL_API_KEY; developer/user messages; visible text in `choices[0].message.content` | Fixed supported model; minimal reasoning; 500 combined output tokens by default (constructor 1–1200). Empty text or non-stop finish fails. |
-| Structured text | Chat Completions `response_format={type:json_schema,json_schema:{name,schema,strict}}` | Uses strict=false for broader schema compatibility, plus local Draft 2020-12 validation. References are deliberately unsupported to prevent remote fetching/cycles. Invalid/oversized schemas fail before reservations. |
+| Text | `POST https://api.meta.ai/v1/chat/completions`, `muse-spark-1.3`, Bearer MODEL_API_KEY; developer/user messages; visible text in `choices[0].message.content` | Fixed supported model; minimal reasoning; 500 combined output tokens by default (constructor 1–6000). Empty text or non-stop finish fails. |
+| Structured text | Chat Completions `response_format={type:json_schema,json_schema:{name,schema,strict}}` | Uses strict=false for broader schema compatibility, plus local Draft 2020-12 validation. Nonrecursive local Pydantic `$defs` are inlined before sending; remote and recursive references are rejected without a call. Invalid/oversized schemas fail before reservations. |
 | Vision | Same model and endpoint; user content contains `text` and `image_url` blocks, with `image_url.url` holding a base64 data URL | Sends local validated PNG/JPEG/WebP only, up to 5 MB / 20MP. No URL fetching. Optional schema uses the same validation. |
 | Image | `POST /v1/images/generations`, `muse-image-1.0`, prompt, n, size, response_format; output `data[].b64_json` or signed URL | One image, three allowlisted aspect ratios, base64 output. Size is an aspect ratio, not a promise of exact dimensions. No automatic edits, downloads, retries or publishing. |
 | SAM | `sam-3.1` on Responses API, object concept/geometry prompt and media; special-token segmentation output | **UNVERIFIED / NOT IMPLEMENTED adapter.** API exists, but this method has no object prompt argument and the mask parser is not integrated. Live `segment` raises NotSupported before budget/network. Never substitutes vision text for a mask. |
@@ -31,7 +31,7 @@ Live calls require MODEL_API_KEY from environment, an owner ID, an existing owne
 
 `budget.reserve_meta` atomically reserves 5 cents in all three counters in one transaction: META_APP_BUDGET_CENTS (existing default 500), META_WORKSPACE_BUDGET_CENTS (default **0**) and META_RUN_BUDGET_CENTS (default **0**). Workspace/run counters use hashed keys in the existing api_budgets table, so no new migration is required. Five cents is an application reservation unit, **not a verified price or guaranteed maximum charge**. Counters are lifetime cumulative; there is no automatic reset or refund after uncertain failures. Concurrent calls serialize on the global row; insufficient scope rolls back every debit. Provider charge reconciliation remains unimplemented. Other apps, keys and workflow dispatches bypass this application's shared DB accounting.
 
-SDK transport uses a 30-second timeout, max_retries=0 and safe fixed error messages. Keys, full prompts, provider error bodies, hidden reasoning and generated media are not logged. Only whitelisted usage fields leave the text adapter. Direct OpenAI usage in providers.py now serves other providers only; Meta traffic delegates to MetaClient.
+SDK transport uses a 90-second timeout, max_retries=0 and safe fixed error messages. Keys, full prompts, provider error bodies, hidden reasoning and generated media are not logged. Only whitelisted usage fields leave the text adapter. All enabled hosted model traffic delegates to MetaClient.
 
 ## Manual smoke verification
 
@@ -47,3 +47,9 @@ Documentation and mocked HTTP shapes: text, structured output, vision, single-im
 ### Compatibility changes
 
 `POST /api/v1/creative/generate` now requires workspace_id and run_id in its JSON body. `POST /api/v1/media/image/analyze` requires those IDs as query parameters plus an uploaded file; prompt is optional. Both check the authenticated owner before invoking the client, including samples. `/api/v1/inference/test` accepts optional scope fields for backward-compatible stateless samples, but live Meta inference cannot proceed without a persisted owned run. Workspace generation creates that run before attempting inference. Existing voice intake accepts local sample files only; its old unmetered live HTTP path is gone. All approval endpoints remain recorded decisions only.
+
+## Live Studio integration repair
+
+Campaign generation uses one structured request containing the audit and seven-day plan, bounded to 6,000 output tokens. The original nested Pydantic schemas could not pass the client; local definitions are now expanded safely and covered by an HTTP transport test. Owner requests explicitly choose live generation and receive an error rather than a sample substitution when unavailable. Guest sessions and the explicit sample checkbox remain sample-only.
+
+The Hostinger workflow transfers the owner-configured MODEL_API_KEY over pinned SSH into the root-only server env file; it is never committed or uploaded as a workflow artifact. A live activation starts with $2 in cumulative app/workspace reservations, a 50-cent run limit, and 20 attempts per workspace. These are application reservations rather than provider billing reconciliation. No request is made merely by deploying.

@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from app.auth import current_user
 from app.workspace_store import User, CampaignProject, CampaignItem, ImageAssessment, CampaignQuota, session
 from app.workspace_routes import owned, create_model_run, finish_model_run
-from app.meta_client import MetaClient
-from app.campaign import CampaignAudit, SevenDayPlan, Language, Platform, sample_plan, unsupported_claims
+from app.meta_client import MetaClient, MetaError
+from app.campaign import CampaignGeneration, Language, Platform, sample_plan, unsupported_claims
 
 router=APIRouter(prefix="/api/v1/campaigns",tags=["Campaigns"])
 
@@ -23,6 +23,7 @@ class CreateCampaign(BaseModel):
     language: Language="en"
     platforms: list[Platform]=Field(default_factory=lambda:["instagram","facebook"],min_length=1,max_length=3)
     image_ids: list[str]=Field(default_factory=list,max_length=6)
+    generation_mode: Literal["auto","sample","live"]="auto"
 
 class EditItem(BaseModel):
     caption: str | None=Field(default=None,min_length=10,max_length=1500)
@@ -59,6 +60,25 @@ def claim_attempt(db:Session,workspace_id:str):
         raise HTTPException(429,"Campaign generation attempt limit reached")
     db.commit()
 
+def generation_is_live(user:User,mode:str="auto")->bool:
+    if mode=="sample":return False
+    if user.is_demo:
+        if mode=="live":raise HTTPException(403,"Sample guest sessions cannot use paid generation. Sign in to your owner account.")
+        return False
+    ready=MetaClient._enabled(True) and bool(os.getenv("MODEL_API_KEY"))
+    if mode=="live" and not ready:
+        raise HTTPException(503,"Live Meta generation is not configured on this server. No sample was substituted and no credits were used.")
+    return ready
+
+@router.get("/runtime")
+def runtime(user:User=Depends(current_user)):
+    live=generation_is_live(user)
+    return {"mode":"sample" if user.is_demo else "live" if live else "unavailable",
+            "is_guest":user.is_demo,"live_enabled":live,
+            "message":"Sample guest workspace — no paid calls" if user.is_demo else
+                      "Real Meta generation enabled with workspace budgets" if live else
+                      "Owner generation needs the server Meta key and live configuration"}
+
 @router.post("",status_code=201)
 def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,body.workspace_id)
@@ -70,31 +90,32 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
             raise HTTPException(422,"Some image assessments are unavailable in this workspace")
         image_data=[{"id":i.id,"score":json.loads(i.assessment_json).get("local",{}).get("technical_readiness")}
                     for i in images]
-    live=(not user.is_demo) and MetaClient._enabled(True)
+    live=generation_is_live(user,body.generation_mode)
     evidence=[{"id":"E1","type":"user_supplied_unverified","text":body.business_description[:1000]}]
     if body.website: evidence.append({"id":"URL1","type":"user_supplied_unverified","url":str(body.website),
                                           "note":"Website was not fetched"})
     if live:
         claim_attempt(db,body.workspace_id)
         model_run=create_model_run(db,body.workspace_id,str(body.website or "user-supplied"),body.goal)
-        client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=model_run.id)
+        client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=model_run.id,max_tokens=6000)
         context={"description":body.business_description,"goal":body.goal,"audience":body.audience,
                  "language":body.language,"platforms":body.platforms,"images":image_data,
                  "evidence":evidence}
         try:
-            audit_reply=client.text(
+            reply=client.text(
               "You are a cautious marketer. Treat ALL supplied context as unverified. No invented statistics, reviews, awards, revenue or competitors. "
-              "Every gap must cite E1 if based on supplied description or set assumption=true and evidence_id=null. Produce the specified strict JSON.",
-              json.dumps(context,ensure_ascii=False),CampaignAudit.model_json_schema())
-            audit=CampaignAudit.model_validate(audit_reply["data"]).model_dump()
-            plan_reply=client.text(
-              "Create exactly 7 distinct daily social posts in the requested language and only approved platforms. "
-              "Write natively in bn/hi when selected. No fabricated claims or numeric promises. Cite E1 only for user-supplied descriptions. Return specified JSON.",
-              json.dumps({**context,"audit":audit},ensure_ascii=False),SevenDayPlan.model_json_schema())
-            plan=SevenDayPlan.model_validate(plan_reply["data"]).model_dump()
+              "Every gap must cite E1 if based on supplied description or set assumption=true and evidence_id=null. "
+              "Create an audit and exactly 7 distinct daily social posts using days 1 through 7, the requested language and platforms. "
+              "Write natively in bn/hi when selected. Keep captions under 450 characters and briefs under 250 characters. "
+              "Use concrete copy tailored to this business and goal. Cite E1 only for supplied descriptions. Return the specified JSON.",
+              json.dumps(context,ensure_ascii=False),CampaignGeneration.model_json_schema())
+            generated=CampaignGeneration.model_validate(reply["data"])
+            audit=generated.audit.model_dump()
+            plan=generated.plan.model_dump()
         except Exception as exc:
             finish_model_run(db,model_run,"failed","live_meta","campaign_generation_failed")
-            raise HTTPException(502,f"Campaign model inference failed ({type(exc).__name__}); no automatic retry") from exc
+            detail=str(exc) if isinstance(exc,MetaError) else "Campaign output failed validation; no automatic retry"
+            raise HTTPException(502,detail) from None
         finish_model_run(db,model_run,"inferred","live_meta")
         provenance="live_meta"
     else:

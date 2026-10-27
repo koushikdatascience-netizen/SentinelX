@@ -71,13 +71,20 @@ jobs:
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
           RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
           archive="sentinelx-${RELEASE_SHA}.tar"
+          umask 077
+          trap 'rm -f "$archive" .sentinelx-meta-key' EXIT
           git archive --format=tar "$RELEASE_SHA" > "$archive"
           printf '%s\n' "$RELEASE_SHA" > .sentinelx-release
           tar -rf "$archive" .sentinelx-release
+          if [[ -n "$MODEL_API_KEY" ]]; then
+            printf '%s' "$MODEL_API_KEY" > .sentinelx-meta-key
+            tar -rf "$archive" .sentinelx-meta-key
+          fi
           ssh -i ~/.ssh/hostinger_deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$HOSTINGER_USER@$HOSTINGER_HOST" "receive $RELEASE_SHA" < "$archive"
 
       - name: Release summary

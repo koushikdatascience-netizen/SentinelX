@@ -22,6 +22,7 @@ router=APIRouter(tags=["Creatives"])
 class RequestVariants(BaseModel):
     variants: int=Field(default=2,ge=1,le=3)
     brand_mood: str=Field(default="warm, polished, natural",min_length=3,max_length=100)
+    generation_mode: Literal["auto","sample","live"]="auto"
 
 class BriefMatch(BaseModel):
     model_config=ConfigDict(extra="forbid")
@@ -76,7 +77,8 @@ def generate(campaign_id:str,item_id:str,workspace_id:str,body:RequestVariants,
             f"Business: {campaign.business_description[:400]}. "
             f"Visual brief: {brief[:550]}. Mood: {body.brand_mood}.")
     prompt=prompt[:1500]
-    live=(not user.is_demo) and MetaClient._enabled(True)
+    from app.campaign_routes import generation_is_live
+    live=generation_is_live(user,body.generation_mode)
     model_run=None
     client=MetaClient(owner_id=user.id,workspace_id=workspace_id)
     if live:

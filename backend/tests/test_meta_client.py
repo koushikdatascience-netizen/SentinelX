@@ -46,7 +46,7 @@ def transport(monkeypatch, payload=None, status=200, failure=None):
         return httpx.Response(status,json=payload)
     def factory(**kwargs):
         assert kwargs["max_retries"]==0
-        assert kwargs["timeout"]==30
+        assert kwargs["timeout"]==90
         return SDK(**kwargs,http_client=httpx.Client(transport=httpx.MockTransport(handle)))
     monkeypatch.setattr(meta_client,"OpenAI",factory)
     return calls
@@ -139,7 +139,7 @@ def test_invalid_input_rejected_before_charge_or_transport(live,monkeypatch):
     reserve=Mock();factory=Mock()
     monkeypatch.setattr(meta_client,"reserve_meta",reserve);monkeypatch.setattr(meta_client,"OpenAI",factory)
     client=MetaClient(**live)
-    for operation in (lambda:client.text("System","x"*6001),lambda:client.vision(b"bad","image/png","Describe"),
+    for operation in (lambda:client.text("System","x"*16001),lambda:client.vision(b"bad","image/png","Describe"),
                       lambda:client.vision(png(),"image/jpeg","Describe"),lambda:client.image("Blue","bad"),
                       lambda:client.text("System","User",{"$ref":"http://localhost/private"})):
         with pytest.raises(ValueError):operation()
@@ -237,3 +237,33 @@ def test_vision_schema_is_validated(live,monkeypatch):
     result=MetaClient(**live).vision(png(),"image/png","Name color",schema)
     assert result["data"]=={"color":"red"}
     assert json.loads(calls[0].content)["response_format"]["json_schema"]["schema"]==schema
+
+
+def test_campaign_nested_schema_and_http_generation(live,monkeypatch,authenticated_client):
+    from app.campaign import CampaignGeneration,sample_plan
+    from app.landing import LandingSpec
+    for model in (CampaignGeneration,LandingSpec):
+        validator=MetaClient._schema(model.model_json_schema())
+        assert '"$ref"' not in json.dumps(validator.schema)
+        assert '"$defs"' not in json.dumps(validator.schema)
+    monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","2")
+    audit,plan=sample_plan("Owner description","Customer inquiries","en",["instagram"])
+    calls=transport(monkeypatch,chat(json.dumps({"audit":audit,"plan":plan})))
+    c=authenticated_client
+    workspace=c.post("/api/v1/workspaces",json={"name":"Real transport boundary"}).json()["id"]
+    response=c.post("/api/v1/campaigns",json={"workspace_id":workspace,
+        "business_description":"We make solid wood cabinets and tables to customer specifications.",
+        "goal":"Increase qualified customer inquiries","platforms":["instagram"],"generation_mode":"live"})
+    assert response.status_code==201,response.text
+    assert response.json()["provenance"]=="live_meta" and len(response.json()["items"])==7
+    assert len(calls)==1
+    body=json.loads(calls[0].content)
+    assert body["max_completion_tokens"]==6000
+    assert '"$ref"' not in json.dumps(body["response_format"])
+
+
+def test_recursive_schema_rejected_before_reservation(live,monkeypatch):
+    reserve=Mock();monkeypatch.setattr(meta_client,"reserve_meta",reserve)
+    schema={"$defs":{"Node":{"$ref":"#/$defs/Node"}},"$ref":"#/$defs/Node"}
+    with pytest.raises(NotSupported):MetaClient(**live).text("System","User",schema)
+    reserve.assert_not_called()

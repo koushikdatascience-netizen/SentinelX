@@ -45,3 +45,14 @@ def test_nonnative_sample_languages(authenticated_client):
 
 def test_unsupported_sales_claim_flagging():
     assert unsupported_claims("Guaranteed increase of 30% revenue")
+
+def test_requested_live_never_substitutes_samples(authenticated_client,monkeypatch):
+    monkeypatch.setenv("INFERENCE_PROVIDER","demo")
+    c=authenticated_client
+    wid=c.post("/api/v1/workspaces",json={"name":"Live request"}).json()["id"]
+    request={**payload(wid),"generation_mode":"live"}
+    response=c.post("/api/v1/campaigns",json=request)
+    assert response.status_code==503
+    assert "No sample was substituted" in response.json()["detail"]
+    assert c.get("/api/v1/campaigns",params={"workspace_id":wid}).json()==[]
+    assert c.get("/api/v1/campaigns/runtime").json()["mode"]=="unavailable"

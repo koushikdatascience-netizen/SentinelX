@@ -78,6 +78,7 @@ test("Business Studio creates campaign, landing, approval and export in offline 
  await accountAndWorkspace(page);
  await page.getByRole("button",{name:"Business Studio",exact:true}).click();
  await expect(page.getByRole("heading",{name:"From business insight to launch-ready assets."})).toBeVisible();
+ await page.getByLabel("Use sample data (no credits)").check();
  await page.getByRole("button",{name:/Generate business audit & campaign/}).click();
  await expect(page.getByRole("heading",{name:"Business opportunity audit"})).toBeVisible();
  await expect(page.getByText("sample",{exact:true}).first()).toBeVisible();
@@ -91,6 +92,15 @@ test("Business Studio creates campaign, landing, approval and export in offline 
  const landing=page.locator(".studio-review").filter({hasText:"landing"}).first();
  await landing.getByRole("button",{name:"Approve"}).click();
  await expect(page.getByText(/Decision approved recorded/)).toBeVisible();
+ await page.getByRole("button",{name:/^5Landing page$|Landing page/}).first().click();
+ await page.getByRole("button",{name:"Publish (requires approval)",exact:true}).click();
+ const publicPath=page.locator("a[href^='/p/']");
+ await expect(publicPath).toBeVisible();
+ const publicPage=await page.context().newPage();
+ await publicPage.goto((await publicPath.getAttribute("href"))!);
+ await expect(publicPage.getByRole("heading").first()).toBeVisible();
+ await publicPage.close();
+ await page.getByRole("button",{name:/^6Approval & export$|Approval & export/}).first().click();
  const promise=page.waitForEvent("download");
  await page.getByRole("button",{name:/Download approved campaign pack/}).click();
  expect((await promise).suggestedFilename()).toBe("sentinelx-approved-pack.zip");
