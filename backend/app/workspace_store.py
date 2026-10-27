@@ -95,3 +95,23 @@ class CampaignQuota(Base):
     __tablename__="campaign_quotas"
     workspace_id: Mapped[str]=mapped_column(ForeignKey("workspaces.id"),primary_key=True)
     attempts: Mapped[int]=mapped_column(Integer,default=0)
+
+class LandingPage(Base):
+    __tablename__="landing_pages"
+    id: Mapped[str]=mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    campaign_id: Mapped[str]=mapped_column(ForeignKey("campaign_projects.id"),index=True)
+    slug: Mapped[str]=mapped_column(String(64),unique=True,index=True)
+    spec_json: Mapped[str]=mapped_column(Text)
+    provenance: Mapped[str]=mapped_column(String(24),default="sample")
+    published: Mapped[bool]=mapped_column(default=False)
+    created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
+
+class LandingLead(Base):
+    __tablename__="landing_leads"
+    id: Mapped[str]=mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    page_id: Mapped[str]=mapped_column(ForeignKey("landing_pages.id"),index=True)
+    name: Mapped[str]=mapped_column(String(100))
+    phone: Mapped[str]=mapped_column(String(30))
+    message: Mapped[str]=mapped_column(Text)
+    ip_hash: Mapped[str]=mapped_column(String(64),index=True)
+    created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
