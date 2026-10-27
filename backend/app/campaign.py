@@ -38,6 +38,10 @@ class SevenDayPlan(Strict):
             raise ValueError("Campaign requires exactly days 1–7")
         return self
 
+class CampaignGeneration(Strict):
+    audit: CampaignAudit
+    plan: SevenDayPlan
+
 # Returns a review flag rather than silently deleting claims.
 UNSUPPORTED=re.compile(r"\b(?:\d+(?:\.\d+)?\s*%\s*(?:increase|growth|discount|better)|"
                        r"(?:revenue|sales|profit|earnings)\s*(?:grew|rose|up|by|of)\s*\d+|"

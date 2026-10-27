@@ -5,7 +5,7 @@ import json
 import os
 from PIL import Image
 from jsonschema import Draft202012Validator
-from openai import OpenAI
+from openai import OpenAI, APIStatusError
 from app.budget import reserve_meta
 
 _REAL_OPENAI = OpenAI
@@ -29,8 +29,8 @@ SAMPLE_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAA
 
 class MetaClient:
     def __init__(self, *, owner_id=None, workspace_id=None, run_id=None, max_tokens=500, sdk_factory=None):
-        if not isinstance(max_tokens, int) or not 1 <= max_tokens <= 1200:
-            raise ValueError("Output token limit must be 1..1200")
+        if not isinstance(max_tokens, int) or not 1 <= max_tokens <= 6000:
+            raise ValueError("Output token limit must be 1..6000")
         self.owner_id, self.workspace_id, self.run_id = owner_id, workspace_id, run_id
         self.max_tokens = max_tokens
         self.sdk_factory = sdk_factory or OpenAI
@@ -70,7 +70,7 @@ class MetaClient:
         if not key:
             raise MetaError("MODEL_API_KEY is required for live Meta calls")
         reserve_meta(self.owner_id, self.workspace_id, self.run_id, cents)
-        return self.sdk_factory(api_key=key, base_url="https://api.meta.ai/v1", timeout=30, max_retries=0)
+        return self.sdk_factory(api_key=key, base_url="https://api.meta.ai/v1", timeout=90, max_retries=0)
 
     @staticmethod
     def _prompt(value, maximum):
@@ -83,15 +83,26 @@ class MetaClient:
             return None
         if not isinstance(schema, dict) or len(json.dumps(schema)) > 16000:
             raise ValueError("Invalid or oversized JSON schema")
-        # Never resolve remote refs (SSRF) or recursive refs in local validation.
-        def check(node):
+        # Inline only local Pydantic definitions. No network resolution or recursion.
+        def expand(node, trail=()):
             if isinstance(node, dict):
-                if any(key in node for key in ("$ref", "$dynamicRef", "$recursiveRef")):
-                    raise NotSupported("Schema references are not supported by this bounded client; inline the schema")
-                for value in node.values(): check(value)
+                if any(key in node for key in ("$dynamicRef", "$recursiveRef")):
+                    raise NotSupported("Dynamic schema references are not supported")
+                if "$ref" in node:
+                    ref=node["$ref"]
+                    if not isinstance(ref,str) or not ref.startswith("#/$defs/") or ref in trail or len(trail)>=16:
+                        raise NotSupported("Only nonrecursive local schema definitions are supported")
+                    name=ref[len("#/$defs/"):]
+                    target=schema.get("$defs",{}).get(name)
+                    if not isinstance(target,dict):raise NotSupported("Missing local schema definition")
+                    return {**expand(target,trail+(ref,)),
+                            **expand({k:v for k,v in node.items() if k!="$ref"},trail)}
+                return {k:expand(v,trail) for k,v in node.items() if k!="$defs"}
             elif isinstance(node, list):
-                for value in node: check(value)
-        check(schema)
+                return [expand(value,trail) for value in node]
+            return node
+        schema=expand(schema)
+        if len(json.dumps(schema))>24000:raise NotSupported("Expanded schema exceeds limit")
         try:
             Draft202012Validator.check_schema(schema)
         except Exception:
@@ -136,14 +147,14 @@ class MetaClient:
         validator = self._schema(schema)
         model = "muse-spark-1.3"
         if not self._live():
-            data = self._fixture(schema) if schema is not None else "Sample fixture: no Meta inference performed."
+            data = self._fixture(validator.schema) if validator else "Sample fixture: no Meta inference performed."
             if validator and not validator.is_valid(data):
                 raise NotSupported("No valid deterministic fixture for this schema")
             return {"provenance":"sample", "model":model, "data":data, "usage":None, "finish_reason":None}
         options = {}
         if schema is not None:
             options["response_format"] = {"type":"json_schema", "json_schema":{
-                "name":"sentinelx_output", "schema":schema, "strict":False}}
+                "name":"sentinelx_output", "schema":validator.schema, "strict":False}}
         if os.getenv("META_MODEL", model) != model:
             raise NotSupported("UNVERIFIED text model; only muse-spark-1.3 is supported")
         try:
@@ -165,6 +176,8 @@ class MetaClient:
                         "usage":{"prompt_tokens":getattr(usage,"prompt_tokens",None),
                                  "completion_tokens":getattr(usage,"completion_tokens",None),
                                  "reasoning_tokens":getattr(details,"reasoning_tokens",None)}}
+        except APIStatusError as error:
+            raise MetaError(f"Meta request rejected (HTTP {error.status_code}). No retry made.") from None
         except (MetaError, NotSupported):
             raise
         except ValueError as error:
@@ -176,7 +189,7 @@ class MetaClient:
 
     def text(self, system, user, json_schema=None):
         self._prompt(system, 2000)
-        self._prompt(user, 6000)
+        self._prompt(user, 16000)
         return self._chat([{"role":"developer", "content":system}, {"role":"user", "content":user}], json_schema)
 
     def vision(self, image_bytes, mime, prompt, json_schema=None):
