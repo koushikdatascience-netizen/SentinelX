@@ -1,12 +1,11 @@
-import os
-os.environ['ENABLE_LEGACY_ENDPOINTS'] = 'true'
 from fastapi.testclient import TestClient
 from app.main import app
 from app.workflows import ActionStore, State
 
 client = TestClient(app)
 
-def test_review_lifecycle():
+def test_review_lifecycle(monkeypatch):
+    monkeypatch.setenv('ENABLE_LEGACY_ENDPOINTS','true')
     response = client.post("/api/v1/actions",json={"run_id":"demo-1","kind":"seo","description":"Propose better copy for the landing page","source_url":"https://example.com/"})
     assert response.status_code == 201
     aid = response.json()["id"]
@@ -28,6 +27,7 @@ def test_no_arbitrary_transition():
         raise AssertionError("proposed is not a review decision")
     assert store.get(rec.id).state == State.proposed
 
-def test_unknown_action():
+def test_unknown_action(monkeypatch):
+    monkeypatch.setenv('ENABLE_LEGACY_ENDPOINTS','true')
     assert client.get("/api/v1/actions/missing").status_code == 404
     assert client.post("/api/v1/actions/missing/review",json={"decision":"approved"}).status_code == 404
