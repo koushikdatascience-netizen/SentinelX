@@ -81,7 +81,7 @@ def render_landing(spec:LandingSpec,slug:str,provenance:str,hero_image_data:str|
     if phone and not 8<=len(phone)<=15:phone=""
     return ENV.get_template(spec.theme+".html").render(**spec.model_dump(),slug=slug,
         whatsapp_link=("https://wa.me/"+phone if phone else None),
-        sample=(provenance!="live_meta" and provenance!="user_edited"),
+        sample=(provenance!="live_meta"),
         hero_image_data=hero_image_data,
         provenance=provenance)
 
