@@ -21,6 +21,7 @@ def test_credentials_rejected():
         validate_public_url("https://user:pass@example.com/")
 
 def test_research_endpoint_with_stub(monkeypatch):
+    monkeypatch.setenv("ENABLE_LEGACY_ENDPOINTS","true")
     monkeypatch.setattr("app.research.snapshot",lambda url: {"evidence_source":url,"title":"Retailer","text":"Shoes and offers"})
     response = client.post("/api/v1/research",json={"website":"https://example.com","goal":"Improve local customer inquiries"})
     assert response.status_code == 200
