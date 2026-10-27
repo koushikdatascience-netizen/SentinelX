@@ -47,6 +47,8 @@ def analyze(body: RunRequest):
             findings=[Finding(title="Digital presence review required",detail="Demo placeholder: website not crawled; claims not verified.")],
             recommended_actions=["Review homepage conversion messaging","Research relevant competitors","Prepare a measurable seven-day experiment"],
             note="Demonstration only. No external research or AI inference performed.")
+    if os.getenv("ENABLE_LEGACY_META_ANALYZE") != "true":
+        raise HTTPException(status_code=403,detail="Legacy paid inference disabled: use budgeted workspace inference")
     if not os.getenv("MODEL_API_KEY"):
         raise HTTPException(status_code=503,detail="MODEL_API_KEY missing")
     if counts["live_requests"] >= MAX_REQUESTS:
