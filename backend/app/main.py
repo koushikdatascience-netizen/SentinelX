@@ -180,3 +180,6 @@ def get_meta_readiness():
 
 from app.image_routes import router as image_router
 app.include_router(image_router)
+
+from app.campaign_routes import router as campaigns_router
+app.include_router(campaigns_router)
