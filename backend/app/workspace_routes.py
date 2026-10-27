@@ -1,6 +1,6 @@
 """Authenticated, owner-scoped workspace APIs. No automatic external execution."""
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -133,3 +133,40 @@ def decide_action(workspace_id:str,action_id:str,body:ActionDecision,user:User=D
     db.commit()
     return {"id":action.id,"description":action.description,"state":action.state,"executed":False,
             "note":"Approval is a recorded decision only. No external action has been executed."}
+
+@router.get("/workspaces/{workspace_id}/runs/{run_id}/report")
+def export_audit_report(workspace_id:str,run_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
+    """Export owner-only Markdown with honest provenance and no executed-action claims."""
+    owned(db,user,workspace_id)
+    run=db.scalar(select(WorkflowRun).where(WorkflowRun.id==run_id,WorkflowRun.workspace_id==workspace_id))
+    if not run: raise HTTPException(404,"Run not found")
+    payload=json.loads(run.result_json)
+    notes=[
+        "# SentinelX | Business Intelligence Audit",
+        "",
+        f"Run: {run.id}",
+        f"Website: {run.website}",
+        f"Objective: {run.objective}",
+        f"Status: {run.status}",
+        "",
+        "## Evidence and provenance",
+    ]
+    sources=payload.get("evidence") or []
+    if sources:
+        for e in sources:
+            notes.extend([f"- Source: {e.get('source_url','not specified')}",f"  - Type: {e.get('source_type','unverified')}",f"  - Quote: {e.get('excerpt','not available')}"])
+    else: notes.append("No collected source evidence in this run. Simulation or model-generated assumptions may appear below.")
+    notes.extend(["","## Findings and next steps"])
+    plan=payload.get("plan") or {}
+    actions=plan.get("actions") or []
+    if actions:
+        for a in actions: notes.append(f"- {a.get('agent','agent')}: {a.get('action','proposal')} — {a.get('reason','Review required')}")
+    elif payload.get("text"): notes.append(str(payload["text"])[:10000])
+    else: notes.append("No verified recommendations. Inspect the workflow result.")
+    notes.extend(["","## Review decisions"])
+    reviews=db.scalars(select(ReviewableAction).where(ReviewableAction.run_id==run_id)).all()
+    for a in reviews: notes.append(f"- {a.description}: {a.state} (no external execution)")
+    if not reviews: notes.append("No action decisions recorded.")
+    notes.extend(["","## Limitations","This report does not claim verified business impact, competitor research, publishing, or model inference unless explicitly evidenced.",""])
+    return Response(content="\\n".join(notes),media_type="text/markdown",
+                    headers={"Content-Disposition":f'attachment; filename="sentinelx-{run.id}.md"'})
