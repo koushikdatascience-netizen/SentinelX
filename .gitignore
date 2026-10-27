@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 *.pyc
+!deploy/.env.sentinelx.example
+frontend/node_modules/
+frontend/.next/
+*.sqlite3
