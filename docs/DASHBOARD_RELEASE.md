@@ -1,30 +1,25 @@
-# SentinelX operator dashboard — release notes
+# SentinelX dashboard release
 
-## Delivered
-- Responsive, dark-theme operator dashboard with four views: Overview, New Analysis, Run History, Configuration.
-- Email/password sign-up and sign-in; JWT session remains in browser memory (logout clears it; refreshing requires sign-in).
-- Business-workspace selector, creation and owner-scoped run history.
-- Zero-credit evidence intake: website, goal, title and user-provided excerpt produce auditable proposed research, SEO and creative steps. Input provenance is explicitly **user-supplied, unverified**.
-- Offline-safe seven-agent preview (explicitly marked simulated).
-- PostgreSQL-backed action proposals and per-action approve/reject decisions. No publishing or external execution occurs.
-- Provider configuration and app-local reserved-budget status visible in Configuration.
-- GitHub Actions verifies Python backend tests and Next.js build.
+## Owner experience
 
-## Demo journey
-1. Create an account, then a workspace.
-2. Select **New analysis** and enter a business goal plus a publicly shareable excerpt.
-3. Run **Generate evidence-backed audit** without external API cost.
-4. Examine the saved run in **Run history**.
-5. Create an action proposal, approve/reject it, and show that execution remains **False**.
-6. Return to **Overview** to inspect the persistent activity timeline.
+The dashboard is the signed-in home. Nine tool cards open campaign creation, photo review, campaign calendar, creative studio, landing pages, review and export, business strategy, evidence reports and workspace settings. A consistent sidebar keeps frequently used tools available. Hash navigation supports browser back and refresh.
 
-## Production blockers (not part of this completed development milestone)
-- Production-ready authentication (registration rate limits, password recovery, stronger abuse protections, account invitations, refresh/revocation).
-- Alembic DB migrations and routine database backup/restore testing.
-- Robust media storage/processing, real SAM/video inference, verified Muse integration and genuine multi-agent autonomous execution.
-- User consent and fully isolated, SSRF-hardened public website retrieval.
-- Provider account limits and accurate charge reconciliation. Current limits are app-side conservative reservations, not provider guarantees.
-- Production hardening, verified recurring backup operation, GitHub deploy account setup, and an automated Hostinger release. Current Hostinger staging is isolated and audited; see [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
-- End-to-end browser QA on an actual deployed environment and usability testing.
+Campaign posts appear as readable cards with captions, calls to action and visual briefs. Copy editing, landing copy editing, deliverable review and customer inquiries open focused dialogs. Escape closes dialogs. Saved generated images and landing previews load from authenticated, workspace-scoped endpoints; opening saved work consumes no model credits.
 
-Keep `INFERENCE_PROVIDER=demo`, `SENTINELX_MODE=demo`, and paid options off until provider Billing is verified. Running as a public internet service without additional hardening is not recommended.
+The dashboard shows stored campaign and page counts, the current campaign and its pending reviews. Labels distinguish Meta AI generated, sample and user-supplied content. Unavailable features do not produce fabricated output. App reservations and connection details are in Settings.
+
+## Review journey
+
+1. Sign in and select a workspace, or create one in Settings.
+2. Open Create campaign and enter business facts and a goal. Sample generation is explicitly selected under Generation options; live generation follows the server gates and budget guard.
+3. Read the campaign calendar. Edit a post in its dialog, copy its caption or open its visuals.
+4. Open Creative studio to retrieve saved images or explicitly generate new concepts.
+5. Open Landing pages to preview a saved draft, edit its copy or generate a new page.
+6. Open Review & export to record decisions. Publishing an approved self-hosted landing page is a separate explicit action. Social posts are never automatically published.
+7. Download the approved pack. Evidence reports remain available for source-backed audit records.
+
+## Verification
+
+Browser coverage exercises account/workspace setup, evidence reports and downloads, the public no-login sample, dashboard navigation, post and page editing, saved visuals across day changes, landing review and publication, approved ZIP export, refresh restoration and mobile overflow. These checks use offline fixtures and make no paid requests. Run `cd frontend && npm run build && npm run test:e2e` with the documented local API configuration in `playwright.config.ts`.
+
+The backend suite and CI also validate owner isolation and approval rules. See [META_API_NOTES.md](META_API_NOTES.md) for capability verification and [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md) for deployment and operational limits. Default repository inference settings remain demo and paid-off; live owner runtime is explicitly configured. SAM and voice remain unsupported. Reservations are not reconciled provider billing.

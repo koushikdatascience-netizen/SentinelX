@@ -16,7 +16,7 @@ A deployed Chrome check opened the existing owner session and verified the real 
 
 ## Owner experience
 
-Sign in with the owner account and open Business Studio. The green Live Meta Studio banner confirms that the server key and gates are configured. The saved campaign selector loads stored work; changing days restores the corresponding saved visuals. Approval cards identify actual copy and pages. Approval is a recorded decision; publishing a self-hosted landing page is a separate action. Approved-only export is a real ZIP.
+Sign in with the owner account to open the dashboard. Its tool cards open dedicated campaign, photo, strategy, visual, landing and review views. The Live AI enabled status reflects the configured runtime; each saved output separately identifies its provenance. The saved campaign selector loads stored work; changing days restores the corresponding saved visuals. Approval cards identify actual copy and pages. Approval is a recorded decision; publishing a self-hosted landing page is a separate action. Approved-only export is a real ZIP.
 
 Guest workspaces and the explicit sample checkbox use labeled fixtures and cannot call paid models. Requested live generation fails clearly instead of silently substituting a sample.
 
