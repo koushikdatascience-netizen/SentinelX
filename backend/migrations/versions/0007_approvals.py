@@ -15,7 +15,8 @@ def upgrade():
        sa.Column("target_kind",sa.String(24),nullable=False),
        sa.Column("target_id",sa.String(36),nullable=False),
        sa.Column("state",sa.String(24),nullable=False),
-       sa.Column("created_at",sa.DateTime(timezone=True),nullable=False))
+       sa.Column("created_at",sa.DateTime(timezone=True),nullable=False),
+       sa.UniqueConstraint("target_kind","target_id",name="uq_approval_target"))
     op.create_index("ix_approval_records_workspace_id","approval_records",["workspace_id"])
     op.create_index("ix_approval_records_campaign_id","approval_records",["campaign_id"])
     op.create_table("approval_events",
