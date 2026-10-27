@@ -14,6 +14,7 @@ def measure_image(payload:bytes)->dict:
             if im.format not in ("PNG","JPEG","WEBP"):
                 raise ValueError("Only PNG, JPEG and WebP formats are supported")
             width,height=im.size
+            fmt=im.format
             if width*height>MAX_PIXELS:
                 raise ValueError("Image exceeds pixel limit")
             im.verify()
@@ -28,14 +29,23 @@ def measure_image(payload:bytes)->dict:
             palette=rgb.quantize(colors=5).convert("RGB")
             counter=Counter(palette.getdata())
             colors=["#%02x%02x%02x" % color for color,_ in counter.most_common(5)]
+        # Interpretable technical-readiness heuristic, NOT aesthetic quality or revenue.
+        resolution=min(100.0,100.0*min(width,height)/1080.0)
+        exposure=max(0.0,100.0-abs(brightness-128.0)*0.9)
+        tonal_range=min(100.0,contrast/65.0*100.0)
+        detail=min(100.0,edge_variance/600.0*100.0)
+        local_readiness=round(0.25*resolution+0.25*exposure+0.25*tonal_range+0.25*detail)
         return {
+            "format":fmt,"technical_readiness":local_readiness,
+            "readiness_weights":{"resolution":0.25,"exposure":0.25,"tonal_range":0.25,"texture_detail":0.25},
             "width":width,"height":height,"aspect_ratio":round(width/height,3),
             "brightness":round(brightness,2),"contrast":round(contrast,2),
             "edge_variance":round(edge_variance,2),
             "dominant_colors":colors,
             "provenance":"local_measurement",
             "notes":["Edge variance is a texture proxy, not a calibrated blur score.",
-                     "Local image measurements do not prove product appeal or conversion."]
+                     "Technical readiness is a reproducible heuristic, not a validated aesthetic or conversion score.",
+                     "Scoring uses fixed reference targets (1080 px, 128 brightness, 65 contrast, 600 edge variance); thresholds need calibration."]]
         }
     except Image.DecompressionBombError as exc:
         raise ValueError("Image exceeds safety pixel limit") from exc
