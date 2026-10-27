@@ -76,3 +76,25 @@ def get_run(workspace_id:str,run_id:str,user:User=Depends(current_user),db:Sessi
     run=db.scalar(select(WorkflowRun).where(WorkflowRun.id==run_id,WorkflowRun.workspace_id==workspace_id))
     if not run: raise HTTPException(404,"Run not found")
     return {"id":run.id,"status":run.status,"website":run.website,"goal":run.objective,"result":json.loads(run.result_json)}
+
+class EvidenceRunInput(BaseModel):
+    website: HttpUrl
+    goal: str = Field(min_length=10,max_length=1000)
+    page_title: str = Field(min_length=1,max_length=200)
+    page_excerpt: str = Field(min_length=25,max_length=8000)
+
+@router.post("/workspaces/{workspace_id}/evidence-analysis",status_code=201)
+def analyze_supplied_evidence(workspace_id:str,body:EvidenceRunInput,user:User=Depends(current_user),db:Session=Depends(session)):
+    """No crawling or AI claim: owner-supplied page text, auditable proposals, persisted result."""
+    owned(db,user,workspace_id)
+    from app.agents import build_plan
+    page={"evidence_source":str(body.website),"title":body.page_title,"text":body.page_excerpt}
+    plan=build_plan(page,body.goal).model_dump()
+    evidence={"source_url":str(body.website),"source_type":"user_supplied_unverified","excerpt":body.page_excerpt[:400],
+              "fetched_by_server":False}
+    result={"mode":"owner_supplied_evidence","evidence":[evidence],"plan":plan,
+            "approval_required":True,"external_actions_performed":0}
+    run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,
+                    status="proposed",result_json=json.dumps(result))
+    db.add(run);db.commit();db.refresh(run)
+    return {"id":run.id,"workspace_id":workspace_id,"status":run.status,"result":result}
