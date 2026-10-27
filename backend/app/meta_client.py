@@ -79,7 +79,7 @@ class MetaClient:
         fmt = self._format(schema)
         if fmt: kw["response_format"] = fmt
         result = self._sdk().chat.completions.create(**kw)
-        if not result.choices or result.choices[0].finish_reason == "length":
+        if not result.choices or result.choices[0].finish_reason != "stop":
             raise MetaResponseError("Meta response incomplete or truncated")
         content = result.choices[0].message.content
         if not isinstance(content, str) or not content.strip():
@@ -90,8 +90,13 @@ class MetaClient:
             raise MetaResponseError("Meta returned malformed structured JSON") from exc
         if schema and not isinstance(data, dict):
             raise MetaResponseError("Expected structured JSON object")
+        usage=getattr(result,"usage",None)
+        detail=getattr(usage,"completion_tokens_details",None)
         self._record_success("vision" if multimodal else "text", model)
-        return {"provenance": "live_meta", "model": model, "data": data}
+        return {"provenance":"live_meta","model":model,"data":data,"finish_reason":"stop",
+                "usage":{"prompt_tokens":getattr(usage,"prompt_tokens",None),
+                         "completion_tokens":getattr(usage,"completion_tokens",None),
+                         "reasoning_tokens":getattr(detail,"reasoning_tokens",None)}}
 
     def text(self, system: str, user: str, json_schema: dict | None = None) -> dict:
         return self._completion([{"role": "system", "content": system[:4000]},
