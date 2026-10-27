@@ -186,3 +186,6 @@ app.include_router(campaigns_router)
 
 from app.landing_routes import router as landing_router
 app.include_router(landing_router)
+
+from app.approval_routes import router as approvals_router
+app.include_router(approvals_router)
