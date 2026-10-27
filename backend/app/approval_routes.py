@@ -15,6 +15,7 @@ from app.workspace_store import (
     User, CampaignProject, CampaignItem, CampaignCreative, LandingPage, ApprovalRecord, ApprovalEvent, session, utcnow
 )
 from app.landing import LandingSpec, render_landing
+from app.landing_routes import hero_image_for_page
 
 router=APIRouter(tags=["Approvals"])
 
@@ -123,7 +124,8 @@ def export_campaign(campaign_id:str,workspace_id:str,format:str="zip",
                 f"Unsupported claim flags: {payload.get('unsupported_claims',[])}\n")
             z.writestr(f"posts/day-{item.day:02d}.txt",data)
         for page in pages:
-            html=render_landing(LandingSpec.model_validate_json(page.spec_json),page.slug,page.provenance)
+            spec=LandingSpec.model_validate_json(page.spec_json)
+            html=render_landing(spec,page.slug,page.provenance,hero_image_for_page(db,page,spec))
             z.writestr(f"landing/{page.id}.html",html)
             readme.append(f"Approved landing: {page.id}, provenance={page.provenance}")
         approved_creative_ids=db.scalars(select(ApprovalRecord.target_id).where(
