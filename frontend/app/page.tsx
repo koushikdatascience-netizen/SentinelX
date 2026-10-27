@@ -1,6 +1,6 @@
 "use client";
 import {useState} from "react";
-const BASE=process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE=process.env.NEXT_PUBLIC_API_URL ?? "";
 type Workspace={id:string;name:string};
 export default function Home(){
  const [email,setEmail]=useState("");const [password,setPassword]=useState("");
