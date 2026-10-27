@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.auth import current_user
 from app.workspace_store import User
 from PIL import Image, UnidentifiedImageError
-import httpx
 
 router=APIRouter(prefix="/api/v1/media",tags=["Media"])
 MAX_IMAGE=5_000_000
@@ -38,19 +37,6 @@ async def transcribe_audio(file:UploadFile=File(...),user:User=Depends(current_u
     allowed={"audio/wav","audio/x-wav","audio/mpeg","audio/mp4","audio/ogg","audio/webm"}
     if file.content_type not in allowed: raise HTTPException(415,"Unsupported audio type")
     if not payload: raise HTTPException(422,"Empty recording")
-    if os.getenv("SENTINELX_MODE")!="live":
+    if user.is_demo or os.getenv("SENTINELX_MODE")!="live":
         return {"status":"demo","transcript":None,"note":"Audio upload accepted; transcription was not run."}
-    if os.getenv("ENABLE_LIVE_MULTIMODAL") != "true":
-        raise HTTPException(403,"Live multimodal calls disabled pending verified metering and approved billing limits")
-    key=os.getenv("MODEL_API_KEY")
-    if not key: raise HTTPException(503,"Meta Model API key not configured")
-    try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            response=await client.post("https://api.meta.ai/v1/asr/transcribe",
-                headers={"Authorization":f"Bearer {key}"},
-                files={"file":(file.filename or "recording.wav",payload,file.content_type)},
-                data={"model":"muse-voice-transcribe-1.0"})
-            response.raise_for_status()
-            return {"status":"completed","result":response.json()}
-    except (httpx.HTTPError,ValueError) as exc:
-        raise HTTPException(502,f"Meta transcription request failed ({type(exc).__name__})") from exc
+    raise HTTPException(501,"Live voice transcription is disabled until its request schema and budget guard are centrally verified")

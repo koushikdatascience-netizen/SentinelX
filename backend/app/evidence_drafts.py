@@ -94,6 +94,7 @@ def draft_status(workspace_id: str, user: User = Depends(current_user), db: Sess
 def generate_draft(workspace_id: str, body: DraftRequest, response: Response,
                    user: User = Depends(current_user), db: Session = Depends(session)):
     owned(db, user, workspace_id)
+    if user.is_demo: raise HTTPException(403,"Demo sessions cannot request external inference")
     fingerprint = hashlib.sha256(body.model_dump_json(exclude={"request_id"}).encode()).hexdigest()
     run_id = str(uuid5(NAMESPACE_URL, f"sentinelx:{workspace_id}:{body.request_id}"))
     existing = db.get(WorkflowRun, run_id)

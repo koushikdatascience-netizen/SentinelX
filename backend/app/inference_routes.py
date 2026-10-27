@@ -22,6 +22,7 @@ def status(user: User = Depends(current_user)):
 
 @router.post("/test")
 def test_inference(body: InferenceRequest, user: User = Depends(current_user)):
+    if user.is_demo:raise HTTPException(403,"Demo sessions cannot invoke paid inference")
     try:
         return infer(body.prompt)
     except ValueError as exc:

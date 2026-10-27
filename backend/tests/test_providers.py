@@ -34,7 +34,7 @@ def test_demo_endpoint(monkeypatch):
     monkeypatch.setenv("INFERENCE_PROVIDER","demo")
     # Verify internal handler independently; authentication checked above.
     from app.inference_routes import test_inference, InferenceRequest
-    assert test_inference(InferenceRequest(prompt="Review our business model"),user=object())["status"]=="simulated"
+    assert test_inference(InferenceRequest(prompt="Review our business model"),user=type("TestUser",(),{"is_demo":False})())["status"]=="simulated"
 
 def test_local_ollama_adapter_requires_no_paid_key(monkeypatch):
     monkeypatch.setenv("INFERENCE_PROVIDER","ollama")
