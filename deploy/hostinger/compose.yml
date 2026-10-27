@@ -21,8 +21,8 @@ services:
   backend:
     image: sentinelx-stage-backend:${SENTINELX_RELEASE:?Set SENTINELX_RELEASE}
     build:
-      context: ../..
-      dockerfile: backend/Dockerfile
+      context: ../../backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://sentinelx_stage:${SENTINELX_POSTGRES_PASSWORD}@postgres:5432/sentinelx_stage

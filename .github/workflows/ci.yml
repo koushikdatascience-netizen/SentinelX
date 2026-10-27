@@ -32,6 +32,8 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: python -m pip check
+      - name: Build Hostinger backend image
+        run: docker build -t sentinelx-backend-ci -f Dockerfile .
       - run: python -m pytest -q
       - name: Migrate fresh PostgreSQL database
         run: python -m alembic upgrade head
