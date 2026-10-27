@@ -60,7 +60,7 @@ def generate(body:CreateLanding,user:User=Depends(current_user),db:Session=Depen
     campaign=db.scalar(select(CampaignProject).where(CampaignProject.id==body.campaign_id,
                     CampaignProject.workspace_id==body.workspace_id))
     if campaign is None:raise HTTPException(404,"Campaign not found")
-    live=MetaClient._enabled(True)
+    live=(not user.is_demo) and MetaClient._enabled(True)
     if live:
         # MetaClient reserves the global provider budget before the request.
         # This route requires the same workspace campaign attempt quota as campaigns.
