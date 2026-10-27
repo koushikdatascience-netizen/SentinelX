@@ -192,3 +192,6 @@ app.include_router(approvals_router)
 
 from app.creatives import router as creative_variants_router
 app.include_router(creative_variants_router)
+
+from app.demo_routes import router as demo_router
+app.include_router(demo_router)
