@@ -98,6 +98,8 @@ def update_page(page_id:str,workspace_id:str,body:UpdateLanding,
                 user:User=Depends(current_user),db:Session=Depends(session)):
     page=_owned_page(db,workspace_id,page_id,user)
     if body.spec is not None:
+        if page.approval_state!="proposed":
+            raise HTTPException(409,"Reopen reviewed landing page before editing")
         if unsupported_claims(" ".join([body.spec.headline,body.spec.offer,body.spec.subheadline]+body.spec.trust_points)):
             raise HTTPException(422,"Landing contains unsupported promotional claims")
         page.spec_json=body.spec.model_dump_json()
@@ -105,7 +107,9 @@ def update_page(page_id:str,workspace_id:str,body:UpdateLanding,
         # Material changes require a new publishing decision.
         page.published=False
     if body.published is not None:
-        # Owner explicitly makes a publication decision; no third-party account action.
+        # Owner publishes a self-hosted page only after explicit audited approval.
+        if body.published and page.approval_state!="approved":
+            raise HTTPException(409,"Approve landing page before publishing")
         page.published=body.published
     db.commit()
     return _info(db,page)
