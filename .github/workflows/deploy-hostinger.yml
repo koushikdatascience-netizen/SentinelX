@@ -54,8 +54,14 @@ jobs:
           chmod 600 ~/.ssh/hostinger_deploy
           printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/hostinger_deploy >/dev/null
-          ssh-keygen -F "$HOSTINGER_HOST" -f ~/.ssh/known_hosts >/dev/null
+
+      - name: Validate deploy private key without printing it
+        run: ssh-keygen -y -f ~/.ssh/hostinger_deploy >/dev/null
+
+      - name: Validate pinned Hostinger host key
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+        run: ssh-keygen -F "$HOSTINGER_HOST" -f ~/.ssh/known_hosts >/dev/null
 
       - name: Stream source archive to the forced-command deploy account
         env:
