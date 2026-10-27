@@ -8,6 +8,7 @@ def test_health():
 
 def test_demo(monkeypatch):
     monkeypatch.setenv("SENTINELX_MODE","demo")
+    monkeypatch.setenv("ENABLE_LEGACY_ENDPOINTS","true")
     response = client.post("/api/v1/analyze",json={"website":"https://example.com","goal":"Increase local qualified customer leads"})
     assert response.status_code == 200
     body = response.json()
