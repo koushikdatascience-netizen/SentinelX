@@ -1,0 +1,55 @@
+# Run alongside the existing Kamal Woodcraft site. Do not replace its stack.
+# Example: docker compose --env-file .env.sentinelx -f deploy/oracle-staging.compose.yml up --build -d
+name: sentinelx-stage
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sentinelx_stage
+      POSTGRES_USER: sentinelx_stage
+      POSTGRES_PASSWORD: ${SENTINELX_POSTGRES_PASSWORD:?Set a unique database password}
+    volumes:
+      - sentinelx_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U sentinelx_stage -d sentinelx_stage"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 384m
+    cpus: 0.5
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://sentinelx_stage:${SENTINELX_POSTGRES_PASSWORD}@postgres:5432/sentinelx_stage
+      JWT_SECRET: ${SENTINELX_JWT_SECRET:?Set strong unique JWT secret}
+      SENTINELX_MODE: demo
+      INFERENCE_PROVIDER: demo
+      ALLOW_PAID_INFERENCE: "false"
+      META_APP_BUDGET_CENTS: "0"
+      OTHER_APP_BUDGET_CENTS: "0"
+      ENABLE_LEGACY_ENDPOINTS: "false"
+      ENABLE_LEGACY_META_ANALYZE: "false"
+      ENABLE_LIVE_MULTIMODAL: "false"
+      CORS_ORIGINS: ${SENTINELX_PUBLIC_ORIGIN:?Set public HTTPS origin}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18080:8000"
+    mem_limit: 640m
+    cpus: 0.8
+  frontend:
+    build:
+      context: ../frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:13000:3000"
+    mem_limit: 384m
+    cpus: 0.5
+volumes:
+  sentinelx_pg:
