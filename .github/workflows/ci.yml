@@ -39,7 +39,7 @@ jobs:
           SENTINELX_JWT_SECRET: ci-only-not-a-deployment-secret
           SENTINELX_PUBLIC_ORIGIN: https://example.invalid
           SENTINELX_RELEASE: ci
-        run: docker compose -f ../deploy/hostinger/compose.yml build backend frontend
+        run: docker compose -f deploy/hostinger/compose.yml build backend frontend
       - run: python -m pytest -q
       - name: Migrate fresh PostgreSQL database
         run: python -m alembic upgrade head
