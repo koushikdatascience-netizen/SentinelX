@@ -189,3 +189,6 @@ app.include_router(landing_router)
 
 from app.approval_routes import router as approvals_router
 app.include_router(approvals_router)
+
+from app.creatives import router as creative_variants_router
+app.include_router(creative_variants_router)
