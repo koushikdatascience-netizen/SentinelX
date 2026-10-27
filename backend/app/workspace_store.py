@@ -2,7 +2,7 @@
 import os
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import create_engine, ForeignKey, String, Text, DateTime, Integer, select, UniqueConstraint
+from sqlalchemy import create_engine, ForeignKey, String, Text, DateTime, Integer, LargeBinary, select, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -135,4 +135,17 @@ class ApprovalEvent(Base):
     reviewer_id: Mapped[str]=mapped_column(ForeignKey("users.id"))
     decision: Mapped[str]=mapped_column(String(24))
     note: Mapped[str]=mapped_column(Text,default="")
+    created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
+
+class CampaignCreative(Base):
+    __tablename__="campaign_creatives"
+    id: Mapped[str]=mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    campaign_id: Mapped[str]=mapped_column(ForeignKey("campaign_projects.id"),index=True)
+    item_id: Mapped[str]=mapped_column(ForeignKey("campaign_items.id"),index=True)
+    prompt: Mapped[str]=mapped_column(Text)
+    mime: Mapped[str]=mapped_column(String(30))
+    image_blob: Mapped[bytes]=mapped_column(LargeBinary)
+    scores_json: Mapped[str]=mapped_column(Text)
+    provenance: Mapped[str]=mapped_column(String(24))
+    selected: Mapped[bool]=mapped_column(default=False)
     created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
