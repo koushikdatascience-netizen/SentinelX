@@ -132,6 +132,7 @@ def preview_workflow(body: RunRequest):
 # Authenticated workspace API (isolated from legacy prototype routes).
 from app.workspace_routes import router as workspace_router
 from app.workspace_store import init_db
+from app.budget import ApiBudget
 from app.meta_adapters import capabilities
 app.include_router(workspace_router)
 
