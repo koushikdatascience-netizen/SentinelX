@@ -185,3 +185,6 @@ app.include_router(demo_router)
 
 from app.status_routes import router as status_router
 app.include_router(status_router)
+
+from app.mission_routes import router as mission_router
+app.include_router(mission_router)
