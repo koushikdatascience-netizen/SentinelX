@@ -21,6 +21,8 @@ class SDK:
 def client(monkeypatch):
     sdk=SDK()
     monkeypatch.setenv("MODEL_API_KEY","not-a-real-key")
+    monkeypatch.setenv("INFERENCE_PROVIDER","meta")
+    monkeypatch.setenv("SENTINELX_MODE","live")
     monkeypatch.setenv("ALLOW_PAID_INFERENCE","true")
     monkeypatch.setenv("ENABLE_LIVE_MULTIMODAL","true")
     return MetaClient(sdk_factory=lambda **kwargs: sdk),sdk
