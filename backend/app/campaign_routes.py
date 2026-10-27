@@ -70,7 +70,7 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
             raise HTTPException(422,"Some image assessments are unavailable in this workspace")
         image_data=[{"id":i.id,"score":json.loads(i.assessment_json).get("local",{}).get("technical_readiness")}
                     for i in images]
-    live=MetaClient._enabled(True)
+    live=(not user.is_demo) and MetaClient._enabled(True)
     evidence=[{"id":"E1","type":"user_supplied_unverified","text":body.business_description[:1000]}]
     if body.website: evidence.append({"id":"URL1","type":"user_supplied_unverified","url":str(body.website),
                                           "note":"Website was not fetched"})
