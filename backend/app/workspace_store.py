@@ -104,6 +104,7 @@ class LandingPage(Base):
     spec_json: Mapped[str]=mapped_column(Text)
     provenance: Mapped[str]=mapped_column(String(24),default="sample")
     published: Mapped[bool]=mapped_column(default=False)
+    approval_state: Mapped[str]=mapped_column(String(24),default="proposed")
     created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
 
 class LandingLead(Base):
@@ -114,4 +115,23 @@ class LandingLead(Base):
     phone: Mapped[str]=mapped_column(String(30))
     message: Mapped[str]=mapped_column(Text)
     ip_hash: Mapped[str]=mapped_column(String(64),index=True)
+    created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
+
+class ApprovalRecord(Base):
+    __tablename__="approval_records"
+    id: Mapped[str]=mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    workspace_id: Mapped[str]=mapped_column(ForeignKey("workspaces.id"),index=True)
+    campaign_id: Mapped[str]=mapped_column(ForeignKey("campaign_projects.id"),index=True)
+    target_kind: Mapped[str]=mapped_column(String(24))
+    target_id: Mapped[str]=mapped_column(String(36))
+    state: Mapped[str]=mapped_column(String(24),default="proposed")
+    created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
+
+class ApprovalEvent(Base):
+    __tablename__="approval_events"
+    id: Mapped[str]=mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    approval_id: Mapped[str]=mapped_column(ForeignKey("approval_records.id"),index=True)
+    reviewer_id: Mapped[str]=mapped_column(ForeignKey("users.id"))
+    decision: Mapped[str]=mapped_column(String(24))
+    note: Mapped[str]=mapped_column(Text,default="")
     created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
