@@ -20,7 +20,7 @@ footer{border-top:1px solid #7773;text-align:center;opacity:.65;font-size:.82rem
 </style></head><body>
 {% if sample %}<div class="sample">Sample / draft page — details require owner verification. No performance or testimonial claims.</div>{% endif %}
 <header><strong>{{ business_name }}</strong><a class="link" href="#contact">{{ cta_label }}</a></header>
-<main><div class="hero"><span class="eyebrow">{{ offer }}</span><h1>{{ headline }}</h1><p>{{ subheadline }}</p><a class="primary" href="#contact">{{ cta_label }}</a></div>
+<main><div class="hero"><span class="eyebrow">{{ offer }}</span><h1>{{ headline }}</h1><p>{{ subheadline }}</p>{% if hero_image_data %}<img src="{{ hero_image_data }}" alt="{{ business_name }} selected campaign creative" style="display:block;max-height:390px;width:100%;max-width:640px;object-fit:cover;border-radius:18px;margin:20px auto" loading="lazy">{% endif %}<a class="primary" href="#contact">{{ cta_label }}</a></div>
 <section><h2>What you can explore</h2><div class="grid">{% for benefit in benefits %}<article class="card"><h3>{{ benefit.title }}</h3><p>{{ benefit.text }}</p></article>{% endfor %}</div></section>
 <section><h2>How it works</h2><div class="grid">{% for step in how_it_works %}<article class="card"><span class="eyebrow">Step {{ loop.index }}</span><p>{{ step }}</p></article>{% endfor %}</div></section>
 {% if trust_points %}<section><h2>About the offer</h2><div class="grid">{% for point in trust_points %}<article class="card">{{ point }}</article>{% endfor %}</div></section>{% endif %}
