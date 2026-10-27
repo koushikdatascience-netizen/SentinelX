@@ -24,3 +24,12 @@ def test_media_validation():
         os.environ["SENTINELX_MODE"]="demo"
         r=client.post("/api/v1/media/voice/transcribe",headers=auth,files={"file":("x.wav",b"RIFFdemo","audio/wav")})
         assert r.status_code==200 and r.json()["transcript"] is None
+
+
+def test_image_decompression_bomb_is_rejected(authenticated_client, monkeypatch):
+    image = io.BytesIO()
+    Image.new("RGB", (12, 10)).save(image, format="PNG")
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1)
+    response = authenticated_client.post("/api/v1/media/image/inspect", files={
+        "file": ("oversized.png", image.getvalue(), "image/png")})
+    assert response.status_code == 413

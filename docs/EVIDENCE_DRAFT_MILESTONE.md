@@ -10,6 +10,7 @@
 6. Schema creation depended entirely on development `create_all`. Added versioned Alembic migrations and a schema-equivalence test; staging disables automatic schema creation and the backend container migrates before starting.
 7. Browser QA was missing. Added actual UI/API/DB journeys for no-credit audits and model drafts with an explicitly named offline provider fixture. These tests do not establish live Meta answer quality.
 8. Mobile styling hid the only sign-out control. Added a header sign-out control and a mobile logout check; logout clears selected workspace/run state and the session request key.
+9. The public evidence-assessment API trusted a client-provided `collected=true` field. It now keeps every client-supplied source unverified, regardless of that field. Oversized-image decompression exceptions now return a controlled HTTP 413 instead of an uncaught server error.
 
 ## Implemented flow
 
@@ -59,6 +60,6 @@ GitHub CI runs backend tests, frontend production build and the browser journeys
 
 - One complete visible Meta answer and structured-output quality check, personally authorized through the gated workflow. The previous smoke verified a response with usage but empty text.
 - Provider actual-cost reconciliation across all endpoints, distributed auth/rate limits, account lifecycle controls and production readiness.
-- PostgreSQL migration/concurrency verification beyond SQLite tests, backup/restore drill and isolated TLS deployment with host access.
+- Keep PostgreSQL migration/concurrency CI green; a backup/restore drill and isolated TLS deployment still need host access.
 - Real consented multimodal inference and measured owner usefulness. Existing media inspection remains validation only.
 - Accepted participant rules and exact prize-stacking/submission requirements; never treat integration count as award eligibility.
