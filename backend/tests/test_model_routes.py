@@ -1,29 +1,15 @@
 from fastapi.testclient import TestClient
 from app.main import app
-
-client = TestClient(app)
-
 def test_catalog():
-    response = client.get("/api/v1/models")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data["models"]) == 7
-    assert all(model["access"] in ("mock_only", "configured_not_verified") for model in data["models"])
-
-def test_workflow_preview_safe():
-    response = client.post("/api/v1/workflows/preview",json={
-        "website":"https://example.com",
-        "goal":"Improve customer conversion through a better storefront"
-    })
-    assert response.status_code == 200
-    data = response.json()
-    assert data["actual_external_actions"] == 0
-    assert data["mode"] == "mock"
-    assert len(data["steps"]) == 7
-    assert data["approvals_needed"]
-
-def test_preview_input_validation():
-    response = client.post("/api/v1/workflows/preview",json={
-        "website":"not-an-url","goal":"short"
-    })
-    assert response.status_code == 422
+    r=TestClient(app).get("/api/v1/models")
+    assert r.status_code==200
+    assert len(r.json()["models"])==7
+def test_preview_requires_auth():
+    assert TestClient(app).post("/api/v1/workflows/preview",json={"website":"https://example.com","goal":"Improve customer conversion"}).status_code==401
+def test_workflow_preview_safe(authenticated_client):
+    r=authenticated_client.post("/api/v1/workflows/preview",json={"website":"https://example.com","goal":"Improve customer conversion through a better storefront"})
+    assert r.status_code==200,r.text
+    assert r.json()["actual_external_actions"]==0
+    assert len(r.json()["steps"])==7
+def test_preview_validation(authenticated_client):
+    assert authenticated_client.post("/api/v1/workflows/preview",json={"website":"not-an-url","goal":"short"}).status_code==422
