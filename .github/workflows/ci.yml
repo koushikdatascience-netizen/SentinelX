@@ -1,7 +1,11 @@
 name: Backend checks
 on:
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -40,9 +44,11 @@ jobs:
           AUTO_CREATE_SCHEMA: "false"
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     env:
       NEXT_PUBLIC_API_URL: http://127.0.0.1:18081
+      E2E_BROWSER_CHANNEL: chrome
     defaults:
       run:
         working-directory: frontend
@@ -57,7 +63,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r ../backend/requirements.txt
-      - run: npx playwright install --with-deps chromium
+      - run: google-chrome --version
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()

@@ -56,6 +56,8 @@ Browser tests: install frontend dependencies and Chromium with `npm ci` and `npx
 
 GitHub CI runs backend tests, frontend production build and the browser journeys with no live credentials.
 
+CI uses Chrome already present on the pinned Ubuntu 24.04 runner (`E2E_BROWSER_CHANNEL=chrome`), avoiding the OS/browser download stage that delayed initial runs. Local tests use Playwright Chromium by default. The [official runner inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md) lists Chrome. Branch changes run through pull-request CI; main pushes are also checked, and superseded runs are cancelled.
+
 ## Remaining blockers
 
 - One complete visible Meta answer and structured-output quality check, personally authorized through the gated workflow. The previous smoke verified a response with usage but empty text.

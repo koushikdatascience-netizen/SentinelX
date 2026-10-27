@@ -5,7 +5,8 @@ export default defineConfig({
  workers:1,
  retries:0,
  timeout:60000,
- use:{baseURL:"http://127.0.0.1:13001",trace:"retain-on-failure"},
+ use:{baseURL:"http://127.0.0.1:13001",trace:"retain-on-failure",
+      channel:process.env.E2E_BROWSER_CHANNEL==="chrome"?"chrome":undefined},
  webServer:[
   {command:`"${process.env.E2E_PYTHON||"python"}" -m uvicorn tests.e2e_server:app --host 127.0.0.1 --port 18081`,
    cwd:"../backend",url:"http://127.0.0.1:18081/health",reuseExistingServer:false,
