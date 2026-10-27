@@ -183,3 +183,6 @@ app.include_router(image_router)
 
 from app.campaign_routes import router as campaigns_router
 app.include_router(campaigns_router)
+
+from app.landing_routes import router as landing_router
+app.include_router(landing_router)
