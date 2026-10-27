@@ -15,6 +15,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
     email: Mapped[str] = mapped_column(String(255),unique=True,index=True)
     password_hash: Mapped[str] = mapped_column(String(500))
+    is_demo: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
 
 class Workspace(Base):
@@ -149,3 +150,11 @@ class CampaignCreative(Base):
     provenance: Mapped[str]=mapped_column(String(24))
     selected: Mapped[bool]=mapped_column(default=False)
     created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
+
+class DemoSession(Base):
+    __tablename__="demo_sessions"
+    id: Mapped[str]=mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    user_id: Mapped[str]=mapped_column(ForeignKey("users.id"),unique=True,index=True)
+    ip_hash: Mapped[str]=mapped_column(String(64),index=True)
+    created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
+    expires_at: Mapped[datetime]=mapped_column(DateTime(timezone=True))
