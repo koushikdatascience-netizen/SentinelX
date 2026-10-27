@@ -1,3 +1,5 @@
+import os
+os.environ['ENABLE_LEGACY_ENDPOINTS'] = 'true'
 from fastapi.testclient import TestClient
 from app.main import app
 from app.workflows import ActionStore, State
