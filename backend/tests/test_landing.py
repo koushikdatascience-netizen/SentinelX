@@ -31,6 +31,16 @@ def test_landing_can_preview_export_and_record_consent(authenticated_client):
     exported=c.get(f"/api/v1/landing/{pid}/export",params={"workspace_id":w["id"]})
     assert exported.status_code==200 and "<!doctype html>" in exported.text
     assert c.get(f"/p/{slug}").status_code==404
+    # Publishing is prohibited until an audited approval is recorded.
+    assert c.patch(f"/api/v1/landing/{pid}",params={"workspace_id":w["id"]},
+        json={"published":True}).status_code==409
+    board=c.get(f"/api/v1/campaigns/{campaign.json()['id']}/board",
+        params={"workspace_id":w["id"]})
+    assert board.status_code==200,board.text
+    landing_review=next(x for x in board.json() if x["target_kind"]=="landing")
+    decision=c.post(f"/api/v1/approvals/{landing_review['id']}/decide",
+        params={"workspace_id":w["id"]},json={"decision":"approved","note":"Reviewed sample page"})
+    assert decision.status_code==200,decision.text
     published=c.patch(f"/api/v1/landing/{pid}",params={"workspace_id":w["id"]},
              json={"published":True})
     assert published.status_code==200
