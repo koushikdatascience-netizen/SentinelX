@@ -25,6 +25,24 @@ class MetaResponseError(RuntimeError):
 class MetaClient:
     def __init__(self, sdk_factory=OpenAI):
         self.sdk_factory = sdk_factory
+        self._actual_transport = sdk_factory is OpenAI
+
+    def _record_success(self, capability: str, model: str) -> None:
+        # Never treat mocked tests or a merely configured key as verified live access.
+        if not self._actual_transport:return
+        try:
+            from app.workspace_store import MetaCapabilityCheck, SessionLocal, utcnow
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+            with SessionLocal.begin() as db:
+                ins=pg_insert if db.bind.dialect.name=="postgresql" else sqlite_insert
+                stmt=ins(MetaCapabilityCheck).values(
+                    capability=capability,model=model,succeeded_at=utcnow())
+                db.execute(stmt.on_conflict_do_update(index_elements=["capability"],
+                    set_={"model":model,"succeeded_at":utcnow()}))
+        except Exception:
+            # Response remains usable even if status persistence is temporarily down.
+            pass
 
     @staticmethod
     def _enabled(multimodal: bool) -> bool:
@@ -72,6 +90,7 @@ class MetaClient:
             raise MetaResponseError("Meta returned malformed structured JSON") from exc
         if schema and not isinstance(data, dict):
             raise MetaResponseError("Expected structured JSON object")
+        self._record_success("vision" if multimodal else "text", model)
         return {"provenance": "live_meta", "model": model, "data": data}
 
     def text(self, system: str, user: str, json_schema: dict | None = None) -> dict:
@@ -100,6 +119,7 @@ class MetaClient:
         result = self._sdk().images.generate(model="muse-image-1.0", prompt=prompt, size=size, n=1)
         if not result.data or not getattr(result.data[0], "b64_json", None):
             raise MetaResponseError("Meta did not return embedded image bytes")
+        self._record_success("image", "muse-image-1.0")
         return {"provenance": "live_meta", "model": "muse-image-1.0",
                 "data": {"image_b64": result.data[0].b64_json}}
 
