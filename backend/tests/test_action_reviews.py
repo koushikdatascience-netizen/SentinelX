@@ -1,5 +1,33 @@
 import uuid
 
+
+def test_competing_review_cannot_overwrite_decision(authenticated_client, monkeypatch):
+    from app import workspace_routes
+    from app.workspace_store import SessionLocal, ReviewableAction, utcnow
+    from sqlalchemy import update
+
+    client = authenticated_client
+    wid = client.post("/api/v1/workspaces", json={"name": "Race test"}).json()["id"]
+    rid = client.post(f"/api/v1/workspaces/{wid}/runs", json={
+        "website": "https://example.com", "goal": "Improve our customer conversion"
+    }).json()["id"]
+    aid = client.post(f"/api/v1/workspaces/{wid}/runs/{rid}/actions", json={
+        "description": "Prepare a consultation booking proposal"
+    }).json()["id"]
+
+    def competing_decision():
+        # Commit after the route's read but before its conditional write.
+        with SessionLocal.begin() as db:
+            db.execute(update(ReviewableAction).where(ReviewableAction.id == aid).values(
+                state="rejected", reviewed_at=utcnow()))
+        return utcnow()
+
+    monkeypatch.setattr(workspace_routes, "utcnow", competing_decision)
+    response = client.post(f"/api/v1/workspaces/{wid}/actions/{aid}/review", json={"decision": "approved"})
+    assert response.status_code == 409, response.text
+    saved = client.get(f"/api/v1/workspaces/{wid}/runs/{rid}/actions").json()
+    assert saved[0]["state"] == "rejected"
+
 def test_action_review_is_owner_scoped(authenticated_client):
     client=authenticated_client
     workspace=client.post("/api/v1/workspaces",json={"name":"Owner workspace"})

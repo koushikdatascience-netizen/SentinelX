@@ -8,4 +8,5 @@ __pycache__/
 !deploy/.env.sentinelx.example
 frontend/node_modules/
 frontend/.next/
+frontend/.npm-cache/
 *.sqlite3

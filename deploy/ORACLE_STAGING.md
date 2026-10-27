@@ -28,6 +28,8 @@ git clone https://github.com/koushikdatascience-netizen/SentinelX.git sentinelx
 cd sentinelx
 cp deploy/.env.sentinelx.example .env.sentinelx
 # Edit .env.sentinelx with unique strong secrets, chmod 600
+# Set SENTINELX_REGISTRATION_ALLOWED_EMAILS to approved test emails only.
+# Empty means no signup; existing accounts can still sign in.
 docker compose --env-file .env.sentinelx -f deploy/oracle-staging.compose.yml config
 docker compose --env-file .env.sentinelx -f deploy/oracle-staging.compose.yml up -d --build
 curl -fsS http://127.0.0.1:18080/health
@@ -41,7 +43,7 @@ Always run the new Compose file only. It maps frontend to loopback port 13000 an
 3. Obtain TLS with Certbot for `sentinelx.kamalwoodcraft.in` after DNS resolves; verify certificate and HTTPS behavior.
 
 ## Before sharing the public URL
-**Not production ready:** add sign-in rate limiting, owner-scoped persistent action approvals, basic account invitation or registration restrictions, secure public research egress, CSRF/session policy, DB migration strategy, backups, and provider usage accounting. `ENABLE_LEGACY_ENDPOINTS=false`, `INFERENCE_PROVIDER=demo`, `ALLOW_PAID_INFERENCE=false`, and `META_APP_BUDGET_CENTS=0` remain enabled for staging.
+Owner-scoped persistent approvals and an operator-managed registration email allowlist are implemented. Email ownership is not verified. **Not production ready:** add sign-in rate limiting, stronger account lifecycle controls, secure public research egress, session policy, DB migration strategy, backups, and provider usage accounting. `ENABLE_LEGACY_ENDPOINTS=false`, `INFERENCE_PROVIDER=demo`, `ALLOW_PAID_INFERENCE=false`, and `META_APP_BUDGET_CENTS=0` remain enabled for staging.
 
 Kamal Woodcraft remains unchanged. A broken SentinelX demo should not be able to access the existing site's secrets or its database. Monitor memory and disk; apply service resource limits, verify no port conflict and take backups before any infrastructure change.
 
