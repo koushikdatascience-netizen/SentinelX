@@ -76,7 +76,7 @@ def generate(campaign_id:str,item_id:str,workspace_id:str,body:RequestVariants,
             f"Business: {campaign.business_description[:400]}. "
             f"Visual brief: {brief[:550]}. Mood: {body.brand_mood}.")
     prompt=prompt[:1500]
-    live=MetaClient._enabled(True)
+    live=(not user.is_demo) and MetaClient._enabled(True)
     if live:
         from app.campaign_routes import claim_attempt
         claim_attempt(db,workspace_id)
