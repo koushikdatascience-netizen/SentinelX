@@ -38,6 +38,8 @@ async def transcribe_audio(file:UploadFile=File(...),user:User=Depends(current_u
     if not payload: raise HTTPException(422,"Empty recording")
     if os.getenv("SENTINELX_MODE")!="live":
         return {"status":"demo","transcript":None,"note":"Audio upload accepted; transcription was not run."}
+    if os.getenv("ENABLE_LIVE_MULTIMODAL") != "true":
+        raise HTTPException(403,"Live multimodal calls disabled pending verified metering and approved billing limits")
     key=os.getenv("MODEL_API_KEY")
     if not key: raise HTTPException(503,"Meta Model API key not configured")
     try:
