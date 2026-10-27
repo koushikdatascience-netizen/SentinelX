@@ -195,3 +195,6 @@ app.include_router(creative_variants_router)
 
 from app.demo_routes import router as demo_router
 app.include_router(demo_router)
+
+from app.status_routes import router as status_router
+app.include_router(status_router)
