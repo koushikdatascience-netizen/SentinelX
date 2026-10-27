@@ -4,6 +4,7 @@ type Analysis = {
  recommendations: Array<{action:string;reason:string;source_id:string;quote:string;priority:string}>;
  assumptions: string[];
  artifact: {title:string;body:string};
+ campaign?:{audience:string;angle:string;captions:string[];call_to_action:string;experiment:string};
 };
 
 export default function EvidenceDraft({result}:{result:Record<string,unknown>}) {
@@ -23,6 +24,7 @@ export default function EvidenceDraft({result}:{result:Record<string,unknown>}) 
     <h4>{item.action}</h4><p>{item.reason}</p>
     <blockquote>{item.quote}</blockquote><small>Exact quote from {item.source_id}; quote presence does not establish claim accuracy.</small>
    </article>)}
+   {analysis.campaign&&<section aria-label="Campaign pack"><h3>Campaign pack</h3><p><b>Audience:</b> {analysis.campaign.audience}</p><p><b>Angle:</b> {analysis.campaign.angle}</p>{analysis.campaign.captions.map((caption,i)=><article className="finding" key={i}><small>CAPTION {i+1} - DRAFT</small><p>{caption}</p></article>)}<p><b>Call to action:</b> {analysis.campaign.call_to_action}</p><p><b>Measure:</b> {analysis.campaign.experiment}</p></section>}
    <h4>Assumptions and unknowns</h4>
    {analysis.assumptions.length?<ul>{analysis.assumptions.map((a,i)=><li key={i}>{a}</li>)}</ul>:<p>No assumptions listed by the model. Owner review is still required.</p>}
    <article className="panel"><small>GENERATED DRAFT · REQUIRES OWNER REVIEW</small><h3>{analysis.artifact.title}</h3>

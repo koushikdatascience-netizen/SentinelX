@@ -15,13 +15,14 @@ from app.providers import ProviderConfig
 
 
 def offline_infer(prompt):
-    evidence = json.loads(prompt.split("JSON:\n", 1)[1])["E1"]["excerpt"]
+    evidence = json.JSONDecoder().raw_decode(prompt.split("JSON:\n", 1)[1])[0]["E1"]["excerpt"]
     return {"status": "completed", "finish_reason": "stop", "usage": None,
             "text": json.dumps({
                 "recommendations": [{"action": "Review consultation messaging",
                                      "reason": "Offline test fixture interpretation only.",
                                      "source_id": "E1", "quote": evidence[:30], "priority": "high"}],
                 "assumptions": ["This is an offline browser test fixture, not real AI inference."],
+                "campaign": {"audience":"Local furniture makers","angle":"Clarify quotation intake","captions":["Prepare your drawing for review.","Discuss your custom project.","Ask about workshop services."],"call_to_action":"[Add verified contact]","experiment":"Count qualified enquiries for seven days."},
                 "artifact": {"title": "Offline fixture draft", "body": "Test-only draft. [Owner to supply verified contact information]."}})}
 
 

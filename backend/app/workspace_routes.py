@@ -192,6 +192,11 @@ def export_audit_report(workspace_id:str,run_id:str,user:User=Depends(current_us
                       f"Provider: {payload.get('provider')}; Model: {payload.get('model')}",
                       f"Finish reason: {payload.get('finish_reason')}; Token usage: {json.dumps(payload.get('usage'))}",
                       "Quote matching checks provenance only; no independent fact verification or external publishing occurred."])
+    if analysis and analysis.get("campaign"):
+        campaign = analysis["campaign"]
+        notes.extend(["", "## Campaign pack - drafts, not published", f"Audience: {campaign['audience']}",
+                      f"Angle: {campaign['angle']}", *[f"Caption {i+1}: {c}" for i,c in enumerate(campaign["captions"])],
+                      f"Call to action: {campaign['call_to_action']}", f"Experiment: {campaign['experiment']}"])
     if payload.get("error"):
         notes.extend(["", "Generation failed. No automatic retry was made; usage may have been consumed."])
     notes.extend(["","## Review decisions"])

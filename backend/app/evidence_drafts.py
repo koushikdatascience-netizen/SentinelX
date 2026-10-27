@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/v1/workspaces", tags=["Evidence drafts"])
 
 class DraftRequest(EvidenceRunInput):
     request_id: UUID
+    deliverable: Literal["homepage", "campaign"] = "homepage"
 
 
 class StrictModel(BaseModel):
@@ -40,14 +41,27 @@ class Draft(StrictModel):
     body: str = Field(min_length=20, max_length=1500)
 
 
+class Campaign(StrictModel):
+    audience: str = Field(min_length=5, max_length=200)
+    angle: str = Field(min_length=5, max_length=200)
+    captions: list[str] = Field(min_length=3, max_length=3)
+    call_to_action: str = Field(min_length=5, max_length=200)
+    experiment: str = Field(min_length=10, max_length=300)
+
+
 class GeneratedAnalysis(StrictModel):
     recommendations: list[Recommendation] = Field(min_length=1, max_length=3)
     assumptions: list[str] = Field(max_length=5)
     artifact: Draft
+    campaign: Campaign | None = None
 
 
-def validate_analysis(text: str, excerpt: str) -> dict:
+def validate_analysis(text: str, excerpt: str, deliverable: str = "homepage") -> dict:
     analysis = GeneratedAnalysis.model_validate_json(text)
+    if deliverable == "campaign" and analysis.campaign is None:
+        raise ValueError("Campaign pack is missing")
+    if analysis.campaign and any(not caption.strip() or len(caption) > 350 for caption in analysis.campaign.captions):
+        raise ValueError("Invalid campaign caption")
     if any(len(item) > 300 for item in analysis.assumptions):
         raise ValueError("Assumption exceeds limit")
     for item in analysis.recommendations:
@@ -106,7 +120,7 @@ def generate_draft(workspace_id: str, body: DraftRequest, response: Response,
                "evidence": [{"id": "E1", "source_url": str(body.website),
                              "title": body.page_title, "excerpt": body.page_excerpt,
                              "source_type": "user_supplied_unverified", "fetched_by_server": False}],
-               "approval_required": True, "external_actions_performed": 0,
+               "approval_required": True, "external_actions_performed": 0, "deliverable": body.deliverable,
                "note": "AI interpretations and draft copy require owner review. Quote matching does not verify claims."}
     run = WorkflowRun(id=run_id, workspace_id=workspace_id, website=str(body.website),
                       objective=body.goal, status="pending", result_json=json.dumps(payload))
@@ -141,13 +155,19 @@ def generate_draft(workspace_id: str, body: DraftRequest, response: Response,
         json.dumps({"objective": body.goal, "E1": {"title": body.page_title,
                                                     "excerpt": body.page_excerpt[:1200]}}, ensure_ascii=False)
     )
+    if body.deliverable == "campaign":
+        prompt += ('\nAlso include campaign: {"audience":"...","angle":"...",'
+                   '"captions":["short caption 1","short caption 2","short caption 3"],'
+                   '"call_to_action":"...","experiment":"a measurable inquiry experiment, no guaranteed outcome"}. '
+                   'Keep each caption under 25 words and all other fields brief. Artifact body is the campaign brief. '
+                   'Do not invent discounts, business capabilities, scarcity, customer results or contact information.')
     try:
         result = infer(prompt)
         payload["usage"] = result.get("usage")
         payload["finish_reason"] = result.get("finish_reason")
         if result.get("status") != "completed":
             raise ValueError("Provider did not complete inference")
-        payload["analysis"] = validate_analysis(result["text"], body.page_excerpt[:1200])
+        payload["analysis"] = validate_analysis(result["text"], body.page_excerpt[:1200], body.deliverable)
         payload["artifact_status"] = "draft_requires_review"
         run.status = "inferred"
     except Exception as exc:

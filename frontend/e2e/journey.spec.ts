@@ -59,3 +59,17 @@ test("mocked provider draft is validated, rendered and exported",async({page})=>
  await page.getByRole("button",{name:"Sign out",exact:true}).last().click();
  await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
 });
+
+
+test("public sample works without authentication or provider requests",async({page})=>{
+ const apiCalls:string[]=[];
+ page.on("request",r=>{if(r.url().includes("/api/"))apiCalls.push(r.url())});
+ await page.goto("/demo");
+ await expect(page.getByRole("heading",{name:"Turn workshop facts into a campaign you can review."})).toBeVisible();
+ await page.getByRole("button",{name:"Approve sample pack",exact:true}).click();
+ await expect(page.getByRole("status")).toHaveText("approved");
+ const promise=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download sample campaign pack"}).click();
+ expect((await promise).suggestedFilename()).toBe("sentinelx-sample-campaign.md");
+ expect(apiCalls).toEqual([]);
+});

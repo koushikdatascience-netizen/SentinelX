@@ -140,3 +140,30 @@ def test_concurrent_requests_share_one_workspace_attempt(setup_draft):
         statuses = list(pool.map(attempt, range(2)))
     assert sorted(statuses) == [201, 429]
     provider.assert_called_once()
+
+
+def test_campaign_requires_complete_pack_and_exports(setup_draft):
+    client, wid, body, provider, analysis = setup_draft
+    body["deliverable"] = "campaign"
+    analysis["campaign"] = {"audience":"Local furniture makers", "angle":"Clear quotation requests",
+        "captions":["Prepare a drawing for review.","Discuss a custom furniture project.","Request a workshop consultation."],
+        "call_to_action":"[Add verified contact]", "experiment":"Count qualified enquiries for seven days."}
+    provider.return_value["text"] = json.dumps(analysis)
+    response = client.post(f"/api/v1/workspaces/{wid}/evidence-draft",json=body)
+    assert response.status_code == 201, response.text
+    report = client.get(f"/api/v1/workspaces/{wid}/runs/{response.json()['id']}/report")
+    assert "Caption 3: Request a workshop consultation." in report.text
+    assert "campaign" in provider.call_args.args[0]
+
+
+def test_campaign_rejects_missing_pack_and_long_caption():
+    from app.evidence_drafts import validate_analysis
+    data={"recommendations":[{"action":"Review consultation messaging", "reason":"The source mentions consultations.",
+        "source_id":"E1","quote":"offer consultations","priority":"high"}],"assumptions":[],
+        "artifact":{"title":"Campaign draft","body":"Draft copy requiring owner verification."}}
+    with pytest.raises(ValueError,match="missing"):
+        validate_analysis(json.dumps(data),EXCERPT,"campaign")
+    data["campaign"]={"audience":"Local furniture makers","angle":"Clarify enquiries","captions":["x"*351,"second","third"],
+        "call_to_action":"Ask the owner", "experiment":"Count enquiries for seven days."}
+    with pytest.raises(ValueError,match="caption"):
+        validate_analysis(json.dumps(data),EXCERPT,"campaign")
