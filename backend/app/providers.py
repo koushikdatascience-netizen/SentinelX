@@ -40,6 +40,13 @@ def infer(prompt: str) -> dict:
     if max_calls < 1:
         raise ValueError("MAX_PROVIDER_CALLS must be >= 1")
     # Production quota must be durable and atomically enforced before external exposure.
+    from app.budget import reserve
+    if provider.name == "meta":
+        # Reserve a conservative five-cent maximum for a 500-token text response.
+        # Production accounting should reconcile actual token usage separately.
+        reserve(provider.name, 5)
+    elif provider.name in ("groq", "openrouter"):
+        reserve(provider.name, 1)
     response = OpenAI(api_key=provider.api_key,base_url=provider.base_url,timeout=30,max_retries=0).chat.completions.create(
         model=provider.model,
         messages=[
