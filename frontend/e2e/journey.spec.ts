@@ -1,0 +1,61 @@
+import {test,expect,Page} from "@playwright/test";
+
+async function accountAndWorkspace(page:Page) {
+ await page.goto("/");
+ const email=`browser-${crypto.randomUUID()}@example.org`;
+ await page.getByRole("button",{name:"New here? Create an account"}).click();
+ await page.getByLabel("Email address").fill(email);
+ await page.getByLabel("Password",{exact:true}).fill("StrongPassword123");
+ await page.getByRole("button",{name:"Create account",exact:false}).click();
+ await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
+ await page.getByRole("button",{name:"Sign in",exact:false}).first().click();
+ await page.getByRole("button",{name:"Configuration",exact:true}).click();
+ await page.getByLabel("Workspace name").fill("Browser demo workshop");
+ await page.getByRole("button",{name:"Create workspace",exact:true}).click();
+ await expect(page.getByLabel("Active workspace")).not.toHaveValue("");
+ await page.getByRole("button",{name:"New analysis",exact:true}).click();
+}
+
+test("owner evidence, recorded review and downloadable audit",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("button",{name:"Generate evidence-backed audit"}).click();
+ await expect(page.getByRole("heading",{name:"Intelligence history"})).toBeVisible();
+ await expect(page.getByText("We create handmade solid-wood furniture",{exact:false}).first()).toBeVisible();
+ await page.getByRole("button",{name:"Create proposal"}).click();
+ await page.getByRole("button",{name:"Approve",exact:true}).click();
+ await expect(page.getByText("approved",{exact:true})).toBeVisible();
+ const downloadPromise=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download audit report"}).click();
+ const download=await downloadPromise;
+ expect(download.suggestedFilename()).toMatch(/^sentinelx-.*\.md$/);
+ const stream=await download.createReadStream();
+ const chunks=[];for await(const chunk of stream!)chunks.push(chunk);
+ const text=Buffer.concat(chunks).toString();
+ expect(text).toContain("user_supplied_unverified");
+ expect(text).toContain("approved (no external execution)");
+});
+
+test("mocked provider draft is validated, rendered and exported",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("checkbox",{name:/Enable explicit provider inference/}).check();
+ await page.getByRole("button",{name:"Generate evidence-based draft"}).click();
+ await expect(page.getByRole("heading",{name:"Offline fixture draft"})).toBeVisible();
+ await expect(page.getByText(/mock_test_provider/)).toBeVisible();
+ await expect(page.getByText("This is an offline browser test fixture, not real AI inference.")).toBeVisible();
+ await page.evaluate(()=>window.scrollTo(0,0));
+ await page.screenshot({path:"test-results/evidence-draft-desktop.png",fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await expect(page.getByRole("heading",{name:"Offline fixture draft"})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/evidence-draft-mobile.png",fullPage:true});
+ const downloadPromise=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download audit report"}).click();
+ const stream=await(await downloadPromise).createReadStream();
+ const chunks=[];for await(const chunk of stream!)chunks.push(chunk);
+ expect(Buffer.concat(chunks).toString()).toContain("Offline fixture draft");
+ await page.getByRole("button",{name:"New analysis",exact:true}).click();
+ await page.getByRole("button",{name:"Generate evidence-based draft"}).click();
+ await expect(page.getByRole("heading",{name:"Offline fixture draft"})).toBeVisible();
+ await page.getByRole("button",{name:"Sign out",exact:true}).last().click();
+ await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
+});

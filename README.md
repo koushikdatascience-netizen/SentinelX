@@ -7,6 +7,7 @@ Evidence-first, human-supervised business intelligence dashboard. Development so
 - FastAPI API and Next.js dashboard with email/password authentication.
 - Owner-scoped workspaces, persisted runs and review decisions (SQLite locally, PostgreSQL in staging).
 - Audits from owner-supplied **unverified** excerpts, with no crawling or model calls.
+- Opt-in evidence-to-draft generation with validated JSON, source quote checks, persisted model metadata, request-ID replay protection and workspace attempt quotas. Live structured-output quality remains unverified.
 - Explicit seven-agent simulation, media validation/demo intake and model readiness views.
 - One-time action approval decisions; no external execution. Owner-only Markdown audit export.
 - Optional provider inference with conservative app budget reservations, not reconciled charges or provider billing caps.
@@ -50,6 +51,8 @@ npm run build
 ```
 
 GitHub Actions runs backend tests and a production frontend build. See [readiness](docs/DEMO_READINESS.md), [dashboard release](docs/DASHBOARD_RELEASE.md), [manual Meta smoke setup](docs/META_GITHUB_ONLY_SETUP.md), and [isolated Oracle staging](deploy/ORACLE_STAGING.md).
+
+The [evidence-draft milestone guide](docs/EVIDENCE_DRAFT_MILESTONE.md) describes the API, safe defaults, migration adoption and browser tests. Fresh container databases use Alembic migrations; existing databases need backup and schema review before adopting migration revisions. CI also runs PostgreSQL checks and offline Chromium journeys.
 
 ## Safety and remaining work
 

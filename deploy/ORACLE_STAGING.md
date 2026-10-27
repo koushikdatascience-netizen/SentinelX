@@ -23,6 +23,8 @@ In the authoritative DNS provider for `kamalwoodcraft.in`, create just one new A
 Do not change the root domain, www, or existing Kamal Woodcraft records.
 
 ## Deploy after verifying VM resources
+
+Fresh backend containers run Alembic before starting. If this database already exists from a `create_all` deployment, back it up and review schema adoption in `docs/EVIDENCE_DRAFT_MILESTONE.md` before running the updated image. Do not blindly stamp revisions. No existing database has been migrated by this change.
 ```bash
 git clone https://github.com/koushikdatascience-netizen/SentinelX.git sentinelx
 cd sentinelx

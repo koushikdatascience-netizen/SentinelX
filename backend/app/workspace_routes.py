@@ -180,6 +180,20 @@ def export_audit_report(workspace_id:str,run_id:str,user:User=Depends(current_us
         for a in actions: notes.append(f"- {a.get('agent','agent')}: {a.get('action','proposal')} — {a.get('reason','Review required')}")
     elif payload.get("text"): notes.append(str(payload["text"])[:10000])
     else: notes.append("No verified recommendations. Inspect the workflow result.")
+    analysis = payload.get("analysis")
+    if analysis:
+        notes.extend(["", "## AI interpretation (owner-supplied evidence is unverified)"])
+        for item in analysis["recommendations"]:
+            notes.extend([f"- [{item['priority']}] {item['action']}", item["reason"],
+                          f"  - Source {item['source_id']} quote: {item['quote']}"])
+        notes.extend(["", "## Assumptions and unknowns", *[f"- {a}" for a in analysis["assumptions"]],
+                      "", "## Generated draft — requires owner review", analysis["artifact"]["title"],
+                      analysis["artifact"]["body"], "", "## Model provenance",
+                      f"Provider: {payload.get('provider')}; Model: {payload.get('model')}",
+                      f"Finish reason: {payload.get('finish_reason')}; Token usage: {json.dumps(payload.get('usage'))}",
+                      "Quote matching checks provenance only; no independent fact verification or external publishing occurred."])
+    if payload.get("error"):
+        notes.extend(["", "Generation failed. No automatic retry was made; usage may have been consumed."])
     notes.extend(["","## Review decisions"])
     reviews=db.scalars(select(ReviewableAction).where(ReviewableAction.run_id==run_id)).all()
     for a in reviews: notes.append(f"- {a.description}: {a.state} (no external execution)")
