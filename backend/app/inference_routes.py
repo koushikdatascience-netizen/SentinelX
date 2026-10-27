@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from app.auth import current_user
 from app.workspace_store import User
 from app.providers import configured_provider, infer
+from app.budget import budget_status
 
 router = APIRouter(prefix="/api/v1/inference", tags=["Inference"])
 
@@ -27,3 +28,7 @@ def test_inference(body: InferenceRequest, user: User = Depends(current_user)):
         raise HTTPException(422,str(exc)) from exc
     except Exception as exc:
         raise HTTPException(502,f"Inference failed ({type(exc).__name__})") from exc
+
+@router.get("/budget")
+def app_budget(user: User = Depends(current_user)):
+    return {"meta":budget_status("meta"),"openrouter":budget_status("openrouter"),"groq":budget_status("groq")}
