@@ -35,3 +35,12 @@ def test_demo_endpoint(monkeypatch):
     # Verify internal handler independently; authentication checked above.
     from app.inference_routes import test_inference, InferenceRequest
     assert test_inference(InferenceRequest(prompt="Review our business model"),user=object())["status"]=="simulated"
+
+def test_local_ollama_adapter_requires_no_paid_key(monkeypatch):
+    monkeypatch.setenv("INFERENCE_PROVIDER","ollama")
+    monkeypatch.setenv("INFERENCE_MODEL","llama3.2:3b")
+    monkeypatch.delenv("ALLOW_PAID_INFERENCE",raising=False)
+    config=configured_provider()
+    assert config.name=="ollama"
+    assert config.model=="llama3.2:3b"
+    assert config.api_key=="ollama"
