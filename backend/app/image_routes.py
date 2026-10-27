@@ -42,7 +42,8 @@ async def score_photo(workspace_id:str=Form(...),business_context:str=Form(""),
             "Give concrete suggestions; do not claim sales outcomes or unobserved facts. "
             f"Business description: {business_context}")
     try:
-        result=MetaClient().vision(payload,file.content_type,prompt,schema)
+        result=(MetaClient().vision(payload,file.content_type,prompt,schema)
+                if not user.is_demo else {"provenance":"sample","data":{"note":"Demo sessions cannot call paid models"}})
         model_scores=Scores.model_validate(result["data"]).model_dump() if result["provenance"]=="live_meta" else None
     except (ValueError,MetaResponseError) as exc:
         raise HTTPException(502,"Meta vision returned invalid scores; no automatic retry") from exc
