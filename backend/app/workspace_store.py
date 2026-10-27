@@ -41,3 +41,12 @@ def init_db(): Base.metadata.create_all(engine)
 def session():
     with SessionLocal() as db:
         yield db
+
+class ReviewableAction(Base):
+    __tablename__ = "reviewable_actions"
+    id: Mapped[str] = mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    run_id: Mapped[str] = mapped_column(ForeignKey("workflow_runs.id"),index=True)
+    description: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(String(24),default="proposed")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True),nullable=True)
