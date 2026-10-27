@@ -38,7 +38,7 @@ async def transcribe_audio(file:UploadFile=File(...),user:User=Depends(current_u
     allowed={"audio/wav","audio/x-wav","audio/mpeg","audio/mp4","audio/ogg","audio/webm"}
     if file.content_type not in allowed: raise HTTPException(415,"Unsupported audio type")
     if not payload: raise HTTPException(422,"Empty recording")
-    if os.getenv("SENTINELX_MODE")!="live":
+    if user.is_demo or os.getenv("SENTINELX_MODE")!="live":
         return {"status":"demo","transcript":None,"note":"Audio upload accepted; transcription was not run."}
     if os.getenv("ENABLE_LIVE_MULTIMODAL") != "true":
         raise HTTPException(403,"Live multimodal calls disabled pending verified metering and approved billing limits")
