@@ -8,7 +8,7 @@ async function accountAndWorkspace(page:Page) {
  await page.getByLabel("Password",{exact:true}).fill("StrongPassword123");
  await page.getByRole("button",{name:"Create account",exact:false}).click();
  await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
- await page.getByRole("button",{name:"Sign in",exact:false}).first().click();
+ await page.getByRole("button",{name:/^Sign in(?:\s*→)?$/}).click();
  await page.getByRole("button",{name:"Configuration",exact:true}).click();
  await page.getByLabel("Workspace name").fill("Browser demo workshop");
  await page.getByRole("button",{name:"Create workspace",exact:true}).click();
