@@ -15,16 +15,31 @@ def main():
     try:
         result = OpenAI(api_key=key, base_url="https://api.meta.ai/v1", timeout=30, max_retries=0).chat.completions.create(
             model=model,
-            messages=[{"role":"user","content":"Reply in five words or fewer: SentinelX connection test successful."}],
-            max_tokens=35,
+            messages=[{"role":"user","content":"Reply with exactly: OK"}],
+            reasoning_effort="minimal",
+            max_completion_tokens=128,
         )
         print("Provider: Meta Model API")
         print("Model:", model)
-        print("Result:", (result.choices[0].message.content or "")[:300])
+        choice = result.choices[0] if result.choices else None
+        text = (choice.message.content or "").strip() if choice else ""
+        reason = getattr(choice, "finish_reason", None)
+        # Whitelist metadata rather than logging raw responses or hidden reasoning.
+        print("Finish reason:", reason if reason in {"stop", "length", "content_filter", "tool_calls", "function_call"} else "unknown")
+        print("Visible text present:", bool(text))
         usage = getattr(result, "usage", None)
         if usage:
             print("Prompt tokens:", getattr(usage, "prompt_tokens", "unknown"))
             print("Completion tokens:", getattr(usage, "completion_tokens", "unknown"))
+            details = getattr(usage, "completion_tokens_details", None)
+            print("Reasoning tokens:", getattr(details, "reasoning_tokens", "unknown"))
+        if not text or reason != "stop":
+            print("Smoke test incomplete: no complete visible answer; no retry made.", file=sys.stderr)
+            return 1
+        # Fixed-prompt probe: log only whether it matched, never arbitrary output.
+        print("Expected OK received:", text == "OK")
+        if text != "OK":
+            return 1
         print("Smoke test succeeded; check Meta Billing/Usage for actual charges.")
         return 0
     except Exception as error:

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_billable:
-        description: "Type I_ACKNOWLEDGE_ONE_PAID_REQUEST to authorize one billable call"
+        description: "Type I_ACKNOWLEDGE_ONE_PAID_REQUEST for one call (128 output tokens incl. reasoning; no retries)"
         required: true
         type: string
 

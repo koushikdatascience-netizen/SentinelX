@@ -6,4 +6,10 @@ router=APIRouter(prefix="/api/v1/evidence",tags=["Evidence"])
 
 @router.post("/assess")
 def assess_claim(body:Recommendation,user=Depends(current_user)):
-    return assess(body)
+    # A client-supplied boolean cannot establish independent collection.
+    supplied = body.model_copy(update={"evidence": [
+        item.model_copy(update={"collected": False}) for item in body.evidence
+    ]})
+    result = assess(supplied)
+    result["source_type"] = "user_supplied_unverified"
+    return result

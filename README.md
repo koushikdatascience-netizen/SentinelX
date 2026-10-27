@@ -1,51 +1,63 @@
 # SentinelX — Meta AI Developer Hackathon 2026
 
-**Autonomous Multimodal Business Intelligence & Action Engine** — initial v0.3 backend scaffold.
+Evidence-first, human-supervised business intelligence dashboard. Development software; deployment and hosted Meta inference remain unverified.
 
-## What works today
+## Implemented
 
-- FastAPI health endpoint: `GET /health`
-- `POST /api/v1/analyze`: explicitly labeled demo assessment, or optional Meta Model API preliminary assessment (no website crawl)
-- `POST /api/v1/research`: one public homepage snapshot with source-linked, proposed-only agent actions
-- `POST /api/v1/actions`: create proposed actions
-- `GET /api/v1/actions/{id}`: inspect proposed action
-- `POST /api/v1/actions/{id}/review`: approve or reject once; **no execution occurs**
-- Docker Compose localhost binding, pytest tests, GitHub Actions CI
+- FastAPI API and Next.js dashboard with email/password authentication.
+- Owner-scoped workspaces, persisted runs and review decisions (SQLite locally, PostgreSQL in staging).
+- Audits from owner-supplied **unverified** excerpts, with no crawling or model calls.
+- Opt-in evidence-to-draft generation with validated JSON, source quote checks, persisted model metadata, request-ID replay protection and workspace attempt quotas. Live structured-output quality remains unverified.
+- Explicit seven-agent simulation, media validation/demo intake and model readiness views.
+- One-time action approval decisions; no external execution. Owner-only Markdown audit export.
+- Optional provider inference with conservative app budget reservations, not reconciled charges or provider billing caps.
 
-## Local quickstart (Windows PowerShell)
+## Local development (PowerShell)
 
-```powershell
-git clone https://github.com/koushikdatascience-netizen/SentinelX.git
-cd SentinelX/backend
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-$env:SENTINELX_MODE = "demo"
-uvicorn app.main:app --reload
-```
-
-Open http://127.0.0.1:8000/docs and test with:
-
-```json
-{"website":"https://example.com","goal":"Increase local qualified customer leads"}
-```
-
-Run tests from `backend`:
+Use Python 3.11+ and Node.js 22. From the project directory:
 
 ```powershell
-python -m pytest -q
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -r backend/requirements.txt
+$env:JWT_SECRET = (.\.venv\Scripts\python -c "import secrets; print(secrets.token_urlsafe(48))")
+$env:INFERENCE_PROVIDER = "demo"
+$env:ALLOW_PAID_INFERENCE = "false"
+$env:ENABLE_LIVE_MULTIMODAL = "false"
+cd backend
+..\.venv\Scripts\python -m uvicorn app.main:app --reload
 ```
 
-## Optional model API mode
+In another terminal:
 
-Set `SENTINELX_MODE=live` and `MODEL_API_KEY` locally. Never commit API keys. The configured in-process request guard is **not** a billing cap and resets on restart. Check account access, model availability and current API docs before enabling paid calls.
+```powershell
+cd frontend
+npm ci
+$env:NEXT_PUBLIC_API_URL = "http://127.0.0.1:8000"
+npm run dev
+```
 
-## Security and implementation status
+Open http://127.0.0.1:3000, register, create a workspace and generate an audit with a self-authored sample excerpt. Refreshing requires signing in again. SQLite data is stored in the backend working directory.
 
-**Development-only, not production-ready.** The crawler rejects obviously unsafe hosts, private IP answers, redirects, nonstandard ports, and oversized HTML, but suffers potential DNS-rebinding / time-of-check-to-time-of-use risks; it requires DNS pinning and network egress controls before untrusted public exposure. Review endpoints lack authentication, tenancy and durable storage. Proposals are never automatically executed. Do not expose this API publicly without hardening.
+Local signup is open. Shared staging sets `ALLOW_PUBLIC_REGISTRATION=false` and uses `REGISTRATION_ALLOWED_EMAILS` (comma-separated approved test emails). An empty list closes signup; existing accounts can still sign in. This gate does not verify email ownership or provide complete abuse prevention.
 
-Planned work: authenticated tenants and PostgreSQL persistence; safe crawler; orchestrated agents with evidence provenance; SAM vision, Muse Image and Voice adapters; approved execution and verification; Next.js command center; real credentials and billing guardrails. Model integrations beyond the preliminary text adapter are **not implemented yet**.
+## Verification
 
-## Deployment
+```powershell
+cd backend
+..\.venv\Scripts\python -m pytest -q
+cd ../frontend
+npm ci
+npm run build
+```
 
-Local development only; nothing has been deployed. GitHub Actions checks source quality automatically.
+GitHub Actions runs backend tests and a production frontend build. See [readiness](docs/DEMO_READINESS.md), [dashboard release](docs/DASHBOARD_RELEASE.md), [manual Meta smoke setup](docs/META_GITHUB_ONLY_SETUP.md), and [isolated Oracle staging](deploy/ORACLE_STAGING.md).
+
+The [evidence-draft milestone guide](docs/EVIDENCE_DRAFT_MILESTONE.md) describes the API, safe defaults, migration adoption and browser tests. Fresh container databases use Alembic migrations; existing databases need backup and schema review before adopting migration revisions. CI also runs PostgreSQL checks and offline Chromium journeys.
+
+## Safety and remaining work
+
+Keep demo mode, paid inference disabled, live multimodal disabled and legacy routes disabled in staging. Legacy crawler routes require DNS pinning and network egress safeguards before untrusted public access. Never commit secrets or customer data.
+
+Meta's $150 promotional credits were visible in the owner's Billing interface on October 27, 2026. Requests, permissions and exact schemas remain unverified. The manual smoke workflow is gated and single-call.
+
+Remaining work includes auth abuse controls, migrations and tested backups, workspace quotas and provider reconciliation, consented real media inference, source verification, browser E2E QA, isolated TLS staging and a recorded demo. See [engineering status](docs/ENGINEERING_STATUS.md). Existing Kamal Woodcraft production infrastructure is unrelated and must be preserved.

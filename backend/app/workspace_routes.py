@@ -1,8 +1,9 @@
 """Authenticated, owner-scoped workspace APIs. No automatic external execution."""
 import json
+import os
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import select
+from pydantic import BaseModel, Field, HttpUrl, field_validator
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.auth import current_user, hash_password, check_password, issue_token
@@ -13,6 +14,13 @@ router=APIRouter(prefix="/api/v1",tags=["Workspaces"])
 class Credentials(BaseModel):
     email: str = Field(min_length=3,max_length=255,pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
     password: str = Field(min_length=10,max_length=72)
+
+    @field_validator("password")
+    @classmethod
+    def password_byte_limit(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must fit within 72 UTF-8 bytes")
+        return value
 class WorkspaceInput(BaseModel):
     name: str = Field(min_length=2,max_length=160)
 class RunInput(BaseModel):
@@ -22,6 +30,10 @@ class RunInput(BaseModel):
 
 @router.post("/auth/register",status_code=201)
 def register(body:Credentials,db:Session=Depends(session)):
+    # Local development permits signup; staging explicitly closes it unless invited.
+    allowed = {email.strip().lower() for email in os.getenv("REGISTRATION_ALLOWED_EMAILS", "").split(",") if email.strip()}
+    if os.getenv("ALLOW_PUBLIC_REGISTRATION", "true").lower() != "true" and body.email.lower() not in allowed:
+        raise HTTPException(403,"Registration is restricted. Contact the workspace operator.")
     user=User(email=body.email.lower(),password_hash=hash_password(body.password))
     db.add(user)
     try: db.commit()
@@ -127,10 +139,15 @@ def decide_action(workspace_id:str,action_id:str,body:ActionDecision,user:User=D
     action=db.scalar(select(ReviewableAction).join(WorkflowRun,ReviewableAction.run_id==WorkflowRun.id).where(
         ReviewableAction.id==action_id,WorkflowRun.workspace_id==workspace_id))
     if not action: raise HTTPException(404,"Action not found")
-    if action.state!="proposed": raise HTTPException(409,"Action was already reviewed")
-    action.state=body.decision
-    action.reviewed_at=utcnow()
+    # Compare and set in the database so two workers cannot overwrite a decision.
+    changed = db.execute(update(ReviewableAction).where(
+        ReviewableAction.id == action.id, ReviewableAction.state == "proposed"
+    ).values(state=body.decision, reviewed_at=utcnow()))
+    if changed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(409,"Action was already reviewed")
     db.commit()
+    db.refresh(action)
     return {"id":action.id,"description":action.description,"state":action.state,"executed":False,
             "note":"Approval is a recorded decision only. No external action has been executed."}
 
@@ -163,6 +180,25 @@ def export_audit_report(workspace_id:str,run_id:str,user:User=Depends(current_us
         for a in actions: notes.append(f"- {a.get('agent','agent')}: {a.get('action','proposal')} — {a.get('reason','Review required')}")
     elif payload.get("text"): notes.append(str(payload["text"])[:10000])
     else: notes.append("No verified recommendations. Inspect the workflow result.")
+    analysis = payload.get("analysis")
+    if analysis:
+        notes.extend(["", "## AI interpretation (owner-supplied evidence is unverified)"])
+        for item in analysis["recommendations"]:
+            notes.extend([f"- [{item['priority']}] {item['action']}", item["reason"],
+                          f"  - Source {item['source_id']} quote: {item['quote']}"])
+        notes.extend(["", "## Assumptions and unknowns", *[f"- {a}" for a in analysis["assumptions"]],
+                      "", "## Generated draft — requires owner review", analysis["artifact"]["title"],
+                      analysis["artifact"]["body"], "", "## Model provenance",
+                      f"Provider: {payload.get('provider')}; Model: {payload.get('model')}",
+                      f"Finish reason: {payload.get('finish_reason')}; Token usage: {json.dumps(payload.get('usage'))}",
+                      "Quote matching checks provenance only; no independent fact verification or external publishing occurred."])
+    if analysis and analysis.get("campaign"):
+        campaign = analysis["campaign"]
+        notes.extend(["", "## Campaign pack - drafts, not published", f"Audience: {campaign['audience']}",
+                      f"Angle: {campaign['angle']}", *[f"Caption {i+1}: {c}" for i,c in enumerate(campaign["captions"])],
+                      f"Call to action: {campaign['call_to_action']}", f"Experiment: {campaign['experiment']}"])
+    if payload.get("error"):
+        notes.extend(["", "Generation failed. No automatic retry was made; usage may have been consumed."])
     notes.extend(["","## Review decisions"])
     reviews=db.scalars(select(ReviewableAction).where(ReviewableAction.run_id==run_id)).all()
     for a in reviews: notes.append(f"- {a.description}: {a.state} (no external execution)")

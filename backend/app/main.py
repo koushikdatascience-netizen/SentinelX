@@ -169,6 +169,9 @@ app.include_router(inference_router)
 from app.evidence_routes import router as evidence_router
 app.include_router(evidence_router)
 
+from app.evidence_drafts import router as evidence_draft_router
+app.include_router(evidence_draft_router)
+
 @app.get("/api/v1/meta/readiness",dependencies=[Depends(current_user)])
 def get_meta_readiness():
     from app.model_registry import integration_readiness

@@ -2,7 +2,7 @@
 import os
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import create_engine, ForeignKey, String, Text, DateTime, select
+from sqlalchemy import create_engine, ForeignKey, String, Text, DateTime, Integer, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -37,7 +37,9 @@ class WorkflowRun(Base):
 DATABASE_URL=os.getenv("DATABASE_URL","sqlite:///./sentinelx-dev.sqlite3")
 engine=create_engine(DATABASE_URL,connect_args={"check_same_thread":False} if DATABASE_URL.startswith("sqlite") else {},poolclass=StaticPool if DATABASE_URL=="sqlite:///:memory:" else None,pool_pre_ping=True)
 SessionLocal=sessionmaker(bind=engine,expire_on_commit=False)
-def init_db(): Base.metadata.create_all(engine)
+def init_db():
+    if os.getenv("AUTO_CREATE_SCHEMA", "true").lower() == "true":
+        Base.metadata.create_all(engine)
 def session():
     with SessionLocal() as db:
         yield db
@@ -50,3 +52,9 @@ class ReviewableAction(Base):
     state: Mapped[str] = mapped_column(String(24),default="proposed")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True),nullable=True)
+
+class EvidenceQuota(Base):
+    """Lifetime attempt quota for the opt-in evidence draft operation."""
+    __tablename__ = "evidence_quotas"
+    workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id"), primary_key=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)

@@ -1,10 +1,26 @@
 name: Backend checks
 on:
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sentinelx_ci
+          POSTGRES_PASSWORD: ci-only-not-a-deployment-secret
+          POSTGRES_DB: sentinelx_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sentinelx_ci -d sentinelx_ci"
+          --health-interval 5s --health-timeout 3s --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -17,9 +33,22 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
+      - name: Migrate fresh PostgreSQL database
+        run: python -m alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+psycopg://sentinelx_ci:ci-only-not-a-deployment-secret@127.0.0.1:5432/sentinelx_ci
+      - name: Verify PostgreSQL without automatic schema creation
+        run: python -m pytest -q
+        env:
+          DATABASE_URL: postgresql+psycopg://sentinelx_ci:ci-only-not-a-deployment-secret@127.0.0.1:5432/sentinelx_ci
+          AUTO_CREATE_SCHEMA: "false"
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:18081
+      E2E_BROWSER_CHANNEL: chrome
     defaults:
       run:
         working-directory: frontend
@@ -28,5 +57,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r ../backend/requirements.txt
+      - run: google-chrome --version
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offline-browser-evidence
+          path: frontend/test-results/
+          retention-days: 3

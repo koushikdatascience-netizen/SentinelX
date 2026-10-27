@@ -24,6 +24,8 @@ async def inspect_image(file:UploadFile=File(...),user:User=Depends(current_user
             if width*height>20_000_000: raise HTTPException(413,"Too many pixels")
             im.verify()
             fmt=im.format
+    except Image.DecompressionBombError:
+        raise HTTPException(413,"Too many pixels")
     except (UnidentifiedImageError,OSError,ValueError):
         raise HTTPException(415,"Invalid image data")
     return {"filename":file.filename,"format":fmt,"width":width,"height":height,
