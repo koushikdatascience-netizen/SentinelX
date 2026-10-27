@@ -1,33 +1,23 @@
 from fastapi.testclient import TestClient
 from app.main import app
-from app.workflows import ActionStore, State
-
-client = TestClient(app)
-
-def test_review_lifecycle(monkeypatch):
-    monkeypatch.setenv('ENABLE_LEGACY_ENDPOINTS','true')
-    response = client.post("/api/v1/actions",json={"run_id":"demo-1","kind":"seo","description":"Propose better copy for the landing page","source_url":"https://example.com/"})
-    assert response.status_code == 201
-    aid = response.json()["id"]
-    assert response.json()["state"] == "proposed"
-    assert client.get(f"/api/v1/actions/{aid}").status_code == 200
-    approved = client.post(f"/api/v1/actions/{aid}/review",json={"decision":"approved"})
-    assert approved.status_code == 200
-    assert approved.json()["state"] == "approved"
-    assert client.post(f"/api/v1/actions/{aid}/review",json={"decision":"rejected"}).status_code == 409
-
+from app.workflows import ActionStore,State
+def test_auth_required():
+    assert TestClient(app).post("/api/v1/actions",json={"run_id":"demo","kind":"seo","description":"Improve a business homepage","source_url":"https://example.com"}).status_code==401
+def test_review_lifecycle(authenticated_client):
+    client=authenticated_client
+    r=client.post("/api/v1/actions",json={"run_id":"demo-1","kind":"seo","description":"Propose better copy for the landing page","source_url":"https://example.com/"})
+    assert r.status_code==201,r.text
+    aid=r.json()["id"]
+    assert client.get(f"/api/v1/actions/{aid}").status_code==200
+    assert client.post(f"/api/v1/actions/{aid}/review",json={"decision":"approved"}).json()["state"]=="approved"
+    assert client.post(f"/api/v1/actions/{aid}/review",json={"decision":"rejected"}).status_code==409
 def test_no_arbitrary_transition():
-    store = ActionStore()
-    rec = store.propose("r","creative","Draft test poster","https://example.com")
-    try:
-        store.decide(rec.id,State.proposed)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("proposed is not a review decision")
-    assert store.get(rec.id).state == State.proposed
-
-def test_unknown_action(monkeypatch):
-    monkeypatch.setenv('ENABLE_LEGACY_ENDPOINTS','true')
-    assert client.get("/api/v1/actions/missing").status_code == 404
-    assert client.post("/api/v1/actions/missing/review",json={"decision":"approved"}).status_code == 404
+    store=ActionStore()
+    rec=store.propose("r","creative","Draft test poster","https://example.com")
+    try: store.decide(rec.id,State.proposed)
+    except ValueError: pass
+    else: raise AssertionError("invalid transition allowed")
+    assert store.get(rec.id).state==State.proposed
+def test_unknown_action(authenticated_client):
+    assert authenticated_client.get("/api/v1/actions/missing").status_code==404
+    assert authenticated_client.post("/api/v1/actions/missing/review",json={"decision":"approved"}).status_code==404
