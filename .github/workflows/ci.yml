@@ -1,7 +1,6 @@
 name: Backend checks
 on:
   push:
-    branches: [main]
   pull_request:
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
