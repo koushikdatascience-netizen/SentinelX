@@ -1,17 +1,30 @@
-# Meta Model API — verified documentation and adapter status (28 Oct 2026)
+# Meta Model API contract and implementation notes — 28 October 2026
 
-**Documentation verified, NOT account-specific live tests.** Do not call this module production-verified before gated smoke calls succeed. No paid calls were made while building this module.
+The references below are official API documentation, **not a live entitlement test**. A configured key and promotional credits do not alone verify model access.
 
-| Method | Model / transport | Documentation | Status |
-|---|---|---|---|
-| `text(system,user,json_schema)` | `muse-spark-1.3`, `POST /v1/chat/completions` using OpenAI client; `response_format.type=json_schema` and `json_schema:{name,schema}` | https://dev.meta.ai/docs/protocols/chat-completions and https://dev.meta.ai/docs/structured-output | **Documented; mocked tests only** |
-| `vision(image_bytes,mime,prompt,json_schema)` | Muse Spark chat multimodal message with text part plus `image_url:{url:"data:<mime>;base64,..."}` | https://dev.meta.ai/docs/api-reference/chat-completions/schemas and https://dev.meta.ai/docs/coding-agents | **Documented; mocked tests only** |
-| `image(prompt,size)` | `muse-image-1.0`, OpenAI `images.generate`, response `data[0].b64_json` | https://dev.meta.ai/docs/image-generation | **Documented; mocked tests only** |
-| `segment(image_bytes,mime)` | `sam-3.1` through Responses and Files; text prompt and mask extraction required | https://dev.meta.ai/docs/overview | **UNVERIFIED / NotSupported; no paid call** |
-| Muse Voice transcription | `POST /v1/asr/transcribe` is documented but the full multipart schema is not verified in this PR | https://dev.meta.ai/docs/overview | **UNVERIFIED in central adapter** |
+| Capability | Contract / access path | Status |
+|---|---|---|
+| Muse Spark text | OpenAI-compatible `chat.completions.create` at `https://api.meta.ai/v1`, `muse-spark-1.3`, `max_completion_tokens`, structured JSON `response_format` | Implemented in `MetaClient.text`; mocked tests, live usable output pending |
+| Muse Spark image input | chat message with text and `image_url` data URL | Implemented in `MetaClient.vision`; live validation pending |
+| Muse Image | `images.generate(model="muse-image-1.0")`, base64 image payload | Implemented in `MetaClient.image`; live validation pending |
+| SAM 3.1 segmentation | Responses/Files-based pathway requires independently validated request/response and mask interpretation | **UNVERIFIED / NotSupported** for live calls |
+| Muse Voice | ASR multipart request details are not centrally verified | **UNVERIFIED / live disabled** |
 
-The demo mode returns `provenance="sample"`, never `live_meta`. Text budget reserves 5 cents; vision reserves 10 cents; Muse Image reserves 2 cents **before** the request. These are conservative app-local reservations, not measured charges and not account-wide limits. No refunds occur on failed calls.
+Sources:
+- https://dev.meta.ai/docs/protocols/chat-completions
+- https://dev.meta.ai/docs/structured-output
+- https://dev.meta.ai/docs/api-reference/chat-completions/schemas
+- https://dev.meta.ai/docs/image-generation
+- https://dev.meta.ai/docs/overview
+- https://dev.meta.ai/docs/reasoning
 
-The legacy `providers.py`, `media_routes.py`, `creative_routes.py` and smoke workflow require a controlled follow-up refactor; do not activate their live multimodal paths before they route through this same guard and have tests. Existing Codex PR #2 must be merged or reviewed before deploying. Schema declarations must also be validated against server-side allowed JSON Schema subsets. Image payloads should additionally undergo shared Pillow validation before public use.
+Safety:
+- All current hosted Meta text and image calls route through `MetaClient`; old direct legacy inference is disabled; unverified live voice fails closed.
+- `INFERENCE_PROVIDER=meta`, `SENTINELX_MODE=live`, `ALLOW_PAID_INFERENCE=true` and `ENABLE_LIVE_MULTIMODAL=true` must all be enabled for any live Meta operation, plus valid `MODEL_API_KEY`.
+- Budget reservations are made before each paid request (text $0.05, vision $0.10, image $0.02 conservative application reservations), with no automatic retries. This is not the Meta account balance or a guaranteed provider hard cap.
+- Campaigns, product vision, and creatives require a positive per-workspace attempt ceiling, `CAMPAIGN_WORKSPACE_MAX_ATTEMPTS`. Current quota is lifetime per workspace, not per-day. The same budget applies across operations.
+- `/api/v1/status` shows LIVE only after recent real successful SDK calls recorded by this application; CI SDK mocks never count. Ephemeral GitHub smoke jobs record state in disposable SQLite and do not update a separate deployed server.
+- Deterministic samples return `provenance: sample`; claims derived from owner submissions remain unverified even if repeated by a model.
+- The central adapter returns a schema-shaped object but the consuming route must also validate returned objects via Pydantic. Exact supported JSON Schema subset, account entitlements and actual billed usage still require live testing.
 
-Real provider response shape, model entitlement, billing, and correctness require a manual, user-authorized smoke call. Never log keys or raw image blobs.
+No paid requests were authorized or executed by this PR.
