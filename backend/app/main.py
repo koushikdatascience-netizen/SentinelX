@@ -177,3 +177,6 @@ def get_meta_readiness():
     from app.model_registry import integration_readiness
     return {"integrations":integration_readiness(),"mode":"not_verified",
             "warning":"Credit activation, provider access and actual live calls are not confirmed."}
+
+from app.image_routes import router as image_router
+app.include_router(image_router)
