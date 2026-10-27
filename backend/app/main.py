@@ -151,3 +151,6 @@ app.include_router(creative_router)
 
 from app.inference_routes import router as inference_router
 app.include_router(inference_router)
+
+from app.evidence_routes import router as evidence_router
+app.include_router(evidence_router)
