@@ -2,7 +2,7 @@
 import os
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import create_engine, ForeignKey, String, Text, DateTime, Integer, select
+from sqlalchemy import create_engine, ForeignKey, String, Text, DateTime, Integer, select, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -119,6 +119,7 @@ class LandingLead(Base):
 
 class ApprovalRecord(Base):
     __tablename__="approval_records"
+    __table_args__=(UniqueConstraint("target_kind","target_id",name="uq_approval_target"),)
     id: Mapped[str]=mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
     workspace_id: Mapped[str]=mapped_column(ForeignKey("workspaces.id"),index=True)
     campaign_id: Mapped[str]=mapped_column(ForeignKey("campaign_projects.id"),index=True)
