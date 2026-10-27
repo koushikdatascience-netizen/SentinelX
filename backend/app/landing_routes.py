@@ -155,7 +155,8 @@ def export(page_id:str,workspace_id:str,user:User=Depends(current_user),db:Sessi
 def published_page(slug:str,db:Session=Depends(session)):
     p=db.scalar(select(LandingPage).where(LandingPage.slug==slug,LandingPage.published.is_(True)))
     if p is None:raise HTTPException(404,"Page not published")
-    return HTMLResponse(render_landing(LandingSpec.model_validate_json(p.spec_json),p.slug,p.provenance),
+    spec=LandingSpec.model_validate_json(p.spec_json)
+    return HTMLResponse(render_landing(spec,p.slug,p.provenance,hero_image_for_page(db,p,spec)),
                         headers=SECURITY_HEADERS)
 
 @router.post("/p/{slug}/lead")
