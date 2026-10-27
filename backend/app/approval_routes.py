@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth import current_user
 from app.workspace_routes import owned
 from app.workspace_store import (
-    User, CampaignProject, CampaignItem, LandingPage, ApprovalRecord, ApprovalEvent, session, utcnow
+    User, CampaignProject, CampaignItem, CampaignCreative, LandingPage, ApprovalRecord, ApprovalEvent, session, utcnow
 )
 from app.landing import LandingSpec, render_landing
 
@@ -36,6 +36,8 @@ def ensure_board(db:Session,cid:str,wid:str):
         select(CampaignItem).where(CampaignItem.campaign_id==cid)).all()]
     expected += [("landing",p.id) for p in db.scalars(
         select(LandingPage).where(LandingPage.campaign_id==cid)).all()]
+    expected += [("creative",v.id) for v in db.scalars(
+        select(CampaignCreative).where(CampaignCreative.campaign_id==cid,CampaignCreative.selected.is_(True))).all()]
     for kind,target in expected:
         db.execute(insert(ApprovalRecord).values(workspace_id=wid,campaign_id=cid,
             target_kind=kind,target_id=target,state="proposed",created_at=utcnow()
@@ -74,6 +76,10 @@ def decide(approval_id:str,workspace_id:str,body:ReviewInput,
         item=db.get(CampaignItem,record.target_id)
         if item is None or item.campaign_id!=record.campaign_id:raise HTTPException(404,"Campaign item missing")
         item.state=next_state
+    elif record.target_kind=="creative":
+        creative=db.get(CampaignCreative,record.target_id)
+        if creative is None or creative.campaign_id!=record.campaign_id or not creative.selected:
+            raise HTTPException(409,"Creative must be selected before approval")
     elif record.target_kind=="landing":
         page=db.get(LandingPage,record.target_id)
         if page is None or page.campaign_id!=record.campaign_id:raise HTTPException(404,"Landing missing")
@@ -120,7 +126,16 @@ def export_campaign(campaign_id:str,workspace_id:str,format:str="zip",
             html=render_landing(LandingSpec.model_validate_json(page.spec_json),page.slug,page.provenance)
             z.writestr(f"landing/{page.id}.html",html)
             readme.append(f"Approved landing: {page.id}, provenance={page.provenance}")
-        if not items and not pages:readme.append("None. No unapproved artifacts included.")
+        approved_creative_ids=db.scalars(select(ApprovalRecord.target_id).where(
+            ApprovalRecord.campaign_id==campaign.id,ApprovalRecord.target_kind=="creative",
+            ApprovalRecord.state=="approved")).all()
+        for v in db.scalars(select(CampaignCreative).where(CampaignCreative.id.in_(approved_creative_ids),
+                     CampaignCreative.selected.is_(True))).all():
+            ext={"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}.get(v.mime,"bin")
+            z.writestr(f"creatives/{v.id}.{ext}",v.image_blob)
+            readme.append(f"Approved creative: {v.id}, provenance={v.provenance}")
+        if not items and not pages and not approved_creative_ids:
+            readme.append("None. No unapproved artifacts included.")
         z.writestr("README.txt","\n".join(readme))
         z.writestr("evidence.json",json.dumps(json.loads(campaign.audit_json).get("evidence",[]),indent=2))
     return Response(content=output.getvalue(),media_type="application/zip",
