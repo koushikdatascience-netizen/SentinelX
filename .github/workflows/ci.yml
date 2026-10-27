@@ -40,6 +40,9 @@ jobs:
           SENTINELX_PUBLIC_ORIGIN: https://example.invalid
           SENTINELX_RELEASE: ci
         run: docker compose -f deploy/hostinger/compose.yml build backend frontend
+      - name: Validate Hostinger deployment scripts
+        working-directory: .
+        run: bash -n deploy/hostinger/deploy.sh deploy/hostinger/healthcheck.sh deploy/hostinger/backup.sh
       - run: python -m pytest -q
       - name: Migrate fresh PostgreSQL database
         run: python -m alembic upgrade head

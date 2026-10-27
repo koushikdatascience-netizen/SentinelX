@@ -45,7 +45,7 @@ if ! env SENTINELX_RELEASE="$sha" docker compose -p sentinelx-stage --env-file "
   exit 1
 fi
 
-if ! SENTINELX_BASE_URL=http://127.0.0.1:18080 bash "$release_dir/deploy/hostinger/healthcheck.sh" "$sha" ||
+if ! SENTINELX_FRONTEND_URL=http://127.0.0.1:13000 SENTINELX_HEALTH_URL=http://127.0.0.1:18080 bash "$release_dir/deploy/hostinger/healthcheck.sh" "$sha" ||
    ! SENTINELX_BASE_URL=https://sentinelx.kamalwoodcraft.in bash "$release_dir/deploy/hostinger/healthcheck.sh" "$sha"; then
   echo "local or public release verification failed; rolling back application services only" >&2
   rollback_previous || echo "application rollback also failed; investigate SentinelX container logs" >&2
