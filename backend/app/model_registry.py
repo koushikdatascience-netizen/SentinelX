@@ -30,3 +30,17 @@ def catalog(configured_model: str | None = None) -> list[ModelCapability]:
             access=Availability.configured if model == configured_model else Availability.mock,
         ) for model,purpose in CAPABILITIES
     ]
+
+def integration_readiness() -> list[dict]:
+    """Verified integration states. Registration does not imply a working inference route."""
+    import os
+    meta_ready=bool(os.getenv("MODEL_API_KEY")) and os.getenv("ALLOW_PAID_INFERENCE")=="true"
+    return [
+        {"name":"Muse Spark","capability":"text","stage":"configured_not_verified" if meta_ready else "waiting_for_key","live_tested":False},
+        {"name":"Muse Wonder","capability":"planning","stage":"not_implemented","live_tested":False},
+        {"name":"SAM 3.1","capability":"segmentation","stage":"not_implemented","live_tested":False},
+        {"name":"Muse Image","capability":"image_generation","stage":"adapter_unverified","live_tested":False},
+        {"name":"Muse Voice","capability":"speech","stage":"adapter_unverified","live_tested":False},
+        {"name":"Muse Spark Open","capability":"open_weight","stage":"inference_host_required","live_tested":False},
+        {"name":"Muse Glimmer","capability":"open_weight","stage":"inference_host_required","live_tested":False},
+    ]
