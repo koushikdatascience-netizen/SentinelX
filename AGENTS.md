@@ -3,7 +3,7 @@
 SentinelX is an evidence-first, human-supervised business intelligence project for the 2026 Meta AI Developer Hackathon.
 
 ## Start here
-- Read `README.md`, `docs/DEMO_READINESS.md`, `docs/DASHBOARD_RELEASE.md`, `docs/META_GITHUB_ONLY_SETUP.md`, `deploy/ORACLE_STAGING.md`.
+- Read `README.md`, `docs/DEMO_READINESS.md`, `docs/DASHBOARD_RELEASE.md`, `docs/META_GITHUB_ONLY_SETUP.md`, `docs/HOSTINGER_DEPLOYMENT.md`.
 - Backend: Python FastAPI in `backend/app`; run `cd backend && python -m pytest -q`.
 - Frontend: Next.js in `frontend`; run `cd frontend && npm install && npm run build`.
 - DB: SQLAlchemy; staging PostgreSQL. Owner/workspace isolation is essential.
@@ -23,7 +23,7 @@ SentinelX is an evidence-first, human-supervised business intelligence project f
 2. Add production-safe request cost accounting for all Meta endpoints, provider usage reconciliation and workspace-level quota.
 3. Implement actual source-backed agent workflows and media processing with consent and evaluation tests.
 4. Add SSRF-safe crawler only with pinned DNS/egress safeguards; keep unauthenticated crawling disabled.
-5. Run browser E2E tests, ship isolated TLS staging on suitable Oracle capacity, prepare an accurate 2-minute recorded demo.
+5. Run browser E2E tests, verify isolated TLS staging on Hostinger, prepare an accurate 2-minute recorded demo.
 6. Before hackathon submission, explicitly separate simulated outputs, actual Meta inference, and verified outcomes.
 
 Only report success with test output or deployed evidence.

@@ -3,9 +3,11 @@ import uuid
 from typing import Literal
 from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException, Depends
+from sqlalchemy import text
 from pydantic import BaseModel, Field, HttpUrl
 from app.workflows import State, ActionRecord, action_store
 from app.auth import current_user
+from app.workspace_store import engine
 
 app = FastAPI(title="SentinelX API", version="0.4.0")
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,7 +39,12 @@ counts = {"live_requests": 0}
 
 @app.get("/health")
 def health():
-    return {"status":"ok","model":os.getenv("META_MODEL","muse-spark-1.3"),"mode":"live" if os.getenv("MODEL_API_KEY") and os.getenv("SENTINELX_MODE") == "live" else "demo"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(503,"database unavailable")
+    return {"status":"ok","database":"ok","release":os.getenv("SENTINELX_RELEASE","unknown")}
 
 @app.post("/api/v1/analyze",response_model=RunResponse, dependencies=[Depends(current_user)])
 def analyze(body: RunRequest):

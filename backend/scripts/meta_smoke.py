@@ -1,58 +1,64 @@
-"""One explicitly authorized billable Meta capability check, sanitized output only."""
+"""One explicitly authorized capability request through MetaClient; no retries."""
 import io
 import os
 import sys
-from PIL import Image,ImageDraw
-
-from app.workspace_store import init_db
+from pathlib import Path
+from uuid import uuid4
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from PIL import Image
 from app.meta_client import MetaClient
 
-ACK="I_ACKNOWLEDGE_ONE_PAID_REQUEST"
-
-def synthetic_png():
-    image=Image.new("RGB",(256,256),(238,236,235))
-    draw=ImageDraw.Draw(image)
-    draw.rectangle((60,58,195,195),fill=(185,55,48))
-    output=io.BytesIO();image.save(output,format="PNG")
-    return output.getvalue()
 
 def main():
+    if os.getenv("META_SMOKE_ACK") != "I_ACKNOWLEDGE_ONE_PAID_REQUEST":
+        print("ERROR: explicit single-call authorization required",file=sys.stderr)
+        return 2
     capability=os.getenv("META_SMOKE_CAPABILITY","text")
     if capability not in {"text","vision","image"}:
-        print("Invalid smoke capability",file=sys.stderr);return 2
-    if os.getenv("META_SMOKE_ACK")!=ACK or not os.getenv("MODEL_API_KEY"):
-        print("Explicit authorization and secret key required",file=sys.stderr);return 2
-    if not MetaClient._enabled(True):
-        print("All live opt-in flags must be enabled for the manual test",file=sys.stderr);return 2
-    # Ephemeral CI-only app-side budget reservation; this is NOT the provider billing cap.
-    init_db()
-    client=MetaClient()
+        print("ERROR: unsupported smoke capability",file=sys.stderr)
+        return 2
+    if any(os.getenv(k)!=v for k,v in {"INFERENCE_PROVIDER":"meta","SENTINELX_MODE":"live","ALLOW_PAID_INFERENCE":"true",
+                                       "ENABLE_LIVE_MULTIMODAL":"true"}.items()) or not os.getenv("MODEL_API_KEY"):
+        print("ERROR: live flags and key must be explicitly configured",file=sys.stderr)
+        return 2
+    # Ephemeral CI accounting only; refuse to add test tenants to an application DB.
+    if os.getenv("DATABASE_URL") != "sqlite:///./meta-smoke.sqlite3":
+        print("ERROR: dedicated smoke accounting database required",file=sys.stderr)
+        return 2
     try:
+        from app.workspace_store import init_db,SessionLocal,User,Workspace,WorkflowRun
+        from app.budget import ApiBudget
+        init_db()
+        with SessionLocal.begin() as db:
+            user=User(email=f"smoke-{uuid4()}@example.invalid",password_hash="not-a-login")
+            db.add(user);db.flush()
+            workspace=Workspace(owner_id=user.id,name="Ephemeral smoke")
+            db.add(workspace);db.flush()
+            run=WorkflowRun(workspace_id=workspace.id,website="https://example.invalid",objective="Authorized capability probe")
+            db.add(run);db.flush()
+            scope={"owner_id":user.id,"workspace_id":workspace.id,"run_id":run.id}
+        client=MetaClient(**scope,max_tokens=128)
         if capability=="text":
-            r=client.text("Answer with one short visible word.",
-                          "Reply exactly OK.",{"type":"object","properties":{"answer":{"type":"string"}},
-                          "required":["answer"],"additionalProperties":False})
-            succeeded=bool(r["data"].get("answer"))
+            result=client.text("Reply only with OK.","Connection probe: reply OK.")
         elif capability=="vision":
-            r=client.vision(synthetic_png(),"image/png","What color is the large rectangle? One word in JSON.",
-                 {"type":"object","properties":{"color":{"type":"string"}},
-                  "required":["color"],"additionalProperties":False})
-            succeeded=bool(r["data"].get("color"))
+            image=io.BytesIO();Image.new("RGB",(64,64),(255,0,0)).save(image,format="PNG")
+            result=client.vision(image.getvalue(),"image/png","Name this square's dominant color in one word.")
         else:
-            r=client.image("An original studio photograph of a handmade wooden chair on a plain backdrop.")
-            import base64
-            data=base64.b64decode(r["data"]["image_b64"],validate=True)
-            Image.open(io.BytesIO(data)).verify()
-            succeeded=bool(data)
-        # No raw model content, hidden reasoning, returned image, or credentials in logs.
+            result=client.image("A plain blue circle on a white background, no text.","1024x1024")
+        if result["provenance"]!="live_meta" or not result["data"]:
+            raise ValueError("Not a live usable result")
         print("Capability:",capability)
-        print("Model:",r["model"])
-        print("Live Meta provenance confirmed:",r["provenance"]=="live_meta")
-        print("Usable validated response:",succeeded)
-        print("One request only; compare actual spend in Meta Billing.")
-        return 0 if succeeded and r["provenance"]=="live_meta" else 1
-    except Exception as exc:
-        print("Capability check failed:",type(exc).__name__,file=sys.stderr)
+        print("Provenance:",result["provenance"])
+        print("Model:",result["model"])
+        print("Usable output:",True)
+        usage=result.get("usage") or {}
+        for field in ("prompt_tokens","completion_tokens","reasoning_tokens"):
+            value=usage.get(field)
+            print(field+":",value if isinstance(value,int) else "unknown")
+        print("Smoke succeeded. Check provider billing; reservations are not actual charges.")
+        return 0
+    except Exception as error:
+        print("Smoke failed:",type(error).__name__,"No retry made.",file=sys.stderr)
         return 1
 
 if __name__=="__main__":

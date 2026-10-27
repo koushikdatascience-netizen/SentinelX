@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 
 const BASE=process.env.NEXT_PUBLIC_API_URL ?? "";
-type Provenance="live_meta"|"sample"|"user_edited"|"user_supplied"|"local_measurement";
+type Provenance="live_meta"|"sample"|"user_supplied";
 type Img={id:string;filename:string;result:{local:{width:number;height:number;brightness:number;contrast:number;edge_variance:number;technical_readiness:number;dominant_colors:string[]};model?:{overall:number;issues:string[];fixes:string[]}|null;provenance:Provenance}};
 type Item={id:string;day:number;platform:string;post_type:string;caption:string;hashtags:string[];cta:string;creative_brief:string;state:string;provenance:Provenance;unsupported_claims:string[]};
 type Campaign={id:string;goal:string;language:string;provenance:Provenance;audit:{analysis:{offer_summary:string;audience_guess:string;gaps:{finding:string;assumption:boolean;evidence_id:string|null}[];positioning_angles:string[]};evidence:{id:string;text?:string;url?:string;type:string}[]};items:Item[]};
@@ -82,7 +82,7 @@ export default function BusinessStudio({token,workspace}:{token:string;workspace
    await action(async()=>{
      const changed=await api<Item>(`/api/v1/campaigns/${campaign.id}/items/${item.id}?workspace_id=${encodeURIComponent(workspace)}`,"PATCH",{[key]:text});
      setCampaign(old=>old?{...old,items:old.items.map(i=>i.id===item.id?{...i,...changed}:i)}:old);
-     setNotice("Edited copy saved. Provenance updated to user_edited.");
+     setNotice("Edited copy saved. Provenance marked user supplied.");
    });
  }
  async function createVariants(){

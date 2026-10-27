@@ -1,30 +1,49 @@
-# Meta Model API contract and implementation notes — 28 October 2026
+# Meta API contracts and verification notes
 
-The references below are official API documentation, **not a live entitlement test**. A configured key and promotional credits do not alone verify model access.
+Reviewed October 28, 2026. **Documentation-verified and mock-tested does not mean live-account verified.** No paid request was made during this change. The earlier smoke received usage and empty text; it does not certify useful output or multimodal access.
 
-| Capability | Contract / access path | Status |
-|---|---|---|
-| Muse Spark text | OpenAI-compatible `chat.completions.create` at `https://api.meta.ai/v1`, `muse-spark-1.3`, `max_completion_tokens`, structured JSON `response_format` | Implemented in `MetaClient.text`; mocked tests, live usable output pending |
-| Muse Spark image input | chat message with text and `image_url` data URL | Implemented in `MetaClient.vision`; live validation pending |
-| Muse Image | `images.generate(model="muse-image-1.0")`, base64 image payload | Implemented in `MetaClient.image`; live validation pending |
-| SAM 3.1 segmentation | Responses/Files-based pathway requires independently validated request/response and mask interpretation | **UNVERIFIED / NotSupported** for live calls |
-| Muse Voice | ASR multipart request details are not centrally verified | **UNVERIFIED / live disabled** |
+## Contracts implemented in app/meta_client.py
 
-Sources:
-- https://dev.meta.ai/docs/protocols/chat-completions
-- https://dev.meta.ai/docs/structured-output
-- https://dev.meta.ai/docs/api-reference/chat-completions/schemas
-- https://dev.meta.ai/docs/image-generation
-- https://dev.meta.ai/docs/overview
-- https://dev.meta.ai/docs/reasoning
+| Capability | Official contract | Client behavior |
+| --- | --- | --- |
+| Text | `POST https://api.meta.ai/v1/chat/completions`, `muse-spark-1.3`, Bearer MODEL_API_KEY; developer/user messages; visible text in `choices[0].message.content` | Fixed supported model; minimal reasoning; 500 combined output tokens by default (constructor 1–1200). Empty text or non-stop finish fails. |
+| Structured text | Chat Completions `response_format={type:json_schema,json_schema:{name,schema,strict}}` | Uses strict=false for broader schema compatibility, plus local Draft 2020-12 validation. References are deliberately unsupported to prevent remote fetching/cycles. Invalid/oversized schemas fail before reservations. |
+| Vision | Same model and endpoint; user content contains `text` and `image_url` blocks, with `image_url.url` holding a base64 data URL | Sends local validated PNG/JPEG/WebP only, up to 5 MB / 20MP. No URL fetching. Optional schema uses the same validation. |
+| Image | `POST /v1/images/generations`, `muse-image-1.0`, prompt, n, size, response_format; output `data[].b64_json` or signed URL | One image, three allowlisted aspect ratios, base64 output. Size is an aspect ratio, not a promise of exact dimensions. No automatic edits, downloads, retries or publishing. |
+| SAM | `sam-3.1` on Responses API, object concept/geometry prompt and media; special-token segmentation output | **UNVERIFIED / NOT IMPLEMENTED adapter.** API exists, but this method has no object prompt argument and the mask parser is not integrated. Live `segment` raises NotSupported before budget/network. Never substitutes vision text for a mask. |
+| Voice | Old hand-written ASR request removed | **UNVERIFIED adapter.** Live transcription raises NotSupported. Offline intake returns transcript=null with sample provenance; never claims speech recognition. |
 
-Safety:
-- All current hosted Meta text and image calls route through `MetaClient`; old direct legacy inference is disabled; unverified live voice fails closed.
-- `INFERENCE_PROVIDER=meta`, `SENTINELX_MODE=live`, `ALLOW_PAID_INFERENCE=true` and `ENABLE_LIVE_MULTIMODAL=true` must all be enabled for any live Meta operation, plus valid `MODEL_API_KEY`.
-- Budget reservations are made before each paid request (text $0.05, vision $0.10, image $0.02 conservative application reservations), with no automatic retries. This is not the Meta account balance or a guaranteed provider hard cap.
-- Campaigns, product vision, and creatives require a positive per-workspace attempt ceiling, `CAMPAIGN_WORKSPACE_MAX_ATTEMPTS`. Current quota is lifetime per workspace, not per-day. The same budget applies across operations.
-- `/api/v1/status` shows LIVE only after recent real successful SDK calls recorded by this application; CI SDK mocks never count. Ephemeral GitHub smoke jobs record state in disposable SQLite and do not update a separate deployed server.
-- Deterministic samples return `provenance: sample`; claims derived from owner submissions remain unverified even if repeated by a model.
-- The central adapter returns a schema-shaped object but the consuming route must also validate returned objects via Pydantic. Exact supported JSON Schema subset, account entitlements and actual billed usage still require live testing.
+Official sources:
 
-No paid requests were authorized or executed by this PR.
+- [Chat Completions](https://dev.meta.ai/docs/protocols/chat-completions)
+- [Structured output](https://dev.meta.ai/docs/structured-output)
+- [Image understanding](https://dev.meta.ai/docs/image-understanding)
+- [Image generation](https://dev.meta.ai/docs/image-generation)
+- [Reasoning](https://dev.meta.ai/docs/reasoning): hidden reasoning counts against output limits and billed output; minimal is supported, none is not.
+- [Media segmentation](https://dev.meta.ai/docs/media-segmentation)
+- [SAM client libraries](https://dev.meta.ai/docs/sam/client-libraries): special-token parsing needs a dedicated parser.
+
+## Gates, scope and accounting
+
+Every MetaClient method checks INFERENCE_PROVIDER (default demo), ALLOW_PAID_INFERENCE (default false) and ENABLE_LIVE_MULTIMODAL (default false). **Both boolean flags must be true even for text.** Disabled flags return deterministic sample fixtures without constructing an SDK client or reserving credits. No schema fixture is invented as real intelligence; unsupported fixture schemas fail explicitly. SAMPLE_PNG is an authored tiny fixture, not a model image.
+
+Live calls require MODEL_API_KEY from environment, an owner ID, an existing owned workspace and an existing run in that workspace. Budget checks revalidate ownership in the database, not merely in route parameters. Scoped routes check ownership before processing model input, even in sample mode. Existing stateless local inspection/intake routes keep their authenticated no-storage behavior; they cannot access another owner's records. Live unscoped text requests fail closed. Legacy paid analyze is removed.
+
+`budget.reserve_meta` atomically reserves 5 cents in all three counters in one transaction: META_APP_BUDGET_CENTS (existing default 500), META_WORKSPACE_BUDGET_CENTS (default **0**) and META_RUN_BUDGET_CENTS (default **0**). Workspace/run counters use hashed keys in the existing api_budgets table, so no new migration is required. Five cents is an application reservation unit, **not a verified price or guaranteed maximum charge**. Counters are lifetime cumulative; there is no automatic reset or refund after uncertain failures. Concurrent calls serialize on the global row; insufficient scope rolls back every debit. Provider charge reconciliation remains unimplemented. Other apps, keys and workflow dispatches bypass this application's shared DB accounting.
+
+SDK transport uses a 30-second timeout, max_retries=0 and safe fixed error messages. Keys, full prompts, provider error bodies, hidden reasoning and generated media are not logged. Only whitelisted usage fields leave the text adapter. Direct OpenAI usage in providers.py now serves other providers only; Meta traffic delegates to MetaClient.
+
+## Manual smoke verification
+
+The workflow remains manual, protected by meta-live-test and the exact acknowledgement `I_ACKNOWLEDGE_ONE_PAID_REQUEST`. Choose **one** of text, vision or image per dispatch. There is no all-capabilities mode or matrix. It uses an ephemeral dedicated SQLite accounting DB with app/workspace/run caps of 5 cents, creates a synthetic owner/run, then makes one method call. Text/vision have a 128-token combined limit; image generates one image. Logs print only capability, provenance, model, output-presence and numeric usage, never response text/base64. Samples cannot pass as a live smoke success.
+
+Each dispatch has its own accounting DB, so it is not a cross-dispatch billing cap. Do not dispatch repeatedly after a failure. The operator must inspect safe diagnostics and provider billing. Updating the workflow does not enable the app, change deployed configuration or authorize an actual smoke run.
+
+## Status
+
+Documentation and mocked HTTP shapes: text, structured output, vision, single-image generation. Live-account success, model entitlement, useful output quality and actual cost reconciliation: **UNVERIFIED**. SAM/voice live adapters: explicitly unsupported. Defaults remain demo/paid-off. Hostinger staging has been audited; the CD workflow is prepared but remains disabled pending merge and restricted deployment credentials. See [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
+
+
+### Compatibility changes
+
+`POST /api/v1/creative/generate` now requires workspace_id and run_id in its JSON body. `POST /api/v1/media/image/analyze` requires those IDs as query parameters plus an uploaded file; prompt is optional. Both check the authenticated owner before invoking the client, including samples. `/api/v1/inference/test` accepts optional scope fields for backward-compatible stateless samples, but live Meta inference cannot proceed without a persisted owned run. Workspace generation creates that run before attempting inference. Existing voice intake accepts local sample files only; its old unmetered live HTTP path is gone. All approval endpoints remain recorded decisions only.

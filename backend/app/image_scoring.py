@@ -42,7 +42,8 @@ def measure_image(payload:bytes)->dict:
             "brightness":round(brightness,2),"contrast":round(contrast,2),
             "edge_variance":round(edge_variance,2),
             "dominant_colors":colors,
-            "provenance":"local_measurement",
+            "provenance":"user_supplied",
+            "measurement_method":"local_image_metrics",
             "notes":["Edge variance is a texture proxy, not a calibrated blur score.",
                      "Technical readiness is a reproducible heuristic, not a validated aesthetic or conversion score.",
                      "Scoring uses fixed reference targets (1080 px, 128 brightness, 65 contrast, 600 edge variance); thresholds need calibration."]

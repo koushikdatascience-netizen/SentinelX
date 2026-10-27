@@ -35,8 +35,8 @@ flowchart LR
   L --> M[Public Page + Consented Leads]
 ```
 
-**Backend:** Python 3.11, FastAPI, Pydantic, SQLAlchemy, Alembic, PostgreSQL/SQLite dev, Pillow, Jinja2.  
-**Frontend:** Next.js / React / TypeScript, responsive stepper dashboard.  
+**Backend:** Python 3.11, FastAPI, Pydantic, SQLAlchemy, Alembic, PostgreSQL/SQLite dev, Pillow, Jinja2.
+**Frontend:** Next.js / React / TypeScript, responsive stepper dashboard.
 **CI:** GitHub Actions backend tests, PostgreSQL migration checks and Playwright Chromium journeys.
 
 ## Real versus sample capabilities
@@ -118,7 +118,9 @@ The manual GitHub Actions smoke workflow allows exactly one explicitly authorize
 - Generated sample creative gradients are not actual product photography.
 - Photo readiness weights are transparent engineering heuristics, **not** validated attractiveness, sales likelihood or customer impact.
 - Image assessment uploads are not retained after scoring; generated creative variants are stored as bounded database blobs.
-- Lead data handling, user deletion, enterprise auth abuse protection, deployment backup/restore, concurrency hardening and accurate provider cost reconciliation still need production work.
+- Password login now has a shared database-backed per-account throttle. Email verification, account recovery/deletion, broader network-level abuse controls, and operational security review remain outstanding.
+- PostgreSQL backup/restore was exercised and the Hostinger daily backup timer is enabled. The automated deploy account and GitHub secrets are configured, but the first CI-driven release has not run.
+- Workspace/run model budgets and campaign attempt limits are app-side controls; provider charge reconciliation and a provider-enforced hard cap remain unimplemented. Concurrency tests and production monitoring still need expansion.
 
 ## Documentation
 
@@ -127,6 +129,7 @@ The manual GitHub Actions smoke workflow allows exactly one explicitly authorize
 - [Official Meta API contract notes](docs/META_API_NOTES.md)
 - [Manual GitHub-only API tests](docs/META_GITHUB_ONLY_SETUP.md)
 - [Codex handoff](AGENTS.md)
-- [Existing Oracle staging plan](deploy/ORACLE_STAGING.md) — **no live deployment has been performed**
+- [Hostinger deployment and CI/CD status](docs/HOSTINGER_DEPLOYMENT.md)
+- [Historical Oracle staging plan](deploy/ORACLE_STAGING.md)
 
 This repository is under active review. Judge claims should be updated only after the corresponding feature is verified working on a deployed HTTPS URL.

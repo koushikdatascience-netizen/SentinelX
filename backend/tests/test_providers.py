@@ -30,11 +30,15 @@ def test_missing_key(monkeypatch):
 def test_auth_required():
     assert TestClient(app).get("/api/v1/inference/status").status_code==401
 
-def test_demo_endpoint(monkeypatch):
+def test_demo_endpoint(monkeypatch,authenticated_client):
     monkeypatch.setenv("INFERENCE_PROVIDER","demo")
-    # Verify internal handler independently; authentication checked above.
-    from app.inference_routes import test_inference, InferenceRequest
-    assert test_inference(InferenceRequest(prompt="Review our business model"),user=type("TestUser",(),{"is_demo":False})())["status"]=="simulated"
+    client=authenticated_client
+    wid=client.post("/api/v1/workspaces",json={"name":"Inference test"}).json()["id"]
+    run=client.post(f"/api/v1/workspaces/{wid}/runs",json={
+        "website":"https://example.com","goal":"Review our business model"}).json()
+    result=client.post("/api/v1/inference/test",json={"workspace_id":wid,"run_id":run["id"],
+        "prompt":"Review our business model"})
+    assert result.status_code==200 and result.json()["status"]=="simulated"
 
 def test_local_ollama_adapter_requires_no_paid_key(monkeypatch):
     monkeypatch.setenv("INFERENCE_PROVIDER","ollama")

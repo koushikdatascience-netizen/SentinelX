@@ -6,7 +6,9 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from app.auth import current_user, hash_password, check_password, issue_token
+from app.auth import (current_user, hash_password, check_password, issue_token,
+                      begin_login_attempt, record_login_failure, clear_login_attempts,
+                      _DUMMY_PASSWORD_HASH)
 from app.workspace_store import User, Workspace, WorkflowRun, ReviewableAction, utcnow, session
 
 router=APIRouter(prefix="/api/v1",tags=["Workspaces"])
@@ -43,9 +45,14 @@ def register(body:Credentials,db:Session=Depends(session)):
     return {"id":user.id,"email":user.email}
 @router.post("/auth/login")
 def login(body:Credentials,db:Session=Depends(session)):
-    user=db.scalar(select(User).where(User.email==body.email.lower()))
-    if not user or not check_password(body.password,user.password_hash):
+    email=body.email.lower()
+    email_key,maximum,window,now=begin_login_attempt(db,email)
+    user=db.scalar(select(User).where(User.email==email))
+    password_ok=check_password(body.password,user.password_hash if user else _DUMMY_PASSWORD_HASH)
+    if not user or not password_ok:
+        record_login_failure(db,email_key,maximum,window,now)
         raise HTTPException(401,"Invalid credentials")
+    clear_login_attempts(db,email_key)
     return {"access_token":issue_token(user.id),"token_type":"bearer"}
 @router.get("/workspaces")
 def list_workspaces(user:User=Depends(current_user),db:Session=Depends(session)):
@@ -59,6 +66,23 @@ def owned(db:Session,user:User,workspace_id:str)->Workspace:
     workspace=db.scalar(select(Workspace).where(Workspace.id==workspace_id,Workspace.owner_id==user.id))
     if not workspace: raise HTTPException(404,"Workspace not found")
     return workspace
+
+def create_model_run(db:Session,workspace_id:str,website:str,objective:str)->WorkflowRun:
+    """Persist a minimal run before a paid request so its budget scope is enforceable."""
+    run=WorkflowRun(workspace_id=workspace_id,website=website[:2000],objective=objective[:1000],
+                    status="pending",result_json=json.dumps({"provenance":"user_supplied",
+                    "operation":"model_request","external_actions_performed":0}))
+    db.add(run);db.commit();db.refresh(run)
+    return run
+
+def finish_model_run(db:Session,run:WorkflowRun,status:str,provenance:str,error:str|None=None)->None:
+    result={"provenance":provenance,"operation":"model_request","external_actions_performed":0}
+    if error:
+        result["error"]=error
+    run.status=status
+    run.result_json=json.dumps(result)
+    db.commit()
+
 @router.get("/workspaces/{workspace_id}/runs")
 def list_runs(workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,workspace_id)
@@ -67,20 +91,24 @@ def list_runs(workspace_id:str,user:User=Depends(current_user),db:Session=Depend
 def create_run(workspace_id:str,body:RunInput,user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,workspace_id)
     from app.orchestrator import preview
+    run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,status="pending",result_json="{}")
+    db.add(run);db.commit();db.refresh(run)
     if body.use_inference:
         if user.is_demo:raise HTTPException(403,"Demo sessions cannot call external inference")
         from app.providers import infer
         try:
-            result=infer(f"Business website URL (not crawled): {body.website}\\nBusiness goal: {body.goal}\\nDevelop three testable recommendations. Clearly label assumptions.")
+            result=infer(f"Business website URL (not crawled): {body.website}\\nBusiness goal: {body.goal}\\nDevelop three testable recommendations. Clearly label assumptions.", owner_id=user.id, workspace_id=workspace_id, run_id=run.id)
         except ValueError as exc:
+            run.status="failed";db.commit()
             raise HTTPException(422,str(exc)) from exc
         except Exception as exc:
+            run.status="failed";db.commit()
             raise HTTPException(502,f"Inference provider failed ({type(exc).__name__})") from exc
         status = "inferred" if result["status"]=="completed" else "mock_completed"
     else:
-        result=preview(body.goal).model_dump()
+        result={**preview(body.goal).model_dump(),"provenance":"sample"}
         status="mock_completed"
-    run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,status=status,result_json=json.dumps(result))
+    run.status=status;run.result_json=json.dumps(result)
     db.add(run);db.commit();db.refresh(run)
     return {"id":run.id,"workspace_id":workspace_id,"status":run.status,"result":result}
 @router.get("/workspaces/{workspace_id}/runs/{run_id}")
@@ -103,9 +131,9 @@ def analyze_supplied_evidence(workspace_id:str,body:EvidenceRunInput,user:User=D
     from app.agents import build_plan
     page={"evidence_source":str(body.website),"title":body.page_title,"text":body.page_excerpt}
     plan=build_plan(page,body.goal).model_dump()
-    evidence={"source_url":str(body.website),"source_type":"user_supplied_unverified","excerpt":body.page_excerpt[:400],
+    evidence={"provenance":"user_supplied","source_url":str(body.website),"source_type":"user_supplied_unverified","excerpt":body.page_excerpt[:400],
               "fetched_by_server":False}
-    result={"mode":"owner_supplied_evidence","evidence":[evidence],"plan":plan,
+    result={"provenance":"user_supplied","mode":"owner_supplied_evidence","evidence":[evidence],"plan":plan,
             "approval_required":True,"external_actions_performed":0}
     run=WorkflowRun(workspace_id=workspace_id,website=str(body.website),objective=body.goal,
                     status="proposed",result_json=json.dumps(result))

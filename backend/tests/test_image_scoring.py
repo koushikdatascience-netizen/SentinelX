@@ -13,7 +13,7 @@ def png(color=(170,130,80),size=(320,240)):
 def test_measurements_are_real_local_metrics():
     data=measure_image(png())
     assert data["width"]==320 and data["height"]==240
-    assert data["provenance"]=="local_measurement"
+    assert data["provenance"]=="user_supplied"
     assert len(data["dominant_colors"])>=1
     assert data["brightness"]>0
 
@@ -30,7 +30,7 @@ def test_scoring_isolated_and_does_not_fabricate_meta(authenticated_client):
                 files={"file":("chair.png",png(),"image/png")})
     assert resp.status_code==201,resp.text
     payload=resp.json()
-    assert payload["result"]["provenance"]=="local_measurement"
+    assert payload["result"]["provenance"]=="user_supplied"
     assert payload["result"]["final_score"] is None
     assert payload["result"]["segmentation"]=="not_run"
     iid=payload["id"]

@@ -11,7 +11,7 @@ def test_xss_escaped_and_self_contained():
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
     assert "<img src=x" not in html
-    assert "Sample / draft page" in html
+    assert "Provenance: sample" in html and "Illustrative fixture" in html
     assert "https://fonts." not in html
 
 def test_landing_can_preview_export_and_record_consent(authenticated_client):

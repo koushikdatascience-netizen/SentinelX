@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import current_user
-from app.workspace_routes import owned
+from app.workspace_routes import owned, create_model_run, finish_model_run
 from app.workspace_store import ImageAssessment, User, session
 from app.image_scoring import measure_image
 from app.meta_client import MetaClient, MetaResponseError
@@ -37,25 +37,37 @@ async def score_photo(workspace_id:str=Form(...),business_context:str=Form(""),
     # The declared MIME must match the parsed file format, not just be on an allowlist.
     if file.content_type != {"PNG":"image/png","JPEG":"image/jpeg","WEBP":"image/webp"}[local["format"]]:
         raise HTTPException(415,"Unsupported content type")
-    if not user.is_demo and MetaClient._enabled(True):
+    live=(not user.is_demo) and MetaClient._enabled(True)
+    model_run=None
+    client=MetaClient(owner_id=user.id,workspace_id=workspace_id)
+    if live:
         from app.campaign_routes import claim_attempt
         claim_attempt(db,workspace_id)
+        model_run=create_model_run(db,workspace_id,"user-supplied-image",business_context or "Product image assessment")
+        client=MetaClient(owner_id=user.id,workspace_id=workspace_id,run_id=model_run.id)
     schema=Scores.model_json_schema()
     prompt=("Assess this consented product image for marketing use, relative to the business description. "
             "Give concrete suggestions; do not claim sales outcomes or unobserved facts. "
             f"Business description: {business_context}")
     try:
-        result=(MetaClient().vision(payload,file.content_type,prompt,schema)
+        result=(client.vision(payload,file.content_type,prompt,schema)
                 if not user.is_demo else {"provenance":"sample","data":{"note":"Demo sessions cannot call paid models"}})
         model_scores=Scores.model_validate(result["data"]).model_dump() if result["provenance"]=="live_meta" else None
+        if model_run:
+            finish_model_run(db,model_run,"inferred","live_meta")
     except (ValueError,MetaResponseError) as exc:
+        if model_run:
+            finish_model_run(db,model_run,"failed","live_meta","image_assessment_failed")
         raise HTTPException(502,"Meta vision returned invalid scores; no automatic retry") from exc
     except Exception as exc:
+        if model_run:
+            finish_model_run(db,model_run,"failed","live_meta","image_assessment_failed")
         raise HTTPException(502,f"Meta vision unavailable ({type(exc).__name__})") from exc
     # Local brightness, contrast and texture aren't calibrated 0-100 aesthetic scores.
     # Never combine unrelated scales or fabricate model scores.
     output={"local":local,"model":model_scores,
-            "provenance":"live_meta" if model_scores else "local_measurement",
+            "provenance":"live_meta" if model_scores else "user_supplied",
+            "measurement_method":"local_image_metrics",
             "segmentation":"not_run","final_score":model_scores["overall"] if model_scores else None,
             "note":"Final score is the Meta subjective model score, not independently validated quality or predicted revenue."}
     row=ImageAssessment(workspace_id=workspace_id,filename=(file.filename or "image")[:180],

@@ -1,7 +1,6 @@
 name: Backend checks
 on:
   push:
-    branches: [main]
   pull_request:
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -32,6 +31,7 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
+      - run: python -m pip check
       - run: python -m pytest -q
       - name: Migrate fresh PostgreSQL database
         run: python -m alembic upgrade head
@@ -58,6 +58,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --no-audit --no-fund
+      - run: npm audit --audit-level=high
       - run: npm run build
       - uses: actions/setup-python@v5
         with:

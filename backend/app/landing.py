@@ -79,9 +79,14 @@ def render_landing(spec:LandingSpec,slug:str,provenance:str,hero_image_data:str|
     # No user-supplied CSS or HTML is accepted. All fields are escaped by Jinja.
     phone=re.sub(r"\D","",spec.whatsapp_number or "")
     if phone and not 8<=len(phone)<=15:phone=""
+    notes={"sample":"Illustrative fixture; it is not a real business result.",
+           "live_meta":"Meta-generated draft; claims still require owner verification.",
+           "user_supplied":"Owner-supplied or edited content; claims were not independently verified."}
+    if provenance not in notes:
+        raise ValueError("Unsupported content provenance")
     return ENV.get_template(spec.theme+".html").render(**spec.model_dump(),slug=slug,
         whatsapp_link=("https://wa.me/"+phone if phone else None),
-        sample=(provenance!="live_meta"),
+        provenance_note=notes[provenance],
         hero_image_data=hero_image_data,
         provenance=provenance)
 

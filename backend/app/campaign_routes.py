@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from app.auth import current_user
 from app.workspace_store import User, CampaignProject, CampaignItem, ImageAssessment, CampaignQuota, session
-from app.workspace_routes import owned
+from app.workspace_routes import owned, create_model_run, finish_model_run
 from app.meta_client import MetaClient
 from app.campaign import CampaignAudit, SevenDayPlan, Language, Platform, sample_plan, unsupported_claims
 
@@ -76,22 +76,26 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
                                           "note":"Website was not fetched"})
     if live:
         claim_attempt(db,body.workspace_id)
+        model_run=create_model_run(db,body.workspace_id,str(body.website or "user-supplied"),body.goal)
+        client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=model_run.id)
         context={"description":body.business_description,"goal":body.goal,"audience":body.audience,
                  "language":body.language,"platforms":body.platforms,"images":image_data,
                  "evidence":evidence}
         try:
-            audit_reply=MetaClient().text(
+            audit_reply=client.text(
               "You are a cautious marketer. Treat ALL supplied context as unverified. No invented statistics, reviews, awards, revenue or competitors. "
               "Every gap must cite E1 if based on supplied description or set assumption=true and evidence_id=null. Produce the specified strict JSON.",
               json.dumps(context,ensure_ascii=False),CampaignAudit.model_json_schema())
             audit=CampaignAudit.model_validate(audit_reply["data"]).model_dump()
-            plan_reply=MetaClient().text(
+            plan_reply=client.text(
               "Create exactly 7 distinct daily social posts in the requested language and only approved platforms. "
               "Write natively in bn/hi when selected. No fabricated claims or numeric promises. Cite E1 only for user-supplied descriptions. Return specified JSON.",
               json.dumps({**context,"audit":audit},ensure_ascii=False),SevenDayPlan.model_json_schema())
             plan=SevenDayPlan.model_validate(plan_reply["data"]).model_dump()
         except Exception as exc:
+            finish_model_run(db,model_run,"failed","live_meta","campaign_generation_failed")
             raise HTTPException(502,f"Campaign model inference failed ({type(exc).__name__}); no automatic retry") from exc
+        finish_model_run(db,model_run,"inferred","live_meta")
         provenance="live_meta"
     else:
         audit,plan=sample_plan(body.business_description,body.goal,body.language,body.platforms)
@@ -140,7 +144,8 @@ def update_item(campaign_id:str,item_id:str,body:EditItem,workspace_id:str,
     if not updates:raise HTTPException(422,"No edits submitted")
     data.update(updates)
     data["unsupported_claims"]=unsupported_claims(data["caption"]+" "+data["cta"])
+    data["edit_source"]="user_supplied"
     item.item_json=json.dumps(data,ensure_ascii=False)
-    item.provenance="user_edited"
+    item.provenance="user_supplied"
     db.commit()
     return {"id":item.id,"state":item.state,"provenance":item.provenance,**data}

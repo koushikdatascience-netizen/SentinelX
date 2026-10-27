@@ -1,4 +1,6 @@
-# SentinelX on the existing Oracle Always Free VM
+# Historical Oracle staging plan (not the current deployment target)
+
+SentinelX is currently staged on Hostinger. Use [docs/HOSTINGER_DEPLOYMENT.md](../docs/HOSTINGER_DEPLOYMENT.md) for the audited host, current release, and deployment procedure. This file is retained for historical reference and rollback compatibility; do not provision or deploy to Oracle based on this guide.
 
 Use a **separate** Docker Compose project and a **new** Nginx server block; do not modify Kamal Woodcraft's application, database, containers or existing Nginx vhost.
 

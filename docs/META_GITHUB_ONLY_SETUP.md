@@ -18,10 +18,10 @@ Check Meta's Usage and Billing screens afterward. GitHub Actions is ephemeral; t
 ## 3. Live application configuration later
 On the private deployment server (not on GitHub), configure `MODEL_API_KEY`, `INFERENCE_PROVIDER=meta`, `META_MODEL=muse-spark-1.3`, `ALLOW_PAID_INFERENCE=true`. Keep `META_APP_BUDGET_CENTS=100` for preliminary tests and `ENABLE_LIVE_MULTIMODAL=false`. The reserved-budget cap is **not** a Meta billing hard stop.
 
-The proposed Oracle staging Compose deliberately locks the app in demo mode. Do not put a paid key into it until the host is secure and hardening is complete. Server installation and DNS access have not been verified.
+The Hostinger staging Compose locks the app in demo mode and does not receive the Meta key. Do not enable a live key on public staging without deliberate budget controls and owner authorization. The deployment architecture is documented in [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
 
 ## 4. Codex pickup
-Clone the repo and read `docs/DASHBOARD_RELEASE.md`, `docs/DEMO_READINESS.md`, `deploy/ORACLE_STAGING.md` and this file. Run backend tests and Next.js production build. Inspect GitHub Actions checks before deployment. Never enable public anonymous paid inference.
+Clone the repo and read `docs/DASHBOARD_RELEASE.md`, `docs/DEMO_READINESS.md`, `docs/HOSTINGER_DEPLOYMENT.md` and this file. Run backend tests and Next.js production build. Inspect GitHub Actions checks before deployment. Never enable public anonymous paid inference.
 
 If `muse-spark-1.3` does not work with the declared chat completions API, check your Meta account's Models documentation and correct the exact model/endpoint under a tested change rather than guessing.
 
@@ -34,3 +34,8 @@ Meta's [reasoning documentation](https://dev.meta.ai/docs/reasoning) confirms th
 The [Chat Completions schema](https://dev.meta.ai/docs/protocols/chat-completions) documents `max_completion_tokens` and the `choices[0].message.content` response shape. The app now requests minimal Meta reasoning, rejects empty or incomplete answers without retry, and returns token counts on success. Conservative app reservations are retained on failure because tokens may already have been consumed.
 
 Regression checks use mocked responses and spend no credits. No further live request is required to run those checks. Keep demo defaults until one deliberate follow-up produces a complete visible answer; do not rerun the old script expecting its 35-token behavior to change.
+
+
+## Central client update (October 28)
+
+The manual workflow now selects exactly one capability per dispatch: text, vision or image. It uses MetaClient and ephemeral scoped accounting. Both ALLOW_PAID_INFERENCE and ENABLE_LIVE_MULTIMODAL must be true even for text, along with INFERENCE_PROVIDER=meta. Scope caps default to zero in the application; see [META_API_NOTES.md](META_API_NOTES.md) for ownership, required per-workspace/run budgets and unsupported SAM/voice boundaries. The workflow supplies tightly scoped test flags only for its own job. No live call was made to validate this refactor.

@@ -22,10 +22,10 @@ def test_demo_campaign_seven_days_isolation_and_edits(authenticated_client):
     changed=c.patch(f"/api/v1/campaigns/{cid}/items/{iid}",params={"workspace_id":wid},
                     json={"caption":"An improved and more useful furniture campaign sample caption."})
     assert changed.status_code==200,changed.text
-    assert changed.json()["provenance"]=="user_edited"
+    assert changed.json()["provenance"]=="user_supplied"
     got=c.get(f"/api/v1/campaigns/{cid}",params={"workspace_id":wid})
     assert got.status_code==200
-    assert got.json()["items"][0]["provenance"]=="user_edited"
+    assert got.json()["items"][0]["provenance"]=="user_supplied"
     assert c.get("/api/v1/campaigns",params={"workspace_id":wid}).json()[0]["id"]==cid
     assert c.get(f"/api/v1/campaigns/{cid}",params={"workspace_id":"invalid"}).status_code==404
 

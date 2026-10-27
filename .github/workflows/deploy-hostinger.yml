@@ -1,0 +1,84 @@
+name: Deploy Hostinger production
+
+on:
+  workflow_run:
+    workflows: [Backend checks]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+  deployments: write
+
+concurrency:
+  group: hostinger-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && vars.HOSTINGER_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: hostinger-production
+    timeout-minutes: 30
+    steps:
+      - name: Checkout the exact CI-tested main commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Validate deployment configuration
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$HOSTINGER_HOST"
+          test -n "$HOSTINGER_USER"
+          test -n "$HOSTINGER_SSH_KEY"
+          test -n "$HOSTINGER_KNOWN_HOSTS"
+
+      - name: Configure pinned SSH host identity
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > ~/.ssh/hostinger_deploy
+          chmod 600 ~/.ssh/hostinger_deploy
+          printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/hostinger_deploy >/dev/null
+          ssh-keygen -F "$HOSTINGER_HOST" -f ~/.ssh/known_hosts >/dev/null
+
+      - name: Stream source archive to the forced-command deploy account
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          archive="sentinelx-${RELEASE_SHA}.tar"
+          git archive --format=tar "$RELEASE_SHA" > "$archive"
+          printf '%s\n' "$RELEASE_SHA" > .sentinelx-release
+          tar -rf "$archive" .sentinelx-release
+          ssh -i ~/.ssh/hostinger_deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$HOSTINGER_USER@$HOSTINGER_HOST" "receive $RELEASE_SHA" < "$archive"
+
+      - name: Release summary
+        if: always()
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          {
+            echo '## Hostinger release'
+            echo
+            echo "- CI-tested commit: $RELEASE_SHA"
+            echo '- Target: `https://sentinelx.kamalwoodcraft.in`'
+            echo '- CI succeeded before deployment; only SentinelX services are managed by the deployment script.'
+          } >> "$GITHUB_STEP_SUMMARY"

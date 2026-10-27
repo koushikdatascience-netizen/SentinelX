@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from PIL import Image, ImageDraw
 
 from app.auth import current_user
-from app.workspace_routes import owned
+from app.workspace_routes import owned, create_model_run, finish_model_run
 from app.workspace_store import User, CampaignCreative, CampaignItem, CampaignProject, session
 from app.image_scoring import measure_image
 from app.meta_client import MetaClient
@@ -77,15 +77,19 @@ def generate(campaign_id:str,item_id:str,workspace_id:str,body:RequestVariants,
             f"Visual brief: {brief[:550]}. Mood: {body.brand_mood}.")
     prompt=prompt[:1500]
     live=(not user.is_demo) and MetaClient._enabled(True)
+    model_run=None
+    client=MetaClient(owner_id=user.id,workspace_id=workspace_id)
     if live:
         from app.campaign_routes import claim_attempt
         claim_attempt(db,workspace_id)
+        model_run=create_model_run(db,workspace_id,"user-supplied-campaign",campaign.goal)
+        client=MetaClient(owner_id=user.id,workspace_id=workspace_id,run_id=model_run.id)
     created=[]
     problem=None
     for ix in range(body.variants):
         try:
             if live:
-                result=MetaClient().image(prompt,"1024x1024")
+                result=client.image(prompt,"1024x1024")
                 binary=base64.b64decode(result["data"]["image_b64"],validate=True)
                 provenance="live_meta"
             else:
@@ -95,7 +99,7 @@ def generate(campaign_id:str,item_id:str,workspace_id:str,body:RequestVariants,
             mime={"PNG":"image/png","JPEG":"image/jpeg","WEBP":"image/webp"}[local["format"]]
             brief_match=None
             if live:
-                evaluated=MetaClient().vision(binary,mime,
+                evaluated=client.vision(binary,mime,
                     f"Estimate visual match to this brief, no fabricated facts: {brief}",
                     BriefMatch.model_json_schema())
                 brief_match=BriefMatch.model_validate(evaluated["data"]).model_dump()
@@ -113,6 +117,9 @@ def generate(campaign_id:str,item_id:str,workspace_id:str,body:RequestVariants,
             problem=f"Generation stopped ({type(exc).__name__}); previously created variants preserved"
             break
     items=_list(db,campaign_id,item_id)
+    if model_run:
+        finish_model_run(db,model_run,"inferred" if created else "failed","live_meta",
+                         None if created else "creative_generation_failed")
     return {"variants":items,"created_count":len(created),"requested":body.variants,
             "partial":len(created)<body.variants,"warning":problem,
             "note":"Recommended is a preview suggestion only; selection requires owner action."}

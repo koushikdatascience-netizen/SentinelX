@@ -165,3 +165,11 @@ class MetaCapabilityCheck(Base):
     capability: Mapped[str]=mapped_column(String(32),primary_key=True)
     model: Mapped[str]=mapped_column(String(100))
     succeeded_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
+
+class LoginAttempt(Base):
+    """Hashed-email login throttling shared across app workers."""
+    __tablename__="login_attempts"
+    email_key: Mapped[str]=mapped_column(String(64),primary_key=True)
+    window_started_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),index=True,default=utcnow)
+    attempts: Mapped[int]=mapped_column(Integer,default=0)
+    locked_until: Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)

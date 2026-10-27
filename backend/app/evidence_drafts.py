@@ -116,11 +116,11 @@ def generate_draft(workspace_id: str, body: DraftRequest, response: Response,
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 
-    payload = {"mode": "model_evidence_draft", "request_fingerprint": fingerprint,
+    payload = {"provenance":"user_supplied", "mode": "model_evidence_draft", "request_fingerprint": fingerprint,
                "provider": config.name, "model": config.model,
                "evidence": [{"id": "E1", "source_url": str(body.website),
                              "title": body.page_title, "excerpt": body.page_excerpt,
-                             "source_type": "user_supplied_unverified", "fetched_by_server": False}],
+                             "provenance":"user_supplied", "source_type": "user_supplied_unverified", "fetched_by_server": False}],
                "approval_required": True, "external_actions_performed": 0, "deliverable": body.deliverable,
                "note": "AI interpretations and draft copy require owner review. Quote matching does not verify claims."}
     run = WorkflowRun(id=run_id, workspace_id=workspace_id, website=str(body.website),
@@ -163,7 +163,8 @@ def generate_draft(workspace_id: str, body: DraftRequest, response: Response,
                    'Keep each caption under 25 words and all other fields brief. Artifact body is the campaign brief. '
                    'Do not invent discounts, business capabilities, scarcity, customer results or contact information.')
     try:
-        result = infer(prompt)
+        result = infer(prompt, owner_id=user.id, workspace_id=workspace_id, run_id=run.id)
+        payload["provenance"] = result.get("provenance", "sample")
         payload["usage"] = result.get("usage")
         payload["finish_reason"] = result.get("finish_reason")
         if result.get("status") != "completed":

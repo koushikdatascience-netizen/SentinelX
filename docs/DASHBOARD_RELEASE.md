@@ -24,7 +24,7 @@
 - Robust media storage/processing, real SAM/video inference, verified Muse integration and genuine multi-agent autonomous execution.
 - User consent and fully isolated, SSRF-hardened public website retrieval.
 - Provider account limits and accurate charge reconciliation. Current limits are app-side conservative reservations, not provider guarantees.
-- Oracle VM capacity checks, DNS, TLS and live deployment. Server not accessed; Kamal Woodcraft remains untouched.
+- Production hardening, verified recurring backup operation, GitHub deploy account setup, and an automated Hostinger release. Current Hostinger staging is isolated and audited; see [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
 - End-to-end browser QA on an actual deployed environment and usability testing.
 
 Keep `INFERENCE_PROVIDER=demo`, `SENTINELX_MODE=demo`, and paid options off until provider Billing is verified. Running as a public internet service without additional hardening is not recommended.

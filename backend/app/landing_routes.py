@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth import current_user
-from app.workspace_routes import owned
+from app.workspace_routes import owned, create_model_run, finish_model_run
 from app.workspace_store import CampaignProject, CampaignCreative, LandingPage, LandingLead, User, session
 from app.landing import LandingSpec, SECURITY_HEADERS, render_landing, sample_landing
 from app.meta_client import MetaClient
@@ -62,13 +62,17 @@ def generate(body:CreateLanding,user:User=Depends(current_user),db:Session=Depen
                     CampaignProject.workspace_id==body.workspace_id))
     if campaign is None:raise HTTPException(404,"Campaign not found")
     live=(not user.is_demo) and MetaClient._enabled(True)
+    model_run=None
+    client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id)
     if live:
         # MetaClient reserves the global provider budget before the request.
         # This route requires the same workspace campaign attempt quota as campaigns.
         from app.campaign_routes import claim_attempt
         claim_attempt(db,body.workspace_id)
+        model_run=create_model_run(db,body.workspace_id,"user-supplied-campaign",campaign.goal)
+        client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=model_run.id)
         try:
-            result=MetaClient().text(
+            result=client.text(
                 "Create a useful conversion-oriented landing page without invented statistics, testimonials, awards, prices or third-party claims. "
                 "Use the owner's description as unverified context only. Output strictly the specified JSON.",
                 json.dumps({"description":campaign.business_description,"goal":campaign.goal,
@@ -76,7 +80,9 @@ def generate(body:CreateLanding,user:User=Depends(current_user),db:Session=Depen
                 LandingSpec.model_json_schema())
             spec=LandingSpec.model_validate(result["data"])
         except Exception as exc:
+            finish_model_run(db,model_run,"failed","live_meta","landing_generation_failed")
             raise HTTPException(502,f"Landing generation failed ({type(exc).__name__}); no automatic retry") from exc
+        finish_model_run(db,model_run,"inferred","live_meta")
         provenance="live_meta"
     else:
         spec=LandingSpec.model_validate(sample_landing(body.business_name,campaign.goal,campaign.language))
@@ -126,7 +132,7 @@ def update_page(page_id:str,workspace_id:str,body:UpdateLanding,
         if unsupported_claims(" ".join([body.spec.headline,body.spec.offer,body.spec.subheadline]+body.spec.trust_points)):
             raise HTTPException(422,"Landing contains unsupported promotional claims")
         page.spec_json=body.spec.model_dump_json()
-        page.provenance="user_edited"
+        page.provenance="user_supplied"
         # Material changes require a new publishing decision.
         page.published=False
     if body.published is not None:

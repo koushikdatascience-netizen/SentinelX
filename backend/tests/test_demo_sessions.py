@@ -20,7 +20,11 @@ def test_guest_session_isolated_and_expires(monkeypatch):
         headers={"Authorization":"Bearer "+result["access_token"]}
         ws=c.get("/api/v1/workspaces",headers=headers)
         assert ws.status_code==200 and ws.json()[0]["id"]==result["workspace"]["id"]
-        assert c.post("/api/v1/inference/test",headers=headers,json={"prompt":"Tell me about this business"}).status_code==403
+        wid=result["workspace"]["id"]
+        run=c.post(f"/api/v1/workspaces/{wid}/runs",headers=headers,json={
+            "website":"https://example.com","goal":"Improve qualified customer inquiries"}).json()
+        assert c.post("/api/v1/inference/test",headers=headers,json={"workspace_id":wid,
+            "run_id":run["id"],"prompt":"Tell me about this business"}).status_code==403
         assert c.post("/api/v1/campaigns",headers=headers,json={
             "workspace_id":result["workspace"]["id"],
             "business_description":"A sample wooden furniture shop with consultations and custom projects.",

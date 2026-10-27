@@ -27,6 +27,15 @@ Tests used local SQLite. PostgreSQL concurrency behavior and deployed browser be
 | Public crawler | Pinned DNS plus egress restrictions and adversarial SSRF tests; keep legacy routes disabled |
 | Public service hardening | Durable auth rate limits, account recovery/revocation, email verification, migrations and tested backup/restore |
 | Browser E2E and demo recording | Running stack, full account/workspace/audit/review/export journey and accurate simulation/inference labels |
-| Oracle TLS staging | Host access, capacity and resource review, backups, isolated DNS/TLS setup and health checks |
+| Hostinger CD and release | Add the restricted deployment account and GitHub Environment secrets, enable the protected workflow, verify first release and scheduled backups |
 
-No paid request, external publishing, Oracle deployment or Kamal Woodcraft infrastructure change was performed during this review. Demo and paid-off defaults remain in place.
+No paid request or external publishing was performed during this review. The current Hostinger staging audit and prepared CD workflow are recorded in [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md). Kamal Woodcraft's main site and other Hostinger services remain outside deployment scope. Demo and paid-off defaults remain in place.
+
+## 28 October 2026 update
+
+- Added persistent per-account login throttling with generic invalid-credential responses and expiry. This does not replace email verification, recovery, network-wide rate limits or account deletion.
+- Merged the latest `main` feature set into the deployment PR branch before further work so campaign, image, landing-page and approval features are retained.
+- Reconnected every direct Meta feature call to owner/workspace/run-scoped reservations. Each live operation must have a persisted run; workspace and run budgets default to zero. Demo defaults remain paid-off.
+- Meta API smoke remains one manually selected capability and now requires `SENTINELX_MODE=live` in addition to the existing explicit paid/live flags. No live call was made during this update.
+- Hostinger's restricted deploy account and daily backup timer are installed. The GitHub environment secrets and deploy variable are configured; no automated release has run because the workflow remains on the open PR branch.
+- Local backend, PostgreSQL migration and frontend build results for this update are pending. Do not mark this update production-ready until those checks pass, a main-branch release deploys, and post-deploy health and browser journeys are verified.
