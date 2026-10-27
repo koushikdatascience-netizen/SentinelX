@@ -61,8 +61,8 @@ services:
   frontend:
     image: sentinelx-stage-frontend:${SENTINELX_RELEASE:?Set SENTINELX_RELEASE}
     build:
-      context: ../..
-      dockerfile: frontend/Dockerfile
+      context: ../../frontend
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       backend:

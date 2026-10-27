@@ -32,8 +32,14 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: python -m pip check
-      - name: Build Hostinger backend image
-        run: docker build -t sentinelx-backend-ci -f Dockerfile .
+      - name: Build Hostinger application images
+        working-directory: .
+        env:
+          SENTINELX_POSTGRES_PASSWORD: ci-only-not-a-deployment-secret
+          SENTINELX_JWT_SECRET: ci-only-not-a-deployment-secret
+          SENTINELX_PUBLIC_ORIGIN: https://example.invalid
+          SENTINELX_RELEASE: ci
+        run: docker compose -f deploy/hostinger/compose.yml build backend frontend
       - run: python -m pytest -q
       - name: Migrate fresh PostgreSQL database
         run: python -m alembic upgrade head
