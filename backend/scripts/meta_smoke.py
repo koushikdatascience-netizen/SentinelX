@@ -17,7 +17,7 @@ def main():
     if capability not in {"text","vision","image"}:
         print("ERROR: unsupported smoke capability",file=sys.stderr)
         return 2
-    if any(os.getenv(k)!=v for k,v in {"INFERENCE_PROVIDER":"meta","ALLOW_PAID_INFERENCE":"true",
+    if any(os.getenv(k)!=v for k,v in {"INFERENCE_PROVIDER":"meta","SENTINELX_MODE":"live","ALLOW_PAID_INFERENCE":"true",
                                        "ENABLE_LIVE_MULTIMODAL":"true"}.items()) or not os.getenv("MODEL_API_KEY"):
         print("ERROR: live flags and key must be explicitly configured",file=sys.stderr)
         return 2

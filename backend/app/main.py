@@ -24,7 +24,6 @@ class Finding(BaseModel):
     confidence: Literal["unverified","low","medium","high"] = "unverified"
 
 class RunResponse(BaseModel):
-    provenance: Literal["sample","live_meta"] = "sample"
     run_id: str
     mode: Literal["demo","live"]
     status: str
@@ -44,34 +43,8 @@ def health():
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
     except Exception:
-        raise HTTPException(503, "database unavailable")
-    return {"status":"ok","database":"ok","model":os.getenv("META_MODEL","muse-spark-1.3"),"mode":"live" if os.getenv("MODEL_API_KEY") and os.getenv("SENTINELX_MODE") == "live" else "demo","release":os.getenv("SENTINELX_RELEASE","unknown")}
-
-@app.get("/api/v1/status")
-def public_status():
-    """Expose only safe capability provenance; readiness is not proof of live access."""
-    live_enabled = (
-        os.getenv("INFERENCE_PROVIDER", "demo").lower() == "meta"
-        and os.getenv("ALLOW_PAID_INFERENCE", "false").lower() == "true"
-        and os.getenv("ENABLE_LIVE_MULTIMODAL", "false").lower() == "true"
-        and bool(os.getenv("MODEL_API_KEY"))
-    )
-    verified = {name.strip() for name in os.getenv("META_VERIFIED_CAPABILITIES", "").split(",") if name.strip()}
-    verified_capabilities = verified.intersection({"text", "vision", "image"})
-    capabilities = {
-        name: {
-            "provenance": "live_meta" if live_enabled and name in verified_capabilities else "sample",
-            "live_verified": bool(live_enabled and name in verified_capabilities),
-        }
-        for name in ("text", "vision", "image")
-    }
-    capabilities["segment"] = {"provenance": "sample", "live_verified": False, "supported": False}
-    capabilities["transcription"] = {"provenance": "sample", "live_verified": False, "supported": False}
-    return {
-        "mode": "live" if live_enabled and verified_capabilities else "demo",
-        "release": os.getenv("SENTINELX_RELEASE", "unknown"),
-        "capabilities": capabilities,
-    }
+        raise HTTPException(503,"database unavailable")
+    return {"status":"ok","database":"ok","release":os.getenv("SENTINELX_RELEASE","unknown")}
 
 @app.post("/api/v1/analyze",response_model=RunResponse, dependencies=[Depends(current_user)])
 def analyze(body: RunRequest):
@@ -84,7 +57,7 @@ def analyze(body: RunRequest):
             findings=[Finding(title="Digital presence review required",detail="Demo placeholder: website not crawled; claims not verified.")],
             recommended_actions=["Review homepage conversion messaging","Research relevant competitors","Prepare a measurable seven-day experiment"],
             note="Demonstration only. No external research or AI inference performed.")
-    raise HTTPException(410,"Legacy live inference removed; use an owned workspace/run through MetaClient")
+    raise HTTPException(status_code=410,detail="Direct legacy inference removed. Use budgeted workspace evidence and campaign APIs.")
 
 class ResearchResponse(BaseModel):
     run_id: str
@@ -191,3 +164,24 @@ def get_meta_readiness():
     from app.model_registry import integration_readiness
     return {"integrations":integration_readiness(),"mode":"not_verified",
             "warning":"Credit activation, provider access and actual live calls are not confirmed."}
+
+from app.image_routes import router as image_router
+app.include_router(image_router)
+
+from app.campaign_routes import router as campaigns_router
+app.include_router(campaigns_router)
+
+from app.landing_routes import router as landing_router
+app.include_router(landing_router)
+
+from app.approval_routes import router as approvals_router
+app.include_router(approvals_router)
+
+from app.creatives import router as creative_variants_router
+app.include_router(creative_variants_router)
+
+from app.demo_routes import router as demo_router
+app.include_router(demo_router)
+
+from app.status_routes import router as status_router
+app.include_router(status_router)

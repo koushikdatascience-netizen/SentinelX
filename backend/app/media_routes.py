@@ -31,7 +31,7 @@ async def inspect_image(file:UploadFile=File(...),user:User=Depends(current_user
     except (UnidentifiedImageError,OSError,ValueError):
         raise HTTPException(415,"Invalid image data")
     return {"provenance":"user_supplied","filename":file.filename,"format":fmt,"width":width,"height":height,
-            "bytes":len(payload),"inference":"not_run","note":"Image validated locally. SAM inference requires a separate explicit API call."}
+            "bytes":len(payload),"inference":"not_run","note":"Image validated locally. SAM segmentation was not run; its live adapter is unsupported."}
 
 @router.post("/voice/transcribe")
 async def transcribe_audio(file:UploadFile=File(...),user:User=Depends(current_user)):
@@ -52,6 +52,7 @@ def analyze_image(workspace_id:str,run_id:str,prompt:str="Describe visible produ
                   file:UploadFile=File(...),user:User=Depends(current_user),db:Session=Depends(session)):
     owned_run(db,user,workspace_id,run_id)
     payload=file.file.read(MAX_IMAGE+1)
+    if len(payload)>MAX_IMAGE: raise HTTPException(413,"Image exceeds 5 MB")
     try:
         return MetaClient(owner_id=user.id,workspace_id=workspace_id,run_id=run_id).vision(payload,file.content_type,prompt)
     except NotSupported as exc:

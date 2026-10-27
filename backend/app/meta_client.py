@@ -8,6 +8,8 @@ from jsonschema import Draft202012Validator
 from openai import OpenAI
 from app.budget import reserve_meta
 
+_REAL_OPENAI = OpenAI
+
 
 class NotSupported(ValueError):
     pass
@@ -17,29 +19,58 @@ class MetaError(ValueError):
     """Safe error: never embeds provider responses, prompts or credentials."""
 
 
+# Compatibility name used by the campaign/image feature layer.
+MetaResponseError = MetaError
+
+
 # Authored fixture, not a model-generated image (1x1 PNG).
 SAMPLE_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC"
 
 
 class MetaClient:
-    def __init__(self, *, owner_id=None, workspace_id=None, run_id=None, max_tokens=500):
+    def __init__(self, *, owner_id=None, workspace_id=None, run_id=None, max_tokens=500, sdk_factory=None):
         if not isinstance(max_tokens, int) or not 1 <= max_tokens <= 1200:
             raise ValueError("Output token limit must be 1..1200")
         self.owner_id, self.workspace_id, self.run_id = owner_id, workspace_id, run_id
         self.max_tokens = max_tokens
+        self.sdk_factory = sdk_factory or OpenAI
+        self._actual_transport = self.sdk_factory is _REAL_OPENAI
+
+    @staticmethod
+    def _enabled(multimodal=True):
+        """Report operator gates only; a successful call is tracked separately."""
+        return (os.getenv("INFERENCE_PROVIDER", "demo").lower() == "meta"
+                and os.getenv("ALLOW_PAID_INFERENCE", "false").lower() == "true"
+                and os.getenv("ENABLE_LIVE_MULTIMODAL", "false").lower() == "true"
+                and os.getenv("SENTINELX_MODE", "demo").lower() == "live")
 
     def _live(self):
         # Both flags gate every capability, including text, per operator policy.
-        return (os.getenv("INFERENCE_PROVIDER", "demo") == "meta"
-                and os.getenv("ALLOW_PAID_INFERENCE", "false") == "true"
-                and os.getenv("ENABLE_LIVE_MULTIMODAL", "false") == "true")
+        return self._enabled(True)
+
+    @staticmethod
+    def _record_success(capability, model):
+        """Record only verified provider success metadata; never block a valid result."""
+        try:
+            from app.workspace_store import MetaCapabilityCheck, SessionLocal, utcnow
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+            with SessionLocal.begin() as db:
+                insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
+                stmt = insert(MetaCapabilityCheck).values(
+                    capability=capability, model=model, succeeded_at=utcnow())
+                db.execute(stmt.on_conflict_do_update(index_elements=["capability"],
+                    set_={"model": model, "succeeded_at": utcnow()}))
+        except Exception:
+            # Health/status reporting is secondary to the already completed inference.
+            pass
 
     def _client(self, cents):
         key = os.getenv("MODEL_API_KEY", "")
         if not key:
             raise MetaError("MODEL_API_KEY is required for live Meta calls")
         reserve_meta(self.owner_id, self.workspace_id, self.run_id, cents)
-        return OpenAI(api_key=key, base_url="https://api.meta.ai/v1", timeout=30, max_retries=0)
+        return self.sdk_factory(api_key=key, base_url="https://api.meta.ai/v1", timeout=30, max_retries=0)
 
     @staticmethod
     def _prompt(value, maximum):
@@ -128,6 +159,8 @@ class MetaClient:
                     raise MetaError("Meta output did not match schema. No retry made; usage may have been consumed.")
                 usage = response.usage
                 details = getattr(usage, "completion_tokens_details", None)
+                if self._actual_transport:
+                    self._record_success("vision" if messages[0].get("content") and isinstance(messages[0]["content"], list) else "text", model)
                 return {"provenance":"live_meta", "model":model, "data":data, "finish_reason":"stop",
                         "usage":{"prompt_tokens":getattr(usage,"prompt_tokens",None),
                                  "completion_tokens":getattr(usage,"completion_tokens",None),
@@ -173,7 +206,10 @@ class MetaClient:
                         raise MetaError("Invalid or excessive Meta image output")
                     output_format=image.format.lower()
                     image.verify()
-                return {"provenance":"live_meta", "model":model, "data":{"b64_json":encoded, "format":output_format}}
+                if self._actual_transport:
+                    self._record_success("image", model)
+                return {"provenance":"live_meta", "model":model,
+                        "data":{"b64_json":encoded, "image_b64":encoded, "format":output_format}}
         except MetaError:
             raise
         except Exception:

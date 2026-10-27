@@ -33,6 +33,7 @@ jobs:
       META_SMOKE_CAPABILITY: ${{ inputs.capability }}
       DATABASE_URL: sqlite:///./meta-smoke.sqlite3
       INFERENCE_PROVIDER: meta
+      SENTINELX_MODE: live
       ALLOW_PAID_INFERENCE: 'true'
       ENABLE_LIVE_MULTIMODAL: 'true'
       META_APP_BUDGET_CENTS: '5'

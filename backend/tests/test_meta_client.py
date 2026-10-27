@@ -17,7 +17,7 @@ from sqlalchemy import select
 
 @pytest.fixture
 def live(monkeypatch):
-    for name,value in {"INFERENCE_PROVIDER":"meta","ALLOW_PAID_INFERENCE":"true","ENABLE_LIVE_MULTIMODAL":"true",
+    for name,value in {"INFERENCE_PROVIDER":"meta","ALLOW_PAID_INFERENCE":"true","ENABLE_LIVE_MULTIMODAL":"true","SENTINELX_MODE":"live",
                        "MODEL_API_KEY":"test-only-not-a-real-key","META_MODEL":"muse-spark-1.3",
                        "META_APP_BUDGET_CENTS":"1000000","META_WORKSPACE_BUDGET_CENTS":"10","META_RUN_BUDGET_CENTS":"10"}.items():
         monkeypatch.setenv(name,value)
@@ -60,7 +60,7 @@ def chat(text="OK", reason="stop", choices=True):
 
 
 @pytest.mark.parametrize("capability",["text","vision","image","segment"])
-@pytest.mark.parametrize("disabled",["ALLOW_PAID_INFERENCE","ENABLE_LIVE_MULTIMODAL","INFERENCE_PROVIDER"])
+@pytest.mark.parametrize("disabled",["ALLOW_PAID_INFERENCE","ENABLE_LIVE_MULTIMODAL","INFERENCE_PROVIDER","SENTINELX_MODE"])
 def test_off_flags_never_construct_transport(live,monkeypatch,capability,disabled):
     monkeypatch.setenv(disabled,"demo" if disabled=="INFERENCE_PROVIDER" else "false")
     factory=Mock();monkeypatch.setattr(meta_client,"OpenAI",factory)

@@ -16,7 +16,8 @@ def test_smoke_requires_explicit_ack_before_client_creation(monkeypatch):
 def test_smoke_one_selected_capability_and_sanitized_output(monkeypatch,capsys,capability):
     for key,value in {"META_SMOKE_ACK":"I_ACKNOWLEDGE_ONE_PAID_REQUEST","META_SMOKE_CAPABILITY":capability,
                       "MODEL_API_KEY":"test-secret-not-for-logs","INFERENCE_PROVIDER":"meta","ALLOW_PAID_INFERENCE":"true",
-                      "ENABLE_LIVE_MULTIMODAL":"true","DATABASE_URL":"sqlite:///./meta-smoke.sqlite3"}.items():
+                      "ENABLE_LIVE_MULTIMODAL":"true","SENTINELX_MODE":"live",
+                      "DATABASE_URL":"sqlite:///./meta-smoke.sqlite3"}.items():
         monkeypatch.setenv(key,value)
     client=Mock()
     for name in ("text","vision","image"):
@@ -51,7 +52,8 @@ def test_provider_delegates_to_single_client(monkeypatch):
 def test_smoke_rejects_production_database(monkeypatch):
     for key,value in {"META_SMOKE_ACK":"I_ACKNOWLEDGE_ONE_PAID_REQUEST","META_SMOKE_CAPABILITY":"text",
                       "MODEL_API_KEY":"test-only","INFERENCE_PROVIDER":"meta","ALLOW_PAID_INFERENCE":"true",
-                      "ENABLE_LIVE_MULTIMODAL":"true","DATABASE_URL":"postgresql://never-access-this"}.items():
+                      "ENABLE_LIVE_MULTIMODAL":"true","SENTINELX_MODE":"live",
+                      "DATABASE_URL":"postgresql://never-access-this"}.items():
         monkeypatch.setenv(key,value)
     factory=Mock();monkeypatch.setattr(meta_smoke,"MetaClient",factory)
     assert meta_smoke.main()==2

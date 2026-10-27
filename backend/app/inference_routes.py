@@ -11,8 +11,8 @@ from app.budget import budget_status
 router = APIRouter(prefix="/api/v1/inference", tags=["Inference"])
 
 class InferenceRequest(BaseModel):
-    workspace_id: str | None = None
-    run_id: str | None = None
+    workspace_id: str = Field(min_length=1,max_length=36)
+    run_id: str = Field(min_length=1,max_length=36)
     prompt: str = Field(min_length=10,max_length=2000)
 
 @router.get("/status")
@@ -26,10 +26,11 @@ def status(user: User = Depends(current_user)):
 
 @router.post("/test")
 def test_inference(body: InferenceRequest, user: User = Depends(current_user), db: Session = Depends(session)):
-    if body.workspace_id or body.run_id:
-        owned_run(db,user,body.workspace_id,body.run_id)
+    owned_run(db,user,body.workspace_id,body.run_id)
+    if user.is_demo:
+        raise HTTPException(403,"Demo sessions cannot invoke paid inference")
     try:
-        return infer(body.prompt, owner_id=getattr(user,"id",None), workspace_id=body.workspace_id, run_id=body.run_id)
+        return infer(body.prompt, owner_id=user.id, workspace_id=body.workspace_id, run_id=body.run_id)
     except ValueError as exc:
         raise HTTPException(422,str(exc)) from exc
     except Exception as exc:

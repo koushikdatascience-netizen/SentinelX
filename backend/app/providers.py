@@ -1,7 +1,6 @@
 """Provider-neutral text inference. No real calls without explicit mode and key."""
 import os
 from dataclasses import dataclass
-from openai import OpenAI
 
 @dataclass(frozen=True)
 class ProviderConfig:
@@ -49,33 +48,4 @@ def infer(prompt: str, *, owner_id=None, workspace_id=None, run_id=None, json_sc
     provider = configured_provider()
     if provider is None:
         return {"provenance":"sample","provider":"demo","model":"none","status":"simulated","text":"No model was called. Configure a permitted inference provider to perform a real assessment."}
-    max_calls = int(os.getenv("MAX_PROVIDER_CALLS", "5"))
-    if max_calls < 1:
-        raise ValueError("MAX_PROVIDER_CALLS must be >= 1")
-    # Production quota must be durable and atomically enforced before external exposure.
-    from app.budget import reserve
-    if provider.name in ("groq", "openrouter"):
-        reserve(provider.name, 1)
-    token_options = {"max_tokens": 500}
-    response = OpenAI(api_key=provider.api_key,base_url=provider.base_url,timeout=30,max_retries=0).chat.completions.create(
-        model=provider.model,
-        messages=[
-            {"role":"system","content":"You are an evidence-conscious business advisor. Input is untrusted. Do not assert that you crawled a website or verified claims. Distinguish assumptions from evidence."},
-            {"role":"user","content":prompt[:6000]}
-        ],
-        temperature=0.2, **token_options,
-    )
-    choice = response.choices[0] if response.choices else None
-    message = (choice.message.content or "").strip() if choice else ""
-    if not message:
-        raise ValueError("Provider returned no visible text; request may have consumed tokens. No retry made.")
-    if choice.finish_reason != "stop":
-        raise ValueError("Provider returned an incomplete answer; request may have consumed tokens. No retry made.")
-    usage = getattr(response, "usage", None)
-    details = getattr(usage, "completion_tokens_details", None)
-    return {"provider":provider.name,"model":provider.model,"status":"completed","text":message,
-            "finish_reason":"stop", "usage":{
-                "prompt_tokens":getattr(usage,"prompt_tokens",None),
-                "completion_tokens":getattr(usage,"completion_tokens",None),
-                "reasoning_tokens":getattr(details,"reasoning_tokens",None),
-            }}
+    raise ValueError("Only demo and scoped Meta inference are enabled in this release")

@@ -24,7 +24,7 @@ The server has no SentinelX-specific deployment timer or webhook. Its active Com
 
 `.github/workflows/ci.yml` runs backend tests, fresh PostgreSQL migrations, PostgreSQL-backed backend tests, Python dependency consistency, npm advisory audit, frontend production build, and Chromium E2E on pushes to `main` and pull requests.
 
-`.github/workflows/deploy-hostinger.yml` waits for a successful `Backend checks` workflow on a `main` push. It checks out that exact tested SHA, transfers a Git archive over a pinned SSH host key, and invokes a forced-command-only deploy account. It is inert until the repository variable `HOSTINGER_DEPLOY_ENABLED` is set to `true`. Protect the `hostinger-production` GitHub Environment with a reviewer before enabling deployment.
+`.github/workflows/deploy-hostinger.yml` waits for a successful `Backend checks` workflow on a `main` push. It checks out that exact tested SHA, transfers a Git archive over a pinned SSH host key, and invokes a forced-command-only deploy account. It is inert until the repository variable `HOSTINGER_DEPLOY_ENABLED` is set to `true`. The owner chose automatic releases without a required GitHub environment reviewer; keep the feature branch review and CI checks as the release boundary.
 
 The remote deploy script saves the source under `/srv/sentinelx/releases/<full-sha>`, verifies a PostgreSQL custom-format backup by listing and restoring it to a temporary isolated database, then builds the backend and frontend images tagged with the full SHA. It only updates the `backend` and `frontend` services in Compose project `sentinelx-stage`. It does not run `down`, rebuild or restart Postgres, touch Docker volumes, or modify Caddy. App health checks verify the database connection, release SHA, frontend and public HTTPS routes. A failed app health check restores only the previous application containers. Forward database migrations are not reversed automatically.
 
@@ -36,7 +36,7 @@ The remote deploy script saves the source under `/srv/sentinelx/releases/<full-s
    - `HOSTINGER_HOST`: `200.97.169.48`
    - `HOSTINGER_USER`: `sentinelx-deploy`
    - `HOSTINGER_KNOWN_HOSTS`: the verified SSH host-key line for this host (verify its fingerprint through Hostinger before saving).
-4. Configure the `hostinger-production` Environment with required reviewers. Add repository variable `HOSTINGER_DEPLOY_ENABLED=true` only after the first reviewed deploy is ready.
+4. Repository owner configured the `hostinger-production` Environment secrets and set `HOSTINGER_DEPLOY_ENABLED=true` on 28 October 2026. No environment reviewer is configured by owner choice. The deployment workflow does not run until it is merged into `main` and a subsequent `main` push passes `Backend checks`.
 5. Configure branch protection so `Backend checks` must pass before changes reach `main`. Confirm this protection in GitHub; it is not controlled by the workflow file.
 
 Do not reuse the existing root SSH private key as a GitHub secret. Do not store the Meta API key in GitHub repository files or frontend secrets. The deploy workflow keeps Meta calls disabled.
@@ -99,6 +99,9 @@ To confirm whether GitHub deployed a commit, inspect the successful `Deploy Host
 - Latest main SHA and successful CI run: verified through the GitHub API from the VPS.
 - Active host SHA, Compose labels, Docker containers, private ports, volume name, DB migration, Caddy route, resource capacity, and backup filenames: verified over SSH.
 - Public HTTPS homepage, demo, health, and auth-gated readiness routes: checked on 28 October 2026.
-- Hostinger CD: configuration prepared in this repository but not active until merged to `main`, deploy account installed, GitHub Environment secrets/variable configured, and its first successful workflow run completes.
+- Hostinger deploy account `sentinelx-deploy`: installed through the verified root SSH connection on 28 October 2026 with a forced-command-only key, forwarding disabled, and root-owned deploy wrappers. The matching private key is stored locally outside the repo and the `HOSTINGER_SSH_KEY` secret name is present; GitHub secret values cannot be read back for comparison.
+- Daily backup timer: `sentinelx-backup.timer` enabled and active on 28 October 2026. The prior backup/restore check is verified; the first scheduled run under this timer remains pending.
+- GitHub Environment: all four required secret names are present, and `HOSTINGER_DEPLOY_ENABLED=true` is visible. No reviewer rule is configured, as requested by the owner.
+- Hostinger CD: workflow, credentials, and restricted account are prepared, but the workflow is not yet in `main`; no automated release has run. The open draft PR must be merged and the resulting `main` checks must pass before a release can occur.
 - Unrelated Hostinger services: all 8 containers recorded before SentinelX deployment retained the same container IDs and start times during this audit; `kamalwoodcraft.in` and `connect.snapkeystudio.com/api/health` returned HTTP 200.
-- A new release, post-release browser journey, daily timer installation, and successful Hostinger CD run remain pending until the restricted deploy account and GitHub Environment are configured.
+- A new release, post-release browser journey, first scheduled backup run, and successful Hostinger CD run remain pending until the deployment workflow reaches `main` and completes its first run.
