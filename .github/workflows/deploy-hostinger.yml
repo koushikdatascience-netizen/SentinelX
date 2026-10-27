@@ -52,7 +52,11 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$HOSTINGER_SSH_KEY" > ~/.ssh/hostinger_deploy
           chmod 600 ~/.ssh/hostinger_deploy
-          printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Bind the verified key material to the configured connection alias.
+          # The host field in known_hosts may be an IP while HOSTINGER_HOST is a DNS alias.
+          pin="$(awk 'NF >= 3 && $2 ~ /^(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa)$/ { print $2, $3; exit }' <<< "$HOSTINGER_KNOWN_HOSTS")"
+          test -n "$pin"
+          printf '%s %s\n' "$HOSTINGER_HOST" "$pin" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Validate deploy private key without printing it
