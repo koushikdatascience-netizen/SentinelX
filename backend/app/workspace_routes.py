@@ -168,5 +168,5 @@ def export_audit_report(workspace_id:str,run_id:str,user:User=Depends(current_us
     for a in reviews: notes.append(f"- {a.description}: {a.state} (no external execution)")
     if not reviews: notes.append("No action decisions recorded.")
     notes.extend(["","## Limitations","This report does not claim verified business impact, competitor research, publishing, or model inference unless explicitly evidenced.",""])
-    return Response(content="\\n".join(notes),media_type="text/markdown",
+    return Response(content="\n".join(notes),media_type="text/markdown",
                     headers={"Content-Disposition":f'attachment; filename="sentinelx-{run.id}.md"'})
