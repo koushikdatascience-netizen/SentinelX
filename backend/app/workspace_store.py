@@ -89,3 +89,9 @@ class CampaignItem(Base):
     provenance: Mapped[str] = mapped_column(String(24),default="sample")
     state: Mapped[str] = mapped_column(String(24),default="proposed")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
+
+class CampaignQuota(Base):
+    """Lifetime upper bound on two-call campaign generation attempts per workspace."""
+    __tablename__="campaign_quotas"
+    workspace_id: Mapped[str]=mapped_column(ForeignKey("workspaces.id"),primary_key=True)
+    attempts: Mapped[int]=mapped_column(Integer,default=0)
