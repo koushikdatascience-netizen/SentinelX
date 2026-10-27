@@ -14,6 +14,10 @@ def configured_provider() -> ProviderConfig | None:
     name = os.getenv("INFERENCE_PROVIDER", "demo").lower()
     if name == "demo":
         return None
+    if name == "ollama":
+        model=os.getenv("INFERENCE_MODEL","")
+        if not model: raise ValueError("INFERENCE_MODEL is required for local Ollama inference")
+        return ProviderConfig("ollama",os.getenv("OLLAMA_OPENAI_BASE_URL","http://127.0.0.1:11434/v1"),model,"ollama")
     providers = {
         "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY", "INFERENCE_MODEL"),
         "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", "INFERENCE_MODEL"),
