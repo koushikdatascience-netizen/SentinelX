@@ -2,10 +2,9 @@ import os
 import uuid
 from typing import Literal
 from urllib.parse import urlparse
-from fastapi import FastAPI, HTTPException, Depends, Depends
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, Field, HttpUrl
 from app.workflows import State, ActionRecord, action_store
-from app.auth import current_user
 from app.auth import current_user
 
 app = FastAPI(title="SentinelX API", version="0.4.0")
