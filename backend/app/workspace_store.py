@@ -58,3 +58,12 @@ class EvidenceQuota(Base):
     __tablename__ = "evidence_quotas"
     workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id"), primary_key=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
+
+class ImageAssessment(Base):
+    """Metadata and validated scores only. Raw uploaded image is not retained."""
+    __tablename__ = "image_assessments"
+    id: Mapped[str] = mapped_column(String(36),primary_key=True,default=lambda:str(uuid4()))
+    workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id"),index=True)
+    filename: Mapped[str] = mapped_column(String(180))
+    assessment_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
