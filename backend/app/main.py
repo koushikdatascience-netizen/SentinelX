@@ -2,9 +2,10 @@ import os
 import uuid
 from typing import Literal
 from urllib.parse import urlparse
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Depends
 from pydantic import BaseModel, Field, HttpUrl
 from app.workflows import State, ActionRecord, action_store
+from app.auth import current_user
 from app.auth import current_user
 
 app = FastAPI(title="SentinelX API", version="0.4.0")
@@ -41,6 +42,8 @@ def health():
 
 @app.post("/api/v1/analyze",response_model=RunResponse, dependencies=[Depends(current_user)])
 def analyze(body: RunRequest):
+    if os.getenv("ENABLE_LEGACY_ENDPOINTS") != "true":
+        raise HTTPException(410,"Legacy endpoint disabled; use authenticated workspace API")
     run_id = str(uuid.uuid4())
     domain = urlparse(str(body.website)).hostname or ""
     if os.getenv("SENTINELX_MODE","demo") != "live":
@@ -78,6 +81,8 @@ class ResearchResponse(BaseModel):
 
 @app.post("/api/v1/research",response_model=ResearchResponse, dependencies=[Depends(current_user)])
 def research(body: RunRequest):
+    if os.getenv("ENABLE_LEGACY_ENDPOINTS") != "true":
+        raise HTTPException(410,"Legacy endpoint disabled; use authenticated workspace API")
     from app.research import snapshot
     from app.agents import build_plan
     try:
@@ -100,10 +105,14 @@ class ReviewRequest(BaseModel):
 
 @app.post("/api/v1/actions",response_model=ActionRecord,status_code=201, dependencies=[Depends(current_user)])
 def propose_action(body: ProposalRequest):
+    if os.getenv("ENABLE_LEGACY_ENDPOINTS") != "true":
+        raise HTTPException(410,"Legacy endpoint disabled; use authenticated workspace API")
     return action_store.propose(body.run_id,body.kind,body.description,str(body.source_url))
 
 @app.get("/api/v1/actions/{action_id}",response_model=ActionRecord, dependencies=[Depends(current_user)])
 def get_action(action_id: str):
+    if os.getenv("ENABLE_LEGACY_ENDPOINTS") != "true":
+        raise HTTPException(410,"Legacy endpoint disabled; use authenticated workspace API")
     record = action_store.get(action_id)
     if record is None:
         raise HTTPException(status_code=404,detail="Action not found")
@@ -111,6 +120,8 @@ def get_action(action_id: str):
 
 @app.post("/api/v1/actions/{action_id}/review",response_model=ActionRecord, dependencies=[Depends(current_user)])
 def review_action(action_id: str,body: ReviewRequest):
+    if os.getenv("ENABLE_LEGACY_ENDPOINTS") != "true":
+        raise HTTPException(410,"Legacy endpoint disabled; use authenticated workspace API")
     try:
         rec = action_store.decide(action_id,State(body.decision))
     except ValueError as exc:
