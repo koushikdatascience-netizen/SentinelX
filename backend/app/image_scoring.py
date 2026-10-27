@@ -45,7 +45,7 @@ def measure_image(payload:bytes)->dict:
             "provenance":"local_measurement",
             "notes":["Edge variance is a texture proxy, not a calibrated blur score.",
                      "Technical readiness is a reproducible heuristic, not a validated aesthetic or conversion score.",
-                     "Scoring uses fixed reference targets (1080 px, 128 brightness, 65 contrast, 600 edge variance); thresholds need calibration."]]
+                     "Scoring uses fixed reference targets (1080 px, 128 brightness, 65 contrast, 600 edge variance); thresholds need calibration."]
         }
     except Image.DecompressionBombError as exc:
         raise ValueError("Image exceeds safety pixel limit") from exc
