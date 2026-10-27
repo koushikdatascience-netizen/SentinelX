@@ -37,6 +37,9 @@ async def score_photo(workspace_id:str=Form(...),business_context:str=Form(""),
     # The declared MIME must match the parsed file format, not just be on an allowlist.
     if file.content_type != {"PNG":"image/png","JPEG":"image/jpeg","WEBP":"image/webp"}[local["format"]]:
         raise HTTPException(415,"Unsupported content type")
+    if not user.is_demo and MetaClient._enabled(True):
+        from app.campaign_routes import claim_attempt
+        claim_attempt(db,workspace_id)
     schema=Scores.model_json_schema()
     prompt=("Assess this consented product image for marketing use, relative to the business description. "
             "Give concrete suggestions; do not claim sales outcomes or unobserved facts. "
