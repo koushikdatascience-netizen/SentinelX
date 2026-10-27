@@ -11,7 +11,7 @@ from app.workspace_store import engine
 
 app = FastAPI(title="SentinelX API", version="0.4.0")
 from fastapi.middleware.cors import CORSMiddleware
-app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS","http://localhost:3000,http://127.0.0.1:3000").split(",") if origin.strip()], allow_credentials=False, allow_methods=["GET","POST"], allow_headers=["Authorization","Content-Type"])
+app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS","http://localhost:3000,http://127.0.0.1:3000").split(",") if origin.strip()], allow_credentials=False, allow_methods=["GET","POST","PATCH","DELETE"], allow_headers=["Authorization","Content-Type"])
 
 class RunRequest(BaseModel):
     website: HttpUrl

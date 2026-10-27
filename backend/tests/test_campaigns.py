@@ -56,3 +56,10 @@ def test_requested_live_never_substitutes_samples(authenticated_client,monkeypat
     assert "No sample was substituted" in response.json()["detail"]
     assert c.get("/api/v1/campaigns",params={"workspace_id":wid}).json()==[]
     assert c.get("/api/v1/campaigns/runtime").json()["mode"]=="unavailable"
+
+def test_browser_can_preflight_authenticated_edits():
+    response=TestClient(app).options("/api/v1/landing/test",headers={
+        "Origin":"http://localhost:3000","Access-Control-Request-Method":"PATCH",
+        "Access-Control-Request-Headers":"authorization,content-type"})
+    assert response.status_code==200
+    assert "PATCH" in response.headers["access-control-allow-methods"]
