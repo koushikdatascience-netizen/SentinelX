@@ -54,9 +54,9 @@ def test_vision_content_parts(monkeypatch):
 def test_malformed_and_truncated_responses_fail_closed(monkeypatch):
     c,sdk=client(monkeypatch)
     monkeypatch.setattr("app.meta_client.reserve",lambda *args:None)
-    sdk.complete=lambda **kwargs:completion("not-json")
+    sdk.chat.completions.create=lambda **kwargs:completion("not-json")
     with pytest.raises(MetaResponseError):c.text("system","user",{"type":"object"})
-    sdk.complete=lambda **kwargs:completion("unfinished","length")
+    sdk.chat.completions.create=lambda **kwargs:completion("unfinished","length")
     with pytest.raises(MetaResponseError):c.text("system","user")
 
 def test_sam_fails_without_spend(monkeypatch):
