@@ -97,7 +97,10 @@ def generate(body:ToolRequest,user:User=Depends(current_user),db:Session=Depends
     row.result_json=json.dumps(result);db.commit()
     failure_status=502
     try:
-        claim_attempt(db,body.workspace_id)
+        # Research calls use the owner/workspace/run scoped Meta spend guard.
+        # They do not consume the separate campaign-generation allowance.
+        if body.tool not in ("competitors", "keywords"):
+            claim_attempt(db,body.workspace_id)
         client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=row.id,max_tokens=2600)
         if body.tool in ("competitors","keywords"):
             intent=("Find nearby candidate competitors and comparable businesses. Prioritize matching offerings and location. "

@@ -79,6 +79,21 @@ def test_quota_failure_stops_before_model_request(authenticated_client,monkeypat
     assert response.status_code==429 and "limit reached" in response.json()["detail"]
 
 
+def test_competitor_research_does_not_consume_campaign_generation_quota(authenticated_client,monkeypatch):
+    enabled(monkeypatch)
+    from fastapi import HTTPException
+    def denied(*args):raise HTTPException(429,"Campaign generation attempt limit reached")
+    calls=[]
+    monkeypatch.setattr(workbench,"claim_attempt",denied)
+    monkeypatch.setattr(workbench.MetaClient,"search",lambda self,query:(calls.append(query) or {
+        "provenance":"live_meta","model":"offline-test","data":{"summary":"Candidate evidence.",
+        "citations":[{"title":"Source","url":"https://example.org"}],"searched":True}}))
+    workspace=profile(authenticated_client)["workspace_id"]
+    response=authenticated_client.post("/api/v1/workbench",json=payload(workspace,"competitors",industry="Manufacturing",location="Kalyani"))
+    assert response.status_code==201 and len(calls)==1
+    assert response.json()["data"]["citations"]
+
+
 def test_tools_do_not_fall_back_to_samples_when_paid_flags_off(authenticated_client,monkeypatch):
     monkeypatch.setenv("INFERENCE_PROVIDER","demo")
     workspace=profile(authenticated_client)["workspace_id"]
