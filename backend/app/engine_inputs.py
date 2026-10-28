@@ -30,14 +30,6 @@ def context_excerpt(text,omit_quoted_intro=False):
     return text if len(text)<=520 else text[:390]+"\n[excerpt omitted]\n"+text[-110:]
 
 
-def evidence_excerpts(sources,multi_page=False):
-    result=[]
-    for source in sources:
-        limit=6000//max(1,len(sources)) if multi_page else 1800 if source["role"]=="business" else 300
-        result.append({"id":source["id"],"text":source["text"][:limit]})
-    return result
-
-
 def wav_duration(payload,mime):
     if mime not in ("audio/wav","audio/x-wav") or not isinstance(payload,bytes) or not 44<=len(payload)<=3_000_000:
         raise ValueError("Use a mono 16-bit PCM WAV recording, up to 60 seconds")

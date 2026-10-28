@@ -1,7 +1,6 @@
 import os
 import uuid
 import pytest
-os.environ["ENABLE_RESEARCH_WORKER"]="false"
 from fastapi.testclient import TestClient
 from app.main import app
 from app.workspace_store import init_db
