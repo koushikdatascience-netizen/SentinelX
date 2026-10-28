@@ -113,7 +113,7 @@ test("single business consent wraps on mobile and research progress opens in a m
  await expect(progress.getByRole("heading",{name:/Reviewing your key pages|Research complete|Research saved with gaps/})).toBeVisible();
  await expect(progress.getByText(/pages · .*previews saved/)).toBeVisible();
  await page.screenshot({path:"test-results/research-progress-modal.png"});
- await progress.getByRole("button",{name:"Close"}).click();
+ await progress.getByRole("button",{name:"Close",exact:true}).click();
  await expect(progress).not.toBeVisible();
 });
 
