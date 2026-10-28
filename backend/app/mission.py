@@ -25,8 +25,8 @@ class Opportunity(BaseModel):
     proposed_action:str=Field(min_length=20,max_length=400)
     success_check:str=Field(min_length=15,max_length=300)
     priority:Literal["high","medium","low"]="medium"
-    existing_coverage:str=Field(default="",max_length=450)
-    why_change:str=Field(default="",max_length=450)
+    existing_coverage:str=Field(min_length=15,max_length=450)
+    why_change:str=Field(min_length=15,max_length=450)
 
 
 class Strength(BaseModel):
@@ -111,11 +111,24 @@ def report_markdown(payload):
            "Why: "+item.get("why_change","Review hypothesis"),"Proposed change: "+item["proposed_action"],
            "Verification: "+item["success_check"],f'> {item["quote"]} (source {item["source_id"]})'])
     lines.extend(["","## Sources and coverage"])
+    if payload.get("market_research"):
+        market=payload["market_research"]
+        lines.extend(["","### Market search",f'Provenance: {market["provenance"]}',market["data"]["summary"],
+            "Search citations identify evidence pointers, not independently verified business outcomes."])
+        lines.extend([f'- {s["title"]}: {s["url"]}' for s in market["data"].get("citations",[])])
+    for context in payload.get("business_context",[]):
+        lines.extend(["","### Business twin / owner context",f'Provenance: {context["provenance"]}',
+            context["filename"],context["text"],context["limitation"]])
     for source in payload["sources"]:
         lines.extend([f'- {source["id"]}: {source["url"]}',f'  Origin: {source["origin"]}; collected: {source.get("collected_at")}; SHA-256: {source.get("sha256")}'])
     lines.extend(["- "+note for note in plan.get("coverage_notes",[])])
     lines.extend(["","## Attached media reviews and documents"])
     for asset in payload.get("assets",[]):
         lines.extend(["","### "+asset.get("filename",asset["kind"]),"Provenance: "+asset["provenance"],asset["limitation"],asset["text"]])
+    for delivery in payload.get("deliveries",[]):
+        lines.extend(["","### Supervised delivery receipt",f'Operation: {delivery["operation"]}; status: {delivery["status"]}',
+            f'Provenance: {delivery["provenance"]}; published by this operation: {delivery.get("external_publication",False)}'])
+        if delivery.get("verification"):
+            lines.extend([f'- {c["name"]}: {"pass" if c["passed"] else "fail"} — {c["detail"]}' for c in delivery["verification"]["checks"]])
     lines.extend(["","## Unknowns and limits",*["- "+note for note in [*plan.get("unknowns",[]),*payload.get("limitations",[])]]])
     return "\n".join(lines)
