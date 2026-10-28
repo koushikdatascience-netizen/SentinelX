@@ -19,9 +19,12 @@ def public_link(value):
 def context_excerpt(text,omit_quoted_intro=False):
     """Select bounded prior-output excerpts; keep the complete original for audit."""
     if omit_quoted_intro:
-        lines=text.splitlines()
-        while lines and (not lines[0].strip() or lines[0].lstrip().startswith(">")):
-            lines.pop(0)
+        lines=[];intro=True
+        for line in text.splitlines():
+            stripped=line.strip()
+            if intro and stripped.startswith(">"):continue
+            lines.append(line)
+            if stripped and not (stripped.startswith("**") and stripped.endswith("**")):intro=False
         text="\n".join(lines)
     text=text.strip()
     return text if len(text)<=520 else text[:390]+"\n[excerpt omitted]\n"+text[-110:]
