@@ -169,9 +169,11 @@ test("business mission records tool handoffs and guides a campaign with source e
  await nav.getByRole("button",{name:"Website analysis",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Website analysis",exact:true})).toBeVisible();
  await page.getByLabel("Use sample mission (no network or credits)").check();
+ await page.getByLabel("Use separate evidence research and planning roles (two requests in live mode).").check();
  await page.getByRole("button",{name:"Run sample mission",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Website analysis report",exact:true})).toBeVisible();
- await expect(page.locator(".mission-step")).toHaveCount(4);
+ await expect(page.locator(".mission-step")).toHaveCount(6);
+ await expect(page.getByRole("heading",{name:"Research handoff to the planner",exact:true})).toBeVisible();
  await expect(page.locator(".mission-source")).toHaveCount(1);
  await expect(page.getByText("Every cited quote matched its collected source; hypotheses still require owner review",{exact:true})).toBeVisible();
  const downloadPromise=page.waitForEvent("download");
@@ -182,7 +184,8 @@ test("business mission records tool handoffs and guides a campaign with source e
  for await(const chunk of stream!)chunks.push(chunk);
  const report=JSON.parse(Buffer.concat(chunks).toString());
  expect(report.provenance).toBe("sample");expect(report.sources[0].origin).toBe("fixture");
- expect(report.trace).toHaveLength(4);expect(report.verification).toBeNull();
+ expect(report.trace).toHaveLength(6);expect(report.verification).toBeNull();
+ expect(report.research.validated).toBe(true);expect(report.research.provenance).toBe("sample");
  await expect(page.getByRole("heading",{name:"What works · preserve these",exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Create document",exact:true}).click();
  await expect(page.locator(".report-asset")).toHaveCount(1);
