@@ -2,7 +2,7 @@ import io
 import uuid
 from PIL import Image
 from fastapi.testclient import TestClient
-from app.image_scoring import measure_image
+from app.image_scoring import make_contact_sheet,measure_image
 from app.main import app
 
 def png(color=(170,130,80),size=(320,240)):
@@ -20,6 +20,16 @@ def test_measurements_are_real_local_metrics():
 def test_bad_image_rejected():
     import pytest
     with pytest.raises(ValueError):measure_image(b"not an image")
+
+def test_contact_sheet_is_one_bounded_image_for_up_to_four_inputs():
+    payload=png()
+    sheet=make_contact_sheet([payload,payload,payload,payload])
+    result=measure_image(sheet)
+    assert result["format"]=="JPEG"
+    assert result["width"]==1440 and result["height"]==1712
+    assert len(sheet)<=5_000_000
+    import pytest
+    with pytest.raises(ValueError):make_contact_sheet([payload]*5)
 
 def test_scoring_isolated_and_does_not_fabricate_meta(authenticated_client):
     c=authenticated_client
