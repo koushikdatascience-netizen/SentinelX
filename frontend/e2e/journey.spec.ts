@@ -232,6 +232,8 @@ test("business mission records tool handoffs and guides a campaign with source e
  const nav=page.getByRole("navigation",{name:"Main navigation"});
  await nav.getByRole("button",{name:"Business engine",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Business mission",exact:true})).toBeVisible();
+ await page.getByLabel("Business website").fill("https://example.org/");
+ await page.getByLabel("Business goal").fill("Improve qualified requests for furniture workshop quotations.");
  await page.getByLabel("Use sample mission (no network or credits)").check();
  await page.getByLabel("Business operations context").fill("Trade components only; preserve bulk order constraints and the existing quotation process.");
  await page.getByLabel("I can share this context with the model. Voice input is a draft, never execution approval.").check();
