@@ -61,8 +61,9 @@ test("business onboarding skips collection, saves editable details and uploads, 
  await page.getByRole("tab",{name:"Activity",exact:true}).click();
  await expect(page.getByText("No research requests have been made.",{exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Start new research",exact:true}).click();
- await expect(page.getByRole("status")).toContainText("Research queued");
+ await expect(page.getByRole("status")).toContainText("Research running");
  expect(starts).toHaveLength(1);
+ await page.getByRole("tab",{name:"Activity",exact:true}).click();
  await expect(page.getByText("Research finished.",{exact:false})).toBeVisible({timeout:15000});
  await expect(page.getByText("Only owner-supplied information is available.",{exact:false})).toBeVisible();
 });
@@ -106,13 +107,13 @@ test("single business consent wraps on mobile and research progress opens in a m
  await page.getByRole("tab",{name:"Activity",exact:true}).click();
  await page.getByRole("button",{name:"Start new research",exact:true}).click();
  await nav.getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.getByRole("button",{name:/View (live|research) progress/}).click();
- const progress=page.getByRole("dialog",{name:"Research agent progress"});
+ await page.getByRole("button",{name:"View research progress"}).click();
+ const progress=page.getByRole("dialog",{name:"Website research"});
  await expect(progress).toBeVisible();
- await expect(progress.getByRole("heading",{name:"Live activity"})).toBeVisible();
- await expect(progress.getByText("pages collected",{exact:true})).toBeVisible();
+ await expect(progress.getByRole("heading",{name:/Reviewing your key pages|Research complete|Research saved with gaps/})).toBeVisible();
+ await expect(progress.getByText(/pages · .*previews saved/)).toBeVisible();
  await page.screenshot({path:"test-results/research-progress-modal.png"});
- await progress.getByRole("button",{name:"Keep working"}).click();
+ await progress.getByRole("button",{name:"Close"}).click();
  await expect(progress).not.toBeVisible();
 });
 
