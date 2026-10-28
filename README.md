@@ -8,6 +8,8 @@
 
 ## The product loop
 
+The **Research & data** workspace adds bounded multi-page website discovery, durable evidence facts and reviewable social candidates, selected-competitor comparisons, private multi-file parsing, deterministic data quality/totals and an exportable intelligence report. Its collected public evidence can feed the existing Business engine without a second crawl. No private uploaded data is sent to AI. See [implementation, safety limits and incomplete scope](docs/PRODUCT_EXPANSION_RELEASE.md); Maps, OAuth connectors, MCP and the general universal agent are not claimed as completed.
+
 1. **Brief:** The owner supplies their description, goal, optional website URL, product imagery and preferred language (English, Bengali or Hindi).
 2. **Image measurements:** Pillow reads real pixels (resolution, brightness, contrast, texture proxy, color palette) and produces a documented technical-readiness heuristic. Optional Meta image analysis requires explicit live authorization.
 3. **Business audit:** Produce a 7-day campaign with positioning hypotheses and evidence/assumption references. Demo mode uses samples; live mode uses structured Muse Spark responses.

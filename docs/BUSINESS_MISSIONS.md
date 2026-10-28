@@ -1,5 +1,7 @@
 # Business mission: evidence to approved action
 
+The separate **Research & data** flow now provides bounded multi-page collection and persistent facts. Selecting **Continue in business engine** carries its completed research ID and public context into explicit live planning. All source snapshots retain their original timestamps and hashes; the planner does not recrawl those pages. Private datasets are excluded from this handoff. See PRODUCT_EXPANSION_RELEASE.md for limits and verification status. The single-page behavior below remains available for missions without a selected research job.
+
 The signed-in **Business mission** tool restores the original research → opportunity → improvement → technical verification loop. It builds on existing campaign, creative and landing features rather than adding a separate generator.
 
 A live mission fetches one owner-selected business HTTPS page and up to two supplied comparison pages. The collector validates every DNS answer, connects only to a validated numeric public address, verifies TLS against the original hostname, rechecks redirects, ignores proxy environment settings and bounds request duration and response size. No anonymous crawling, JavaScript execution or recursive crawl is enabled. Optional cited candidate discovery is now connected through the Business engine.
