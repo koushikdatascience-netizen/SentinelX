@@ -33,8 +33,8 @@ export function BusinessSummary({token,workspace,onOpen}:{token:string;workspace
  return <><section className={`business-summary ${running(job)?"research-active":""}`}>
    <div className="business-summary-icon">{running(job)?<span className="research-spinner" aria-label="Website research is running"/>:<ProductIcon name="globe" size={22}/>}</div>
    <div className="business-summary-copy"><span className="small-label">{running(job)?"RESEARCH IN PROGRESS":job?"LATEST RESEARCH":"YOUR BUSINESS"}</span><h2>{profile.details.name}</h2>
-     <p role={running(job)?"status":undefined}>{running(job)?job.report.activity.at(-1)?.message||"Collecting your key website pages…":job?`${job.report.coverage.pages_collected} pages reviewed · ${job.state==="completed"?"Complete":"Saved with gaps"}`:"Profile ready · research not started"}</p>
-     {running(job)&&<small>{job.report.coverage.pages_collected} pages · {job.report.coverage.screenshots_saved} previews saved</small>}{loadError&&<small role="alert">{loadError}</small>}
+     <p role={job&&running(job)?"status":undefined}>{job&&running(job)?job.report.activity.at(-1)?.message||"Collecting your key website pages…":job?`${job.report.coverage.pages_collected} pages reviewed · ${job.state==="completed"?"Complete":"Saved with gaps"}`:"Profile ready · research not started"}</p>
+     {job&&running(job)&&<small>{job.report.coverage.pages_collected} pages · {job.report.coverage.screenshots_saved} previews saved</small>}{loadError&&<small role="alert">{loadError}</small>}
    </div>
    <button className="secondary" onClick={()=>job?setShowProgress(true):onOpen()}>{job?"View progress":"Business & research"}<ProductIcon name="arrow" size={16}/></button>
  </section>{showProgress&&job&&<Modal title="Website research" onClose={()=>setShowProgress(false)}>
