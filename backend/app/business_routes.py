@@ -16,6 +16,8 @@ from app.business_store import BusinessProfile,BrandResearchJob,BrandAsset
 from app.business_files import validate_upload,store_asset,asset_info,MAX_FILE
 from app.brand_capture import clean_url,restricted
 from app.business_research import empty_report
+from app.brand_capture import MAX_PAGES
+from app.campaign_routes import generation_is_live
 
 router=APIRouter(prefix="/api/v1",tags=["Business onboarding and research"])
 INDUSTRIES=["Manufacturing","Retail & ecommerce","Food & hospitality","Professional services","Construction & interiors",
@@ -92,6 +94,10 @@ class ResearchChoice(BaseModel):
     continue_job_id:str|None=None
 
 
+class InsightsRequest(BaseModel):
+    request_id:UUID
+
+
 def profile_info(row):
     if row is None:return None
     return {"workspace_id":row.workspace_id,"details":json.loads(row.details_json),"provenance":"user_supplied",
@@ -112,7 +118,7 @@ def profile_owned(db,user,workspace_id):
 
 @router.get("/business-profile/options")
 def options(user:User=Depends(current_user)):
-    return {"industries":INDUSTRIES,"social_platforms":list(SOCIAL_HOSTS),"page_limit":10,"file_limit_mb":8}
+    return {"industries":INDUSTRIES,"social_platforms":list(SOCIAL_HOSTS),"page_limit":MAX_PAGES,"file_limit_mb":8}
 
 
 @router.post("/business-profile",status_code=201)
@@ -179,6 +185,52 @@ def complete(workspace_id:str,body:ResearchChoice,user:User=Depends(current_user
 @router.post("/workspaces/{workspace_id}/business-profile/research",status_code=202)
 def start_research(workspace_id:str,body:ResearchChoice,user:User=Depends(current_user),db:Session=Depends(session)):
     return job_info(enqueue(db,user,workspace_id,body))
+
+
+@router.post("/workspaces/{workspace_id}/business-profile/research/{job_id}/insights",status_code=202)
+def generate_saved_insights(workspace_id:str,job_id:str,body:InsightsRequest,user:User=Depends(current_user),db:Session=Depends(session)):
+    """Queue one explicit text-only report request over evidence already collected for this workspace."""
+    db.scalar(select(Workspace).where(Workspace.id==workspace_id).with_for_update())
+    profile=profile_owned(db,user,workspace_id)
+    if user.is_demo:raise HTTPException(403,"Public guest research cannot generate paid insights")
+    if not profile or not profile.consent_at:raise HTTPException(422,"Research consent is required to process saved business evidence")
+    generation_is_live(user,"live")
+    source_job=db.scalar(select(BrandResearchJob).where(BrandResearchJob.id==job_id,BrandResearchJob.workspace_id==workspace_id))
+    if not source_job:raise HTTPException(404,"Research run not found")
+    existing=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,
+        BrandResearchJob.request_id==str(body.request_id)))
+    if existing:return job_info(existing)
+    source_report=json.loads(source_job.report_json)
+    prior_id=source_report.get("insight_generation_job_id")
+    if prior_id:
+        prior=db.scalar(select(BrandResearchJob).where(BrandResearchJob.id==prior_id,BrandResearchJob.workspace_id==workspace_id))
+        if prior:return job_info(prior)
+    sources=source_report.get("insight_sources") or []
+    if not sources:
+        old_input=json.loads(source_job.input_json);source_profile=old_input.get("profile",json.loads(profile.details_json))
+        sources=[{"id":"O1","text":json.dumps(source_profile,ensure_ascii=False)[:3000],"origin":"user_supplied"}]
+        sources.extend({"id":page["id"],"text":page.get("text","")[:1600],"url":page.get("url"),"origin":"retrieved_public_page"}
+            for page in source_report.get("pages",[])[:5] if page.get("text"))
+    if not sources:raise HTTPException(422,"No saved business details or collected page evidence are available")
+    active=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,
+        BrandResearchJob.state.in_(["queued","running"])))
+    if active:raise HTTPException(409,"Another research task is running; wait for it to finish")
+    count=db.scalar(select(func.count()).select_from(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,
+        BrandResearchJob.created_at>utcnow()-timedelta(hours=1)))
+    if count>=4:raise HTTPException(429,"Research limit: four runs per workspace per hour")
+    source_report["insight_sources"]=sources;source_report["ai_status"]="queued";source_report["insight_error"]=""
+    old_input=json.loads(source_job.input_json);snapshot=old_input.get("profile",json.loads(profile.details_json))
+    job=BrandResearchJob(workspace_id=workspace_id,request_id=str(body.request_id),state="queued",
+        input_json=json.dumps({"profile":snapshot,"use_ai":True,"insights_only_job_id":source_job.id}),
+        report_json=json.dumps(source_report))
+    db.add(job);db.flush()
+    db.add(WorkflowRun(id=job.id,workspace_id=workspace_id,website=snapshot.get("website") or "owner-supplied-business",
+        objective="Generate insights from saved evidence",status="pending",
+        result_json=json.dumps({"operation":"business_insights","source_job_id":source_job.id,"provenance":"user_supplied_or_retrieved"})))
+    source_report["insight_generation_job_id"]=job.id
+    job.report_json=json.dumps(source_report)
+    source_job.report_json=json.dumps(source_report)
+    db.commit();db.refresh(job);return job_info(job)
 
 
 @router.get("/workspaces/{workspace_id}/business-profile/research")
