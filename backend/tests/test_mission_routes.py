@@ -103,9 +103,17 @@ def test_sample_guest_cannot_fetch_live_web(authenticated_client,monkeypatch):
     assert calls==[]
 
 
-def test_live_research_handoff_uses_distinct_validated_model_roles(authenticated_client,monkeypatch):
+@pytest.mark.parametrize("large_context",[False,True])
+def test_live_research_handoff_uses_distinct_validated_model_roles(authenticated_client,monkeypatch,large_context):
     live_transport(monkeypatch)
-    replies=iter([sample_research(),sample_plan()]);calls=[]
+    research=sample_research()
+    if large_context:
+        finding={**research["findings"][0],"observation":"Observation "+"x"*238,"planning_constraint":"Constraint "+"x"*239}
+        research={"findings":[finding.copy() for _ in range(3)],"unknowns":["x"*250 for _ in range(5)]}
+        source=sample_source();source["text"]+=" More supplied context."*600
+        source.pop("id",None);source.pop("role",None)
+        monkeypatch.setattr(mission_routes,"collect_page",lambda url:{**source,"url":url})
+    replies=iter([research,sample_plan()]);calls=[]
     def send(request):
         calls.append(json.loads(request.content))
         return httpx.Response(200,json={"id":"fixture","object":"chat.completion","created":1,"model":"muse-spark-1.3",
@@ -117,6 +125,7 @@ def test_live_research_handoff_uses_distinct_validated_model_roles(authenticated
     monkeypatch.setattr(meta_client,"OpenAI",factory)
     body=inputs(authenticated_client)
     body.update(generation_mode="live",consent_public_fetch=True,research_handoff=True)
+    if large_context:body["competitors"]=["https://example.org/","https://example.net/"]
     result=authenticated_client.post("/api/v1/missions",json=body)
     assert result.status_code==201,result.text
     saved=result.json()
@@ -124,8 +133,9 @@ def test_live_research_handoff_uses_distinct_validated_model_roles(authenticated
     assert "evidence researcher" in calls[0]["messages"][0]["content"]
     assert calls[0]["max_completion_tokens"]==2000 and calls[1]["max_completion_tokens"]==4000
     handoff=json.loads(calls[1]["messages"][1]["content"])["validated_research"]
+    assert len(calls[1]["messages"][1]["content"])<=16000
     assert handoff==saved["research"] and handoff["validated"] is True
-    assert handoff["provenance"]=="live_meta" and handoff["data"]==sample_research()
+    assert handoff["provenance"]=="live_meta" and handoff["data"]==research
     assert authenticated_client.post("/api/v1/missions",json=body).json()==saved
     assert len(calls)==2
 

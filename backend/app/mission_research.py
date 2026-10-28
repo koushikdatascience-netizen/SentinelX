@@ -1,4 +1,5 @@
 """Typed research handoff; cited observations remain unverified source claims."""
+from typing import Annotated
 from pydantic import BaseModel,ConfigDict,Field
 from app.mission import CitationMismatch,normalize_quote
 
@@ -7,14 +8,14 @@ class ResearchFinding(BaseModel):
     model_config=ConfigDict(extra="forbid")
     source_id:str=Field(min_length=2,max_length=20)
     quote:str=Field(min_length=12,max_length=240)
-    observation:str=Field(min_length=15,max_length=350)
-    planning_constraint:str=Field(min_length=15,max_length=350)
+    observation:str=Field(min_length=15,max_length=250)
+    planning_constraint:str=Field(min_length=15,max_length=250)
 
 
 class ResearchBrief(BaseModel):
     model_config=ConfigDict(extra="forbid")
-    findings:list[ResearchFinding]=Field(min_length=1,max_length=5)
-    unknowns:list[str]=Field(min_length=1,max_length=5)
+    findings:list[ResearchFinding]=Field(min_length=1,max_length=3)
+    unknowns:list[Annotated[str,Field(min_length=1,max_length=250)]]=Field(min_length=1,max_length=5)
 
 
 def validate_research(data,sources):
