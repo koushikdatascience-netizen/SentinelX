@@ -15,6 +15,8 @@ def capability_status(db:Session=Depends(session)):
     expected={"text":os.getenv("META_MODEL","muse-spark-1.3"),
               "vision":os.getenv("META_MODEL","muse-spark-1.3"),
               "image":"muse-image-1.0",
+              "voice":"muse-voice-transcribe-1.0",
+              "search":"muse-spark-1.3",
               "segmentation":"sam-3.1"}
     for name,model in expected.items():
         if name=="segmentation":

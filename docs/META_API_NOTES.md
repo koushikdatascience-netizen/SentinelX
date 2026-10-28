@@ -11,7 +11,8 @@ Reviewed October 28, 2026. **Documentation-verified and mock-tested does not mea
 | Vision | Same model and endpoint; user content contains `text` and `image_url` blocks, with `image_url.url` holding a base64 data URL | Sends local validated PNG/JPEG/WebP only, up to 5 MB / 20MP. No URL fetching. Optional schema uses the same validation. |
 | Image | `POST /v1/images/generations`, `muse-image-1.0`, prompt, n, size, response_format; output `data[].b64_json` or signed URL | One image, three allowlisted aspect ratios, base64 output. Size is an aspect ratio, not a promise of exact dimensions. No automatic edits, downloads, retries or publishing. |
 | SAM | `sam-3.1` on Responses API, object concept/geometry prompt and media; special-token segmentation output | **UNVERIFIED / NOT IMPLEMENTED adapter.** API exists, but this method has no object prompt argument and the mask parser is not integrated. Live `segment` raises NotSupported before budget/network. Never substitutes vision text for a mask. |
-| Voice | Old hand-written ASR request removed | **UNVERIFIED adapter.** Live transcription raises NotSupported. Offline intake returns transcript=null with sample provenance; never claims speech recognition. |
+| Voice | `POST /v1/asr/transcribe`; multipart `request` JSON with `model=muse-voice-transcribe-1.0`, `audioEncoding=WAV`, `mode=PUSH_TO_TALK`; `audio` is mono 16-bit WAV at 16/24 kHz; JSON returns `transcript`, `audioDurationMs`, `turns` | Scoped SDK generic POST, 90-second timeout/retries=0. Local validation limits clips to 60 seconds before charging. Sample transcript is authored and labeled. Runtime success establishes account verification. |
+| Search | Responses `muse-spark-1.3`, `tools=[{type:web_search,search_context_size:low}]`, `include=[web_search_call.results]`, `max_tool_calls=1` | Requires completed response, one completed search and valid URL citation spans; returns bounded summary, citations and optional snippets. No live-to-sample fallback. |
 
 Official sources:
 
@@ -22,6 +23,8 @@ Official sources:
 - [Reasoning](https://dev.meta.ai/docs/reasoning): hidden reasoning counts against output limits and billed output; minimal is supported, none is not.
 - [Media segmentation](https://dev.meta.ai/docs/media-segmentation)
 - [SAM client libraries](https://dev.meta.ai/docs/sam/client-libraries): special-token parsing needs a dedicated parser.
+- [Search grounding](https://dev.meta.ai/docs/search-grounding), [Responses schemas](https://dev.meta.ai/docs/api-reference/responses/schemas), [tool-call limits](https://dev.meta.ai/docs/tool-calling).
+- [Recorded transcription](https://dev.meta.ai/docs/api-reference/voice/transcribe), [voice schemas](https://dev.meta.ai/docs/api-reference/voice/schemas), [WAV and language support](https://dev.meta.ai/docs/speech-to-text).
 
 ## Gates, scope and accounting
 
@@ -29,7 +32,7 @@ Every MetaClient method checks INFERENCE_PROVIDER (default demo), ALLOW_PAID_INF
 
 Live calls require MODEL_API_KEY from environment, an owner ID, an existing owned workspace and an existing run in that workspace. Budget checks revalidate ownership in the database, not merely in route parameters. Scoped routes check ownership before processing model input, even in sample mode. Existing stateless local inspection/intake routes keep their authenticated no-storage behavior; they cannot access another owner's records. Live unscoped text requests fail closed. Legacy paid analyze is removed.
 
-`budget.reserve_meta` atomically reserves 5 cents in all three counters in one transaction: META_APP_BUDGET_CENTS (existing default 500), META_WORKSPACE_BUDGET_CENTS (default **0**) and META_RUN_BUDGET_CENTS (default **0**). Workspace/run counters use hashed keys in the existing api_budgets table, so no new migration is required. Five cents is an application reservation unit, **not a verified price or guaranteed maximum charge**. Counters are lifetime cumulative; there is no automatic reset or refund after uncertain failures. Concurrent calls serialize on the global row; insufficient scope rolls back every debit. Provider charge reconciliation remains unimplemented. Other apps, keys and workflow dispatches bypass this application's shared DB accounting.
+`budget.reserve_meta` atomically reserves 5 cents (6 cents for search) in all three counters in one transaction: META_APP_BUDGET_CENTS (existing default 500), META_WORKSPACE_BUDGET_CENTS (default **0**) and META_RUN_BUDGET_CENTS (default **0**). Workspace/run counters use hashed keys in the existing api_budgets table, so no new migration is required. Five cents is an application reservation unit, **not a verified price or guaranteed maximum charge**. Counters are lifetime cumulative; there is no automatic reset or refund after uncertain failures. Concurrent calls serialize on the global row; insufficient scope rolls back every debit. Provider charge reconciliation remains unimplemented. Other apps, keys and workflow dispatches bypass this application's shared DB accounting.
 
 SDK transport uses a 90-second timeout, max_retries=0 and safe fixed error messages. Keys, full prompts, provider error bodies, hidden reasoning and generated media are not logged. Only whitelisted usage fields leave the text adapter. All enabled hosted model traffic delegates to MetaClient.
 

@@ -40,11 +40,8 @@ async def transcribe_audio(file:UploadFile=File(...),user:User=Depends(current_u
     allowed={"audio/wav","audio/x-wav","audio/mpeg","audio/mp4","audio/ogg","audio/webm"}
     if file.content_type not in allowed: raise HTTPException(415,"Unsupported audio type")
     if not payload: raise HTTPException(422,"Empty recording")
-    try:
-        result=MetaClient().transcribe(payload,file.content_type)
-        return {**result,"status":"demo","transcript":None,"note":"Sample intake only; no speech recognition performed."}
-    except NotSupported as exc:
-        raise HTTPException(501,str(exc)) from None
+    return {"provenance":"user_supplied","status":"demo","transcript":None,
+        "note":"Intake only; no speech recognition. Use the workspace-scoped Voice-to-Action tool for explicit transcription."}
 
 
 @router.post("/image/analyze")
