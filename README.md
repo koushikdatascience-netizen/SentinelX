@@ -133,3 +133,7 @@ The manual GitHub Actions smoke workflow allows exactly one explicitly authorize
 - [Historical Oracle staging plan](deploy/ORACLE_STAGING.md)
 
 This repository is under active review. Judge claims should be updated only after the corresponding feature is verified working on a deployed HTTPS URL.
+
+## Evidence-to-action missions
+
+Open **Business mission** to inspect supplied public pages, measure inquiry-path signals and produce a source-cited improvement plan with an actual tool/model execution trace. Prepare a campaign from that mission, review and publish its landing page, then explicitly verify the public page and submit/remove a labeled synthetic inquiry. No conversion improvement is claimed. See [BUSINESS_MISSIONS.md](docs/BUSINESS_MISSIONS.md) for the workflow, costs and limits.
