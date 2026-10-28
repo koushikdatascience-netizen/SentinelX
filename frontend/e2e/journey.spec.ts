@@ -146,6 +146,9 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
  await expect(page.getByRole("heading",{name:"Create a campaign"})).toBeVisible();
+ await page.getByLabel("Business name",{exact:true}).fill("Fixture Woodworks");
+ await page.getByLabel("What do you offer?").fill("We produce custom furniture and wooden parts for local customers who need quotations.");
+ await page.getByLabel("What should this campaign achieve?").fill("Improve qualified requests for custom woodworking quotations.");
  await page.getByText("Generation options",{exact:true}).click();
  await page.getByLabel("Use sample data (no credits)").check();
  await page.getByRole("button",{name:"Create sample campaign",exact:true}).click();
@@ -295,6 +298,7 @@ test("business mission records tool handoffs and guides a campaign with source e
  await page.screenshot({path:"test-results/business-mission-desktop.png",fullPage:true});
  await page.getByRole("button",{name:"Optional: create campaign",exact:true}).click();
  await expect(page.getByText("Mission evidence will guide this campaign.",{exact:true})).toBeVisible();
+ await page.getByLabel("Business name",{exact:true}).fill("Fixture Woodworks");
  await page.getByRole("button",{name:"Create sample campaign",exact:true}).click();
  await expect(page.locator(".post-card")).toHaveCount(7);
  const linked=await page.evaluate(async()=>{
