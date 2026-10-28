@@ -125,7 +125,7 @@ test("mocked provider draft is validated, rendered and exported",async({page})=>
 
 test("legacy sample URL routes visitors to the real product",async({page})=>{
  await page.goto("/demo");
- await expect(page).toHaveURL(/\\/$/);
+ await expect(page).toHaveURL(new RegExp("/$"));
  await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
  await expect(page.getByText("Fictional demonstration workshop")).toHaveCount(0);
 });
