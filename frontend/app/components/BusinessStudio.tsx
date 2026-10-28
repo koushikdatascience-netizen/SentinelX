@@ -252,6 +252,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
  const selectedVisual=variants.find(v=>v.selected)||variants[0];
  const heroUrl=selectedVisual?variantImages[selectedVisual.id]:null;
  const pending=board.filter(a=>a.state==="proposed").length;
+ const approved=board.filter(a=>a.state==="approved").length;
  const landingReview=page?board.find(a=>a.target_kind==="landing"&&a.target_id===page.id):undefined;
  const landingApproved=landingReview?.state==="approved";
  const needCampaign=<EmptyState title="Start with a campaign" action={<button className="primary" onClick={()=>onNavigate("brief")}><ProductIcon name="plus"/>Create campaign</button>}>Create a campaign or open saved work from the dashboard to use this tool.</EmptyState>;
