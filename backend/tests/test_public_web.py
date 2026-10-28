@@ -80,3 +80,10 @@ def test_research_redirect_scope_and_explicit_document_types(monkeypatch):
     response(monkeypatch,headers={"Content-Type":"text/plain"},html=b"User-agent: *\nDisallow: /private")
     result=public_web.request_public("https://example.com/robots.txt",content_types=("text/plain",),same_host="example.com")
     assert "Disallow" in result["html"]
+
+
+def test_research_redirect_cannot_escape_robots_policy(monkeypatch):
+    connection=response(monkeypatch,status=302,headers={"Location":"https://example.com/private"})
+    with pytest.raises(ValueError,match="robots"):
+        public_web.request_public("https://example.com/",same_host="example.com",allow_url=lambda target:not target.endswith("/private"))
+    assert connection.request.call_count==1

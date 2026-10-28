@@ -128,7 +128,9 @@ def crawl(state,checkpoint,cancelled,pause=time.sleep):
         state["requests"]+=1;last_request[host]=time.monotonic()
         # Persist the attempt before transport so restart/resume cannot reset it.
         checkpoint(state)
-        return request_public(url,content_types=types,same_host=host)
+        parser=policies.get(host,{}).get("parser")
+        return request_public(url,content_types=types,same_host=host,
+            allow_url=(lambda target:parser.can_fetch(AGENT,target)) if parser else None)
     while state["queue"] and len(state["pages"])<state["max_pages"]:
         if cancelled():return "cancelled"
         url,depth,role=state["queue"][0];host=urlsplit(url).hostname

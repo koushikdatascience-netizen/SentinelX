@@ -57,11 +57,12 @@ class PinnedHTTPS(http.client.HTTPSConnection):
             raise
 
 
-def request_public(url,*,method="GET",body=None,content_types=("text/html",),same_host=None):
+def request_public(url,*,method="GET",body=None,content_types=("text/html",),same_host=None,allow_url=None):
     if method not in ("GET","POST"):raise ValueError("Unsupported method")
     for redirect in range(3):
         host,family,address,normalized=resolve_target(url)
         if same_host is not None and host!=same_host:raise ValueError("Redirect left the authorized host")
+        if allow_url is not None and not allow_url(normalized):raise ValueError("robots.txt disallows this target or redirect")
         parsed=urlsplit(normalized)
         path=parsed.path+("?"+parsed.query if parsed.query else "")
         connection=PinnedHTTPS(host,family,address)
