@@ -8,6 +8,7 @@ import os
 
 os.environ["ENABLE_EVIDENCE_INFERENCE"] = "true"
 os.environ["EVIDENCE_WORKSPACE_MAX_REQUESTS"] = "1"
+os.environ["ENABLE_RESEARCH_WORKER"] = "true"
 
 from app.main import app
 from app import evidence_drafts
@@ -29,3 +30,17 @@ def offline_infer(prompt, **scope):
 evidence_drafts.configured_provider = lambda: ProviderConfig(
     "mock_test_provider", "http://127.0.0.1", "offline-fixture", "not-a-key")
 evidence_drafts.infer = offline_infer
+
+# Offline browser evidence: exercise the real durable crawler, parser, storage,
+# review and report routes with only the public HTTP transport replaced.
+from app import site_research
+from tests.test_site_research import response,HOME
+from urllib.parse import urlsplit
+
+def research_fixture(url,**kwargs):
+    if urlsplit(url).hostname!="fixture.example":raise ValueError("Offline browser test allows fixture.example only")
+    if url.endswith("robots.txt"):return response(url,"User-agent: *\nDisallow: /private")
+    if url.endswith("sitemap.xml"):return response(url,'<urlset><url><loc>https://fixture.example/contact</loc></url></urlset>')
+    return response(url,HOME if url.endswith("/") else '<title>Workshop contact</title><h1>Contact the workshop</h1><p>Send your quantity, drawings and required date to request a quote.</p>')
+
+site_research.request_public=research_fixture

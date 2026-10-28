@@ -71,3 +71,12 @@ def test_post_never_follows_redirects(monkeypatch):
     connection=response(monkeypatch,status=307,headers={"Location":"https://example.com/elsewhere"})
     with pytest.raises(ValueError):public_web.request_public("https://example.com/form",method="POST",body=b"name=test")
     assert connection.request.call_count==1
+
+
+def test_research_redirect_scope_and_explicit_document_types(monkeypatch):
+    connection=response(monkeypatch,status=302,headers={"Location":"https://other.org/"})
+    with pytest.raises(ValueError):public_web.request_public("https://example.com/",same_host="example.com")
+    assert connection.request.call_count==1
+    response(monkeypatch,headers={"Content-Type":"text/plain"},html=b"User-agent: *\nDisallow: /private")
+    result=public_web.request_public("https://example.com/robots.txt",content_types=("text/plain",),same_host="example.com")
+    assert "Disallow" in result["html"]
