@@ -20,6 +20,25 @@ class CampaignAudit(Strict):
     gaps: list[Gap]=Field(min_length=1,max_length=5)
     positioning_angles: list[str]=Field(min_length=3,max_length=3)
 
+class VideoScene(Strict):
+    seconds: int=Field(ge=1,le=20)
+    shot: str=Field(min_length=5,max_length=240)
+    on_screen_text: str=Field(min_length=1,max_length=120)
+    voiceover: str=Field(default="",max_length=240)
+
+class ShortVideoGuidance(Strict):
+    duration_seconds: int=Field(ge=10,le=60)
+    aspect_ratio: Literal["9:16"]="9:16"
+    hook: str=Field(min_length=5,max_length=180)
+    scenes: list[VideoScene]=Field(min_length=3,max_length=6)
+    ending: str=Field(min_length=5,max_length=180)
+    production_note: str=Field(min_length=5,max_length=300)
+    @model_validator(mode="after")
+    def scenes_fit(self):
+        if sum(scene.seconds for scene in self.scenes)>self.duration_seconds:
+            raise ValueError("Scene durations cannot exceed the total video duration")
+        return self
+
 class DayPlan(Strict):
     day: int=Field(ge=1,le=7)
     platform: Platform
@@ -28,6 +47,8 @@ class DayPlan(Strict):
     hashtags: list[str]=Field(max_length=12)
     cta: str=Field(min_length=5,max_length=180)
     creative_brief: str=Field(min_length=10,max_length=600)
+    image_prompt: str=Field(min_length=15,max_length=1200)
+    video_guidance: ShortVideoGuidance
     evidence_ids: list[str]=Field(max_length=5)
 
 class SevenDayPlan(Strict):
@@ -76,5 +97,11 @@ def sample_plan(description:str,goal:str,language:Language,platforms:list[Platfo
             "post_type":"sample educational post",
             "caption":caption+f" — {d}" ,"hashtags":["#SentinelXSample"],"cta":cta,
             "creative_brief":title+f" — sample visual concept for day {d}.",
+            "image_prompt":"Sample only: create an honest product-focused image using owner-approved product photos; do not invent logos, people, certificates or product details.",
+            "video_guidance":{"duration_seconds":20,"aspect_ratio":"9:16","hook":"Show the real product or workshop process.",
+                "scenes":[{"seconds":4,"shot":"Close view of the actual product or material.","on_screen_text":"A real product detail","voiceover":""},
+                    {"seconds":8,"shot":"Show one owner-approved step of the real making process.","on_screen_text":"Made to your specification","voiceover":""},
+                    {"seconds":5,"shot":"Show the finished part beside a ruler or customer-provided drawing.","on_screen_text":"Share your drawing and quantity","voiceover":""}],
+                "ending":"Invite viewers to ask for a quotation.","production_note":"Use actual workshop footage with permission. This is a shooting plan, not a generated video."},
             "evidence_ids":[]} for d in range(1,8)]
     return audit,{"items":items}

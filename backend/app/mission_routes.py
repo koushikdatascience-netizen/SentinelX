@@ -148,7 +148,8 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
         if body.discover_market:
             with stage("Opportunity hunter","saved_search" if cached_search else "model_search" if live else "fixture") as event:
                 result=cached_search or (MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=row.id,max_tokens=1800).search(
-                    "Find up to three public competitor or supplier candidates and relevant market evidence. "
+                    "Find up to 15 plausible direct nearby competitors for the requested location and business category, with official-site source links where possible. "
+                    "Do not claim a definitive ranking, direct competition or exact distance unless cited evidence supports it; return fewer when uncertain. "
                     "Use one web search and link sources; candidates are not confirmed competitors. Business website: "+str(body.website)+
                     ". Goal: "+body.goal[:300]+". Research focus: "+body.market_query+
                     ". Business page title: "+payload["sources"][0]["title"][:200]) if live else {

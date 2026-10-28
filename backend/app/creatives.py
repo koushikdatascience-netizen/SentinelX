@@ -72,7 +72,8 @@ def _list(db:Session,cid:str,iid:str):
 def generate(campaign_id:str,item_id:str,workspace_id:str,body:RequestVariants,
              user:User=Depends(current_user),db:Session=Depends(session)):
     campaign,item=scope(db,workspace_id,campaign_id,item_id,user)
-    brief=json.loads(item.item_json).get("creative_brief","")
+    item_data=json.loads(item.item_json)
+    brief=item_data.get("image_prompt") or item_data.get("creative_brief","")
     prompt=("Product campaign creative, no logos or invented endorsements. "
             f"Business: {campaign.business_description[:400]}. "
             f"Visual brief: {brief[:550]}. Mood: {body.brand_mood}.")

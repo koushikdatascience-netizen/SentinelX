@@ -78,3 +78,67 @@ def test_collected_pages_feed_guarded_mission_without_a_second_crawl(authenticat
     assert result.json()["trace"][0]["kind"]=="saved_public_evidence" and len(result.json()["sources"])==3 and len(calls)==1
     sent=json.loads(json.loads(calls[0].content)["messages"][1]["content"])
     assert len(sent["sources"])==3 and sum(len(item["text"]) for item in sent["sources"])<=6000
+
+
+def test_explicit_visual_review_measures_selected_site_asset_and_sends_only_with_consent(authenticated_client,monkeypatch):
+    import io
+    from PIL import Image
+    from app import public_web
+    from tests.test_site_research import HOME
+    image=io.BytesIO();Image.new("RGB",(80,40),(128,64,32)).save(image,format="PNG");payload=image.getvalue()
+    html=HOME+'<meta property="og:image" content="https://example.com/logo.png">'
+    fake_site(monkeypatch)
+    from app import site_research
+    original=site_research.request_public
+    def pages_and_asset(url,**kwargs):
+        if url.endswith("logo.png"):
+            assert kwargs["same_host"]=="example.com"
+            return {"url":url,"status":200,"content_type":"image/png","body":payload,
+                "sha256":"a"*64,"collected_at":"2026-10-28T00:00:00+00:00","html":""}
+        if url.endswith("/"):
+            response=original(url,**kwargs) if False else {"url":url,"html":html,"status":200,
+                "sha256":"b"*64,"bytes":len(html),"collected_at":"2026-10-28T00:00:00+00:00"}
+            return response
+        return original(url,**kwargs)
+    def asset_transport(url,**kwargs):
+        if url.endswith("robots.txt"):
+            return {"url":url,"status":404,"content_type":"text/plain","html":"","body":b"",
+                "sha256":"c"*64,"collected_at":"2026-10-28T00:00:00+00:00"}
+        return pages_and_asset(url,**kwargs)
+    monkeypatch.setattr(site_research,"request_public",pages_and_asset)
+    monkeypatch.setattr(public_web,"request_public",asset_transport)
+    c=authenticated_client;wid,jid,_=begin(c);run_job(jid,pause=lambda _:None);scope="?workspace_id="+wid
+    url=f"/api/v1/intelligence/research/{jid}/visual-review"+scope
+    bad=c.post(url,json={"asset_url":"https://example.com/not-listed.png"})
+    assert bad.status_code==422
+    local=c.post(url,json={"asset_url":"https://example.com/logo.png"})
+    assert local.status_code==200 and local.json()["local_visual_measurements"]["dominant_colors"][0]=="#804020"
+    assert local.json()["semantic_review"] is None and local.json()["input_provenance"]=="retrieved_public_asset"
+    from app.meta_client import MetaClient
+    calls=[]
+    monkeypatch.setattr("app.campaign_routes.generation_is_live",lambda *args:True)
+    monkeypatch.setattr(MetaClient,"vision",lambda self,*args:{"provenance":"live_meta","model":"muse-spark-1.3","data":"A logo-like brand image."})
+    denied=c.post(url,json={"asset_url":"https://example.com/logo.png","analyze_with_meta":True,"consent_to_provider":False})
+    assert denied.status_code==422
+    allowed=c.post(url,json={"asset_url":"https://example.com/logo.png","analyze_with_meta":True,"consent_to_provider":True})
+    assert allowed.status_code==200 and allowed.json()["semantic_review"]["provenance"]=="live_meta"
+    saved=c.get(f"/api/v1/intelligence/report/{jid}"+scope).json()["visual_reviews"]
+    assert saved[0]["semantic_review"]["text"]=="A logo-like brand image."
+
+
+def test_social_search_requires_linked_profile_consent_and_reuses_saved_result(authenticated_client,monkeypatch):
+    from app.meta_client import MetaClient
+    fake_site(monkeypatch);client=authenticated_client;wid,jid,_=begin(client);run_job(jid,pause=lambda _:None)
+    monkeypatch.setenv("SENTINELX_MODE","live");monkeypatch.setenv("INFERENCE_PROVIDER","meta")
+    monkeypatch.setenv("ALLOW_PAID_INFERENCE","true");monkeypatch.setenv("ENABLE_LIVE_MULTIMODAL","true");monkeypatch.setenv("MODEL_API_KEY","test-only-mock")
+    calls=[]
+    def search(self,query,purpose="market"):
+        calls.append((query,purpose))
+        return {"provenance":"live_meta","model":"muse-spark-1.3","data":{"summary":"Two public posts mention custom furniture.","citations":[{"url":"https://instagram.com/p/example","title":"Public post"}],"results":[],"searched":True}}
+    monkeypatch.setattr(MetaClient,"search",search)
+    scope="?workspace_id="+wid;path=f"/api/v1/intelligence/research/{jid}/social-search"+scope
+    consent={"profile_url":"https://instagram.com/workshop","consent_public_search":True}
+    assert client.post(path,json={**consent,"profile_url":"https://instagram.com/other"}).status_code==422
+    first=client.post(path,json=consent);assert first.status_code==200,first.text
+    second=client.post(path,json=consent);assert second.status_code==200 and second.json()["reused"] is True
+    assert len(calls)==1 and calls[0][1]=="social"

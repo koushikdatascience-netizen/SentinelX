@@ -76,3 +76,11 @@ def test_jsonld_identity_and_sameas_are_extracted_as_unverified_claims():
     page=analyze_page(response("https://example.com/",text),"business")
     assert page["structured_claims"][0]["value"]=="Workshop"
     assert page["profiles"][0]["platform"]=="Facebook" and page["profiles"][0]["identity_confirmed"] is False
+
+
+def test_brand_images_are_inventory_candidates_not_claimed_as_analyzed():
+    text='<meta property="og:image" content="/brand/logo.webp"><link rel="icon" href="/favicon.png"><img src="/product.jpg" alt="Wooden chair">'
+    page=analyze_page(response("https://example.com/",text),"business")
+    assets=page["media_inventory"]
+    assert assets[0]["role"]=="probable_logo_or_brand_art" and assets[0]["visual_review_available"]
+    assert all(item["content_analyzed"] is False for item in assets)
