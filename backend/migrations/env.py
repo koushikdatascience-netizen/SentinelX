@@ -4,6 +4,7 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 from app.workspace_store import Base
 from app.budget import ApiBudget  # Register budget metadata.
+from app import intelligence_store  # Keep historical 0012 schema in Alembic metadata after UI/API retirement.
 
 url = os.getenv("DATABASE_URL", "sqlite:///./sentinelx-dev.sqlite3")
 if context.is_offline_mode():
