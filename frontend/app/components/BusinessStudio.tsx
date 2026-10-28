@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from "react";
 import BusinessMission from "./BusinessMission";
 import type {BusinessProfile} from "./BusinessProfile";
+import type {WorkbenchTool} from "./BusinessWorkbench";
 import {EmptyState,Modal,ProductIcon,SourceBadge} from "./ProductUI";
 export type StudioView="mission"|"dashboard"|"brief"|"photos"|"audit"|"campaign"|"creatives"|"landing"|"approvals";
 
@@ -17,7 +18,7 @@ type Lead={id:string;name:string;phone:string;message:string;created_at:string};
 type Runtime={mode:"sample"|"live"|"unavailable";is_guest:boolean;message:string};
 type SavedCampaign={id:string;goal:string;provenance:Provenance};
 const demoDescription="";
-export default function BusinessStudio({token,workspace,view,onNavigate,onReports,onSettings}:{token:string;workspace:string;view:StudioView;onNavigate:(view:StudioView)=>void;onReports:()=>void;onSettings:()=>void}){
+export default function BusinessStudio({token,workspace,view,onNavigate,onReports,onSettings,onTool}:{token:string;workspace:string;view:StudioView;onTool:(tool:WorkbenchTool|StudioView)=>void;onNavigate:(view:StudioView)=>void;onReports:()=>void;onSettings:()=>void}){
  const [missionId,setMissionId]=useState<string|null>(null);
  const [website,setWebsite]=useState("");
  const [description,setDescription]=useState(demoDescription);
@@ -113,7 +114,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
  }
  async function openCampaign(id:string){
    const c=await api<Campaign>(`/api/v1/campaigns/${id}?workspace_id=${encodeURIComponent(workspace)}`);
-   setCampaign(c);setMissionId(c.audit.mission_id||null);setItemId(c.items[0]?.id||"");setGoal(c.goal);setDescription(c.business_description);setVariants([]);setPage(null);setPreview("");setBoard([]);
+   setCampaign(c);setSampleMode(c.provenance==="sample");setMissionId(c.audit.mission_id||null);setItemId(c.items[0]?.id||"");setGoal(c.goal);setDescription(c.business_description);setVariants([]);setPage(null);setPreview("");setBoard([]);
    const pages=await api<Page[]>(`/api/v1/landing?workspace_id=${encodeURIComponent(workspace)}`);
    setLandingPages(pages.filter(p=>p.campaign_id===c.id));
    const existing=pages.find(p=>p.campaign_id===c.id);
@@ -235,18 +236,19 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
    landing:["Landing pages","Turn your campaign into a page customers can act on."],
    approvals:["Review & export","Review your deliverables and download an approved campaign pack."]
  };
- const tools:{view?:StudioView;title:string;description:string;icon:string;action?:()=>void}[]=[
-   {view:"brief",title:"Create campaign",description:"A strategy and seven days of tailored posts.",icon:"spark"},
-   {view:"photos",title:"Review a photo",description:"Get practical feedback on your product images.",icon:"image"},
-   {view:"campaign",title:"Campaign calendar",description:"Read, edit and copy your saved posts.",icon:"campaign"},
-   {view:"creatives",title:"Creative studio",description:"Create and compare campaign visuals.",icon:"image"},
-   {view:"landing",title:"Landing pages",description:"Build, preview and publish an approved page.",icon:"landing"},
-   {view:"approvals",title:"Review & export",description:"Approve content and download your delivery pack.",icon:"review"},
-   {view:"audit",title:"Business strategy",description:"Review your positioning and opportunities.",icon:"report"},
-   {title:"Evidence reports",description:"Review source notes and your report history.",icon:"report",action:onReports},
-   {title:"Workspace settings",description:"Manage your workspace and usage allowance.",icon:"settings",action:onSettings}
+ const tools:{title:string;description:string;icon:string;action:()=>void}[]=[
+   {title:"Create campaign",description:"Strategy, captions, visual briefs and a content calendar.",icon:"campaign",action:()=>onTool("brief")},
+   {title:"Competitor research",description:"Source-linked businesses by industry and location.",icon:"globe",action:()=>onTool("competitors")},
+   {title:"Post generator",description:"A post, image prompt and reel or shorts scene plan.",icon:"spark",action:()=>onTool("post")},
+   {title:"SEO keywords & hashtags",description:"Relevant search phrases and evidence-led hashtag ideas.",icon:"report",action:()=>onTool("keywords")},
+   {title:"Image generator",description:"Original business visuals from your prompt and context.",icon:"image",action:()=>onTool("image")},
+   {title:"Image editor",description:"Crop, resize, rotate and convert your image locally.",icon:"edit",action:()=>onTool("image_editor")},
+   {title:"Document parser",description:"Extract large PDFs in batches and export text or JSON.",icon:"report",action:()=>onTool("documents")},
+   {title:"Review a photo",description:"Practical feedback on your product images.",icon:"image",action:()=>onTool("photos")},
+   {title:"Landing pages",description:"Build and review a page for your campaign.",icon:"landing",action:()=>onTool("landing")},
+   {title:"Review & export",description:"Approve content and export your delivery pack.",icon:"review",action:()=>onTool("approvals")},
+   {title:"Run a business mission",description:"Research, propose, approve delivery and verify the result.",icon:"spark",action:()=>onNavigate("mission")}
  ];
- tools.unshift({view:"mission",title:"Run a business mission",description:"Business twin, opportunity research, approved execution and verification.",icon:"spark"});
  const selectedVisual=variants.find(v=>v.selected)||variants[0];
  const heroUrl=selectedVisual?variantImages[selectedVisual.id]:null;
  const pending=board.filter(a=>a.state==="proposed").length;
@@ -267,7 +269,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
    {view==="dashboard"&&<>
      <div className="dashboard-summary"><span><strong>{savedCampaigns.length}</strong> saved {savedCampaigns.length===1?"campaign":"campaigns"}</span><span><strong>{campaign?.items.length||0}</strong> posts in selected campaign</span><span><strong>{pending}</strong> items awaiting review</span></div>
      <div className="section-heading"><h2>What would you like to do?</h2><span>Everything you need, in one place</span></div>
-     <div className="tool-grid">{tools.map((tool,i)=><button className="tool-card" key={tool.title} onClick={()=>tool.action?tool.action():onNavigate(tool.view!)}><span className={`tool-icon tool-tone-${i%4}`}><ProductIcon name={tool.icon} size={23}/></span><span className="tool-card-copy"><strong>{tool.title}</strong><small>{tool.description}</small></span><ProductIcon name="arrow" size={17}/></button>)}</div>
+     <div className="tool-grid">{tools.map((tool,i)=><button className="tool-card" key={tool.title} onClick={tool.action}><span className={`tool-icon tool-tone-${i%4}`}><ProductIcon name={tool.icon} size={23}/></span><span className="tool-card-copy"><strong>{tool.title}</strong><small>{tool.description}</small></span><ProductIcon name="arrow" size={17}/></button>)}</div>
      <div className="dashboard-work-grid"><section className="product-card recent-work"><div className="section-heading"><h2>Continue your work</h2>{campaign&&<SourceBadge value={campaign.provenance}/>}</div>{campaign?<><div className="campaign-spotlight"><div><span className="small-label">LATEST CAMPAIGN</span><h3>{campaign.goal}</h3><p>{campaign.audit.analysis.offer_summary}</p><div className="spotlight-meta"><span>{campaign.items.length} posts</span><span>{[...new Set(campaign.items.map(i=>i.platform))].join(" · ")}</span><span>{campaign.language.toUpperCase()}</span></div><button className="primary" onClick={()=>onNavigate("campaign")}>Open campaign<ProductIcon name="arrow" size={17}/></button></div>{heroUrl?<button className="spotlight-visual" aria-label="Open saved creative" onClick={()=>onNavigate("creatives")}><img src={heroUrl} alt="Your saved campaign creative"/><span>View creative<ProductIcon name="arrow" size={15}/></span></button>:<button className="spotlight-no-visual" onClick={()=>onNavigate("creatives")}><ProductIcon name="image" size={34}/><span>Create your first visual</span></button>}</div>{savedCampaigns.length>1&&<div className="recent-campaign-list">{savedCampaigns.slice(1,4).map(c=><button key={c.id} onClick={()=>action(async()=>{await openCampaign(c.id);onNavigate("campaign")})}><ProductIcon name="campaign"/><span>{c.goal}</span><ProductIcon name="arrow" size={16}/></button>)}</div>}</>:<EmptyState title="Your next campaign starts here" action={<button className="primary" onClick={()=>onNavigate("brief")}>Create your first campaign</button>}>Add a short business brief. Your saved strategy, posts and designs will appear here.</EmptyState>}</section>
      <section className="product-card review-summary"><div className="section-heading"><h2>Ready for review</h2><span className="count-pill">{pending}</span></div>{pending?<><p className="section-description">Take a look before anything is published.</p>{board.filter(a=>a.state==="proposed").slice(0,3).map(a=><button className="review-summary-row" key={a.id} onClick={()=>{onNavigate("approvals");setReviewItem(a)}}><span className="review-type-icon"><ProductIcon name={a.target_kind==="landing"?"landing":a.target_kind==="creative"?"image":"campaign"} size={18}/></span><span><strong>{a.title}</strong><small>{a.target_kind.replaceAll("_"," ")}</small></span><ProductIcon name="arrow" size={15}/></button>)}<button className="text-link" onClick={()=>onNavigate("approvals")}>Review all deliverables<ProductIcon name="arrow" size={16}/></button></>:<EmptyState icon="review" title="All caught up">New posts, selected visuals and pages will appear here for your review.</EmptyState>}</section></div>
    </>}

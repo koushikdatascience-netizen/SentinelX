@@ -84,5 +84,5 @@ def store_asset(db,workspace_id,kind,filename,mime,payload,*,source_url="",job_i
 def asset_info(row):
     return {"id":row.id,"kind":row.kind,"filename":row.filename,"mime":row.mime,"sha256":row.sha256,
         "bytes":len(row.content),"source_url":row.source_url,"created_at":row.created_at.isoformat(),
-        "provenance":"user_supplied" if not row.job_id else "source_observed",
+        "provenance":json.loads(row.metadata_json).get("provenance") or ("user_supplied" if not row.job_id else "source_observed"),
         "metadata":json.loads(row.metadata_json)}
