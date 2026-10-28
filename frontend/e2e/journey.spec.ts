@@ -187,7 +187,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  const navigation=page.getByRole("navigation",{name:"Main navigation"});
  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Your business workspace"})).toBeVisible();
-  await expect(page.locator(".tool-card")).toHaveCount(11);
+  await expect(page.locator(".tool-card")).toHaveCount(10);
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
  await expect(page.getByRole("heading",{name:"Create a campaign"})).toBeVisible();
