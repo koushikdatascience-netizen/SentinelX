@@ -1,12 +1,12 @@
 import {test,expect,Page} from "@playwright/test";
 
-test("owner entry explains the product and offers a clearly labeled demo",async({page})=>{
+test("owner entry offers account access without demo entry points",async({page})=>{
  await page.goto("/");
  await expect(page.getByRole("heading",{name:"Understand your business. Act with evidence."})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
  await expect(page.getByRole("button",{name:/^Sign in(?:\s*→)?$/})).toHaveCount(1);
- await expect(page.getByRole("button",{name:/Try interactive demo/})).toBeVisible();
- await expect(page.getByRole("button",{name:/Try the sample workspace/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/demo|sample workspace/i})).toHaveCount(0);
+ await expect(page.getByRole("link",{name:/sample|demo|tour/i})).toHaveCount(0);
  await expect(page.getByText("01 Business audit")).toBeVisible();
 });
 
