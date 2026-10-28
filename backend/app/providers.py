@@ -75,4 +75,40 @@ def infer(prompt: str, *, owner_id=None, workspace_id=None, run_id=None, json_sc
             raise ValueError(f"Ollama inference failed ({type(exc).__name__})") from exc
         return {"provenance":"live_ollama","provider":"ollama","model":provider.model,
                 "status":"completed","text":output[:10000]}
-    raise ValueError("Only demo, scoped Meta, and enabled Ollama inference are supported")
+    if provider.name == "openrouter":
+        # No paid fallback or automatic retry when a free model rejects a call.
+        if not provider.model.endswith(":free"):
+            raise ValueError("Only OpenRouter :free models are allowed by this adapter")
+        if os.getenv("ENABLE_OPENROUTER_FREE", "false").lower() != "true":
+            raise ValueError("OpenRouter free inference disabled; set ENABLE_OPENROUTER_FREE=true")
+        if not (owner_id and workspace_id and run_id):
+            raise ValueError("Owned persisted workflow required for external inference")
+        from app.auth import owned_run
+        from app.workspace_store import SessionLocal, User
+        with SessionLocal() as db:
+            user=db.get(User,owner_id)
+            if user is None or user.is_demo:
+                raise ValueError("Authenticated non-demo account required")
+            owned_run(db,user,workspace_id,run_id)
+        if not 10 <= len(prompt) <= 8000:
+            raise ValueError("Prompt length must be 10..8000 characters")
+        from openai import OpenAI
+        try:
+            with OpenAI(base_url=provider.base_url,api_key=provider.api_key,
+                        timeout=35,max_retries=0) as client:
+                response=client.chat.completions.create(
+                    model=provider.model,max_tokens=500,
+                    messages=[{"role":"system","content":"Only supplied text is evidence. Explicitly label any assumptions; URLs have not been fetched."},
+                              {"role":"user","content":prompt}])
+            choice=response.choices[0] if response.choices else None
+            answer=(choice.message.content or "").strip() if choice else ""
+            if not answer or len(answer)>12000 or choice.finish_reason!="stop":
+                raise ValueError("Free model returned incomplete output")
+        except ValueError: raise
+        except Exception:
+            raise ValueError("Free provider call failed; no paid fallback or retry") from None
+        return {"provenance":"live_free_provider","provider":"openrouter",
+                "model":provider.model,"status":"completed","text":answer,
+                "external_actions_performed":0,
+                "note":"Free model only; provider quotas and hosting/operator costs may apply."}
+    raise ValueError("Only demo, scoped Meta, enabled Ollama and free OpenRouter inference are supported")
