@@ -36,3 +36,14 @@ def test_grounding_requires_real_search_and_valid_citation_spans():
     with pytest.raises(ValueError):grounded_response(data)
     data=grounded();data["output"][1]["content"][0]["annotations"][0]["end_index"]=10000
     with pytest.raises(ValueError):grounded_response(data)
+
+
+def test_observed_live_search_results_are_not_misrepresented_as_inline_citations():
+    data=grounded();data["output"][1]["content"][0]["annotations"]=[]
+    result=grounded_response(data)
+    assert result["searched"] is True and result["has_inline_citations"] is False
+    assert result["citation_mode"]=="provider_results"
+    assert result["citations"][0]["start_index"] is None and result["citations"][0]["url"]=="https://example.org/"
+    assert "not span-cited" in result["limitation"]
+    data["output"][0]["results"]=[]
+    with pytest.raises(ValueError):grounded_response(data)
