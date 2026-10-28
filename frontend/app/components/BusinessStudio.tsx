@@ -15,13 +15,13 @@ type Approval={id:string;target_kind:string;target_id:string;title:string;descri
 type Lead={id:string;name:string;phone:string;message:string;created_at:string};
 type Runtime={mode:"sample"|"live"|"unavailable";is_guest:boolean;message:string};
 type SavedCampaign={id:string;goal:string;provenance:Provenance};
-const demoDescription="We build handcrafted solid wood furniture, custom cabinetry and made-to-measure interiors. Prospective clients can request a consultation and discuss their requirements.";
+const demoDescription="";
 export default function BusinessStudio({token,workspace,view,onNavigate,onReports,onSettings}:{token:string;workspace:string;view:StudioView;onNavigate:(view:StudioView)=>void;onReports:()=>void;onSettings:()=>void}){
  const [missionId,setMissionId]=useState<string|null>(null);
- const [website,setWebsite]=useState("https://kamalwoodcraft.in");
+ const [website,setWebsite]=useState("");
  const [description,setDescription]=useState(demoDescription);
- const [businessName,setBusinessName]=useState("Kamal Woodcraft");
- const [goal,setGoal]=useState("Increase qualified customer inquiries for custom furniture");
+ const [businessName,setBusinessName]=useState("");
+ const [goal,setGoal]=useState("");
  const [language,setLanguage]=useState<"en"|"bn"|"hi">("en");
  const [platforms,setPlatforms]=useState<string[]>(["instagram","facebook"]);
  const [file,setFile]=useState<File|null>(null);

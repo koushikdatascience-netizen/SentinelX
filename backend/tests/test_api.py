@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from app.workspace_store import MetaCapabilityCheck, SessionLocal, utcnow
+from sqlalchemy import delete
 def test_health():
     response = TestClient(app).get("/health")
     assert response.status_code==200
@@ -12,6 +13,10 @@ def test_health_includes_release(monkeypatch):
     assert response.status_code==200
     assert response.json()["release"]=="0123456789abcdef0123456789abcdef01234567"
 def test_public_status_labels_unverified_capabilities_as_sample(monkeypatch):
+    # A prior paid-call test may have persisted a successful capability check.
+    # This case specifically exercises the unverified state, so isolate its rows.
+    with SessionLocal.begin() as db:
+        db.execute(delete(MetaCapabilityCheck))
     monkeypatch.setenv("INFERENCE_PROVIDER","meta")
     monkeypatch.setenv("SENTINELX_MODE","live")
     monkeypatch.setenv("ALLOW_PAID_INFERENCE","true")
