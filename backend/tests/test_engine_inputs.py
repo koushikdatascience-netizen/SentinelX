@@ -11,6 +11,9 @@ def test_context_excerpt_retains_observations_and_unknowns_without_leading_metad
     assert "Unknown: dimensions." in excerpt and "Product label remains quoted." in excerpt
     assert len(excerpt)<=520 and "[excerpt omitted]" in excerpt
     assert context_excerpt("> Owner-supplied quotation.")=="> Owner-supplied quotation."
+    titled="**Grounded Visual Business Twin - Owner-Supplied File**\n\n"+original
+    assert "Observed turned wooden legs." in context_excerpt(titled,True)
+    assert "Provenance metadata." not in context_excerpt(titled,True)
 
 
 def audio(channels=1,seconds=1):
