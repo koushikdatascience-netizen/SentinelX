@@ -48,4 +48,31 @@ def infer(prompt: str, *, owner_id=None, workspace_id=None, run_id=None, json_sc
     provider = configured_provider()
     if provider is None:
         return {"provenance":"sample","provider":"demo","model":"none","status":"simulated","text":"No model was called. Configure a permitted inference provider to perform a real assessment."}
-    raise ValueError("Only demo and scoped Meta inference are enabled in this release")
+    if provider.name == "ollama":
+        # The operator must provision this service inside a trusted network.
+        # No paid API key is needed; inference is genuine local/remote Ollama inference.
+        if os.getenv("ENABLE_OLLAMA_INFERENCE", "false").lower() != "true":
+            raise ValueError("Ollama inference disabled; set ENABLE_OLLAMA_INFERENCE=true")
+        from openai import OpenAI
+        from urllib.parse import urlsplit
+        endpoint = urlsplit(provider.base_url)
+        if endpoint.scheme != "http" or endpoint.hostname not in ("127.0.0.1","localhost","ollama"):
+            raise ValueError("Ollama endpoint must use localhost or the private Docker service 'ollama'")
+        try:
+            client = OpenAI(api_key="ollama", base_url=provider.base_url, timeout=45.0, max_retries=0)
+            answer = client.chat.completions.create(
+                model=provider.model,
+                messages=[
+                    {"role":"system","content":"You are an evidence-conscious business advisor. Website URLs are NOT fetched. Never assert you visited them. Clearly label suggestions and assumptions. Return concise actionable recommendations."},
+                    {"role":"user","content":prompt[:8000]}
+                ],
+                max_tokens=750)
+            output = (answer.choices[0].message.content or "").strip()
+            if not output: raise ValueError("Ollama returned an empty response")
+        except ValueError:
+            raise
+        except Exception as exc:
+            raise ValueError(f"Ollama inference failed ({type(exc).__name__})") from exc
+        return {"provenance":"live_ollama","provider":"ollama","model":provider.model,
+                "status":"completed","text":output[:10000]}
+    raise ValueError("Only demo, scoped Meta, and enabled Ollama inference are supported")
