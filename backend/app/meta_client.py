@@ -228,6 +228,42 @@ class MetaClient:
         except Exception:
             raise MetaError("Meta image request failed. No retry made; usage may have been consumed.") from None
 
+    def review_media(self, payload, mime, prompt):
+        """One inline media request; no upload persistence or provider URL fetching.
+
+        PDF/video contracts are documentation-verified, not live-account verified.
+        """
+        self._prompt(prompt,2000)
+        if not isinstance(payload,bytes) or not 0<len(payload)<=5_000_000:
+            raise ValueError("Media must be nonempty and at most 5 MB")
+        if mime in ("image/png","image/jpeg","image/webp"):
+            return self.vision(payload,mime,prompt)
+        if mime=="application/pdf":
+            if not payload.startswith(b"%PDF-") or b"%%EOF" not in payload[-4096:]:
+                raise ValueError("Invalid PDF container")
+            block={"type":"input_file","filename":"business.pdf",
+                   "file_data":"data:application/pdf;base64,"+base64.b64encode(payload).decode("ascii")}
+        elif mime=="video/mp4":
+            if len(payload)<16 or payload[4:8]!=b"ftyp":raise ValueError("Invalid MP4 container")
+            block={"type":"input_video","video_url":"data:video/mp4;base64,"+base64.b64encode(payload).decode("ascii")}
+        else:raise NotSupported("Only PNG, JPEG, WebP, MP4 and PDF review is supported")
+        model="muse-spark-1.3"
+        if not self._live():
+            return {"provenance":"sample","model":model,"data":"Sample media review fixture. No media content was interpreted.","usage":None}
+        if os.getenv("META_MODEL",model)!=model:raise NotSupported("UNVERIFIED media model")
+        try:
+            with self._client(5) as client:
+                response=client.responses.create(model=model,store=False,
+                    reasoning={"effort":"minimal"},max_output_tokens=max(16,self.max_tokens),
+                    input=[{"type":"message","role":"user","content":[{"type":"input_text","text":prompt},block]}])
+                text=(response.output_text or "").strip()
+                if response.status!="completed" or not text:raise MetaError("Empty or incomplete media review; no automatic retry")
+                return {"provenance":"live_meta","model":model,"data":text[:20000],
+                        "usage":{"input_tokens":getattr(response.usage,"input_tokens",None),
+                                 "output_tokens":getattr(response.usage,"output_tokens",None)}}
+        except MetaError:raise
+        except Exception:raise MetaError("Meta media review failed; no automatic retry. Usage may have been consumed.") from None
+
     def segment(self, image_bytes, mime):
         self._image_input(image_bytes, mime)
         if not self._live():

@@ -110,6 +110,7 @@ class InspectHTML(HTMLParser):
     def __init__(self):
         super().__init__()
         self.text=[];self.title=[];self.in_title=False;self.skip=0
+        self.media=[]
         self.signals={"forms":0,"phone_links":0,"email_links":0,"whatsapp_links":0,
                       "images":0,"images_without_alt":0,"h1_count":0,"viewport":False}
 
@@ -124,6 +125,10 @@ class InspectHTML(HTMLParser):
         if tag=="img":
             self.signals["images"]+=1
             if not (attrs.get("alt") or "").strip():self.signals["images_without_alt"]+=1
+        if tag in ("img","video","source","iframe") and len(self.media)<30:
+            url=attrs.get("src") or attrs.get("data-src")
+            if url:self.media.append({"kind":tag,"url":url[:2000],"alt":(attrs.get("alt") or "")[:300],
+                                     "content_analyzed":False})
         if tag=="a":
             href=(attrs.get("href") or "").lower()
             for key,prefix in (("phone_links","tel:"),("email_links","mailto:"),("whatsapp_links","https://wa.me/")):
@@ -141,7 +146,8 @@ class InspectHTML(HTMLParser):
 
 def inspect_html(html):
     parser=InspectHTML();parser.feed(html)
-    return {"title":" ".join(parser.title)[:200],"text":" ".join(parser.text)[:6000],"signals":parser.signals}
+    return {"title":" ".join(parser.title)[:200],"text":" ".join(parser.text)[:6000],"signals":parser.signals,
+            "media_inventory":parser.media}
 
 
 def collect_page(url):

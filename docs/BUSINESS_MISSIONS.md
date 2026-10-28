@@ -13,3 +13,11 @@ After approving and publishing a linked page, choose **Verify public page & form
 Sample mode is explicit, makes no network or Meta requests, and uses example.org fixtures. Default repository inference gates remain off. Live missions require a real owner, public-page consent, existing workspace attempt quota, and the existing atomic app/workspace/run budget guard. At most one Meta text request is made per mission; visuals and campaign creation remain separate explicit actions.
 
 **Not claimed:** independent market discovery, continuous monitoring, autonomous social publishing, measured conversion/ROI, voice, SAM segmentation, or a complete autonomous business workforce.
+
+## Balanced website reports and media
+
+**Website analysis** now asks what to preserve, what to change, what already exists and why each change matters. Strength quotes are validated against sources just like opportunity quotes. Detected HTML media is explicitly separate from reviewed media.
+
+Owners can upload a PNG/JPEG/WebP, short MP4 or PDF up to 5 MB for an explicit review. Each new live review uses one scoped request. The saved record includes textual assessment, input hash and provenance, not raw media. PDF/MP4 adapters are documentation-verified and mocked; live account verification remains pending. No automatic retry occurs on failure.
+
+Business briefs, inquiry checklists and video shooting scripts are explicit, owner-reviewable text drafts. Download them or the combined report as Markdown or printable HTML. Video rendering, binary PDF/DOCX generation and automatic inspection of every website image/video are not implemented. Creative Studio retains image generation. Campaigns and landing pages are optional downstream actions.

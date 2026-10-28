@@ -31,7 +31,7 @@ def test_sample_mission_is_persistent_isolated_and_zero_network(authenticated_cl
     assert client.get(path,params={"workspace_id":body["workspace_id"]}).json()==data
     assert client.get(path,params={"workspace_id":"not-mine"}).status_code==404
     assert TestClient(app).get(path,params={"workspace_id":body["workspace_id"]}).status_code==401
-    assert client.get(path+"/report",params={"workspace_id":body["workspace_id"]}).json()==data
+    assert client.get(path+"/report",params={"workspace_id":body["workspace_id"]}).json()=={**data,"assets":[]}
     assert client.get("/api/v1/missions",params={"workspace_id":body["workspace_id"]}).json()[0]["id"]==data["id"]
 
 
@@ -66,7 +66,7 @@ def test_live_mission_one_budgeted_http_call_and_idempotent_replay(authenticated
     assert len(calls)==1
     assert client.post("/api/v1/missions",json={**body,"goal":"A different business goal for the same ID"}).status_code==409
     request=json.loads(calls[0].content)
-    assert request["max_completion_tokens"]==2400
+    assert request["max_completion_tokens"]==4000
     assert "UNTRUSTED DATA" in request["messages"][0]["content"]
     budget=client.get("/api/v1/inference/budget").json()
     assert budget["meta"]["reserved_usd"]>=0.05

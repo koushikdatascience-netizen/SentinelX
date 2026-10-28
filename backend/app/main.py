@@ -188,3 +188,6 @@ app.include_router(status_router)
 
 from app.mission_routes import router as mission_router
 app.include_router(mission_router)
+
+from app.mission_assets import router as mission_assets_router
+app.include_router(mission_assets_router)

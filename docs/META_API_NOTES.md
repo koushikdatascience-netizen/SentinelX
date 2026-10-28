@@ -53,3 +53,15 @@ Documentation and mocked HTTP shapes: text, structured output, vision, single-im
 Campaign generation uses one structured request containing the audit and seven-day plan, bounded to 6,000 output tokens. The original nested Pydantic schemas could not pass the client; local definitions are now expanded safely and covered by an HTTP transport test. Owner requests explicitly choose live generation and receive an error rather than a sample substitution when unavailable. Guest sessions and the explicit sample checkbox remain sample-only.
 
 The Hostinger workflow transfers the owner-configured MODEL_API_KEY over pinned SSH into the root-only server env file; it is never committed or uploaded as a workflow artifact. A live activation starts with $2 in cumulative app/workspace reservations, a 50-cent run limit, and 20 attempts per workspace. These are application reservations rather than provider billing reconciliation. No request is made merely by deploying.
+
+## Website reports and attached media (28 October 2026)
+
+[Models](https://dev.meta.ai/docs/models) distinguishes input from output: Muse Spark reads text, images, video, audio and PDFs and returns text; Muse Image generates images. No public video-generation endpoint was verified. Shooting scripts are text documents, never rendered videos.
+
+`MetaClient.review_media` reuses budgeted image vision. For MP4/PDF it sends one `POST /v1/responses` request to `muse-spark-1.3`, `store=false`, minimal reasoning, a bounded output limit and no retries. MP4 uses `input_video` with an inline base64 `video_url`; PDF uses `input_file` with filename and inline `file_data`. Only completed nonempty `output_text` is accepted. The app limits files to 5 MB and checks containers; it does not locally decode video or parse PDF pages.
+
+Contracts: [Video understanding](https://dev.meta.ai/docs/video-understanding), [File handling](https://dev.meta.ai/docs/file-handling), [Responses API](https://dev.meta.ai/docs/protocols/responses). Video audio support has documented quality limitations. PDF/MP4 adapters are **documentation-verified and mocked HTTP-tested, not live-account verified**. Image input retains prior live verification. Owner isolation, consent, quotas and app/workspace/run budget reservations precede transport. Original bytes are not saved by SentinelX; inline requests create no provider Files resource.
+
+Website media references are inventoried, not silently downloaded or visually assessed. Owners explicitly upload media for separate reviews. New report plans include source-quoted strengths, existing feature coverage, justified changes, priorities and inspection limitations. Older saved reports retain their original contents.
+
+Business briefs, inquiry checklists and shooting scripts use separate explicit text requests. Downloads are Markdown or autoescaped printable HTML. Binary PDF/DOCX creation is not implemented. Report exports include attached saved media reviews/documents. Opening saved content or deploying never triggers a paid request. Campaign creation and page publication remain optional follow-ups.
