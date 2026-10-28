@@ -17,10 +17,10 @@ input,textarea{width:100%;padding:12px;border:1px solid #a2a2a2;border-radius:8p
 label{font-weight:600;display:block}.consent{font-size:.81rem;display:flex;gap:10px;align-items:flex-start}.consent input{width:auto;margin-top:6px}
 footer{border-top:1px solid #7773;text-align:center;opacity:.65;font-size:.82rem}
 @media(max-width:700px){.grid{grid-template-columns:1fr}.hero{padding:50px 8px}header,main,footer{padding:17px}section{margin:24px 0 45px}}
-</style></head><body>
-<div class="sample">Provenance: {{ provenance }}. {{ provenance_note }}</div>
+body{background:#111723}.hero{background:linear-gradient(135deg,#202d42,#111723);border:1px solid #ffffff25;display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:center;text-align:left;padding:50px;border-radius:0;margin:36px 0 70px}.hero h1{font-weight:900;text-transform:uppercase;max-width:unset;margin:10px 0}.hero p{margin:18px 0}.hero img{max-width:100%!important;margin:0!important;border-radius:0!important;min-height:340px;max-height:480px!important;object-fit:cover}.card{border-radius:0;background:#1c2534}.grid{grid-template-columns:repeat(3,minmax(0,1fr))}section#contact{border-left:5px solid var(--accent)}@media(max-width:760px){.hero{display:flex;flex-direction:column;padding:22px;gap:20px}.hero img{min-height:0}.grid{grid-template-columns:1fr}}</style></head><body>
+
 <header><strong>{{ business_name }}</strong><a class="link" href="#contact">{{ cta_label }}</a></header>
-<main><div class="hero"><span class="eyebrow">{{ offer }}</span><h1>{{ headline }}</h1><p>{{ subheadline }}</p>{% if hero_image_data %}<img src="{{ hero_image_data }}" alt="{{ business_name }} selected campaign creative" style="display:block;max-height:390px;width:100%;max-width:640px;object-fit:cover;border-radius:18px;margin:20px auto" loading="lazy">{% endif %}<a class="primary" href="#contact">{{ cta_label }}</a></div>
+<main><div class="hero"><div class="hero-copy"><span class="eyebrow">{{ offer }}</span><h1>{{ headline }}</h1><p>{{ subheadline }}</p><a class="primary" href="#contact">{{ cta_label }}</a></div><div class="hero-media">{% if hero_image_data %}<img src="{{ hero_image_data }}" alt="{{ business_name }} selected campaign creative" style="display:block;max-height:390px;width:100%;max-width:640px;object-fit:cover;border-radius:18px;margin:20px auto" loading="lazy">{% endif %}</div></div>
 <section><h2>What you can explore</h2><div class="grid">{% for benefit in benefits %}<article class="card"><h3>{{ benefit.title }}</h3><p>{{ benefit.text }}</p></article>{% endfor %}</div></section>
 <section><h2>How it works</h2><div class="grid">{% for step in how_it_works %}<article class="card"><span class="eyebrow">Step {{ loop.index }}</span><p>{{ step }}</p></article>{% endfor %}</div></section>
 {% if trust_points %}<section><h2>About the offer</h2><div class="grid">{% for point in trust_points %}<article class="card">{{ point }}</article>{% endfor %}</div></section>{% endif %}
@@ -32,5 +32,5 @@ footer{border-top:1px solid #7773;text-align:center;opacity:.65;font-size:.82rem
 <label class="consent"><input name="consent" value="yes" type="checkbox" required> I consent to the business using my details to respond to this inquiry.</label>
 <button type="submit">Send inquiry</button></form>
 {% if whatsapp_link %}<p><a class="link" href="{{ whatsapp_link }}" rel="noopener noreferrer">Or start a WhatsApp chat</a></p>{% endif %}
-</section></main><footer>{{ business_name }} — page managed with SentinelX. Publishing does not imply sales performance.</footer>
+</section></main><footer>{{ business_name }} — page managed with SentinelX. Publishing does not imply sales performance. <span class="page-provenance">Provenance: {{ provenance }}. {{ provenance_note }}</span></footer>
 </body></html>

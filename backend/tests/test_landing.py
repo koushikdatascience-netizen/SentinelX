@@ -62,3 +62,21 @@ def test_other_owner_cannot_list_pages(authenticated_client):
     c=authenticated_client
     assert c.get("/api/v1/landing",params={"workspace_id":"not-mine"}).status_code==404
     assert TestClient(app).get("/api/v1/landing",params={"workspace_id":"any"}).status_code==401
+
+
+def test_landing_themes_use_distinct_hero_compositions_and_footer_disclosure():
+    outputs={}
+    for theme in ("modern","warm","bold"):
+        raw=sample_landing("Furniture workshop","Increase consultation requests")
+        raw["theme"]=theme
+        html=render_landing(LandingSpec.model_validate(raw),"sample-page","sample")
+        assert '<div class="hero-copy">' in html
+        assert '<div class="hero-media">' in html
+        assert 'href="#contact"' in html
+        assert 'method="post"' in html
+        assert "Provenance: sample" in html.split("</main>")[-1]
+        assert '<div class="sample">Provenance' not in html
+        outputs[theme]=html
+    assert "grid-template-columns:minmax(0,1.1fr)" in outputs["modern"]
+    assert "flex-direction:row-reverse" in outputs["warm"]
+    assert "text-transform:uppercase" in outputs["bold"]
