@@ -125,6 +125,7 @@ def get_page(page_id:str,workspace_id:str,user:User=Depends(current_user),db:Ses
 def update_page(page_id:str,workspace_id:str,body:UpdateLanding,
                 user:User=Depends(current_user),db:Session=Depends(session)):
     page=_owned_page(db,workspace_id,page_id,user)
+    page=db.scalar(select(LandingPage).where(LandingPage.id==page.id).with_for_update().execution_options(populate_existing=True))
     if body.spec is not None:
         if body.spec.hero_image_variant_id:
             candidate=db.scalar(select(CampaignCreative).where(CampaignCreative.id==body.spec.hero_image_variant_id,

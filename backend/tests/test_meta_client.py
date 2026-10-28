@@ -149,7 +149,7 @@ def test_invalid_input_rejected_before_charge_or_transport(live,monkeypatch):
 def test_unsupported_adapters_never_charge(live,monkeypatch):
     reserve=Mock();monkeypatch.setattr(meta_client,"reserve_meta",reserve)
     with pytest.raises(NotSupported):MetaClient(**live).segment(png(),"image/png")
-    with pytest.raises(NotSupported):MetaClient(**live).transcribe(b"audio","audio/wav")
+    with pytest.raises(ValueError):MetaClient(**live).transcribe(b"audio","audio/wav")
     reserve.assert_not_called()
 
 

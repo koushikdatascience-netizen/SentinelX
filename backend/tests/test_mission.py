@@ -15,6 +15,11 @@ def test_unknown_source_cannot_pass_quote_validation():
     with pytest.raises(ValueError):validate_plan(plan,[sample_source()])
 
 
+def test_new_reports_cannot_silently_omit_the_reason_for_a_change():
+    plan=sample_plan();plan["opportunities"][0]["why_change"]=""
+    with pytest.raises(ValueError):validate_plan(plan,[sample_source()])
+
+
 def test_inspector_reports_measurements_not_sales_claims():
     checks=technical_checks([sample_source()])
     assert len(checks)==4

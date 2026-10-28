@@ -224,7 +224,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
  async function copy(text:string){try{await navigator.clipboard.writeText(text);setNotice("Copied to clipboard.")}catch{setError("Clipboard access is unavailable in this browser.")}}
  const titles:Record<StudioView,[string,string]>={
    mission:["Business mission","Research a concrete opportunity and verify its delivery."],
-   dashboard:["Your business workspace","Create, review and manage everything for your next campaign."],
+   dashboard:["Your business workspace","Understand, research, create, approve and verify business improvements."],
    brief:["Create a campaign","Tell us what you offer. Get a business strategy and seven days of tailored content."],
    photos:["Photo review","Understand what works in your product photos and what to improve."],
    audit:["Business strategy","A clear view of your offer, audience and opportunities."],
@@ -244,7 +244,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
    {title:"Evidence reports",description:"Review source notes and your report history.",icon:"report",action:onReports},
    {title:"Workspace settings",description:"Manage your workspace and usage allowance.",icon:"settings",action:onSettings}
  ];
- tools.unshift({view:"mission",title:"Website analysis",description:"What works, what to change and why, with source evidence.",icon:"spark"});
+ tools.unshift({view:"mission",title:"Run a business mission",description:"Business twin, opportunity research, approved execution and verification.",icon:"spark"});
  const selectedVisual=variants.find(v=>v.selected)||variants[0];
  const heroUrl=selectedVisual?variantImages[selectedVisual.id]:null;
  const pending=board.filter(a=>a.state==="proposed").length;

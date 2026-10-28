@@ -66,7 +66,7 @@ test("public sample works without authentication or provider requests",async({pa
  const apiCalls:string[]=[];
  page.on("request",r=>{if(r.url().includes("/api/"))apiCalls.push(r.url())});
  await page.goto("/demo");
- await expect(page.getByRole("heading",{name:"Turn workshop facts into a campaign you can review."})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Review one output from your business engine."})).toBeVisible();
  await page.getByRole("button",{name:"Approve sample pack",exact:true}).click();
  await expect(page.getByRole("status")).toHaveText("approved");
  const promise=page.waitForEvent("download");
@@ -166,9 +166,13 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
 test("business mission records tool handoffs and guides a campaign with source evidence",async({page})=>{
  await accountAndWorkspace(page);
  const nav=page.getByRole("navigation",{name:"Main navigation"});
- await nav.getByRole("button",{name:"Website analysis",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Website analysis",exact:true})).toBeVisible();
+ await nav.getByRole("button",{name:"Business engine",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Business mission",exact:true})).toBeVisible();
  await page.getByLabel("Use sample mission (no network or credits)").check();
+ await page.getByLabel("Business operations context").fill("Trade components only; preserve bulk order constraints and the existing quotation process.");
+ await page.getByLabel("I can share this context with the model. Voice input is a draft, never execution approval.").check();
+ await page.getByRole("button",{name:"Save business context",exact:true}).click();
+ await expect(page.getByRole("checkbox",{name:"Use Business operations notes in this mission",exact:true})).toBeChecked();
  await page.getByLabel("Use separate evidence research and planning roles (two requests in live mode).").check();
  await page.getByRole("button",{name:"Run sample mission",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Website analysis report",exact:true})).toBeVisible();
@@ -186,6 +190,7 @@ test("business mission records tool handoffs and guides a campaign with source e
  expect(report.provenance).toBe("sample");expect(report.sources[0].origin).toBe("fixture");
  expect(report.trace).toHaveLength(6);expect(report.verification).toBeNull();
  expect(report.research.validated).toBe(true);expect(report.research.provenance).toBe("sample");
+ expect(report.business_context[0].provenance).toBe("user_supplied");
  await expect(page.getByRole("heading",{name:"What works · preserve these",exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Create document",exact:true}).click();
  await expect(page.locator(".report-asset")).toHaveCount(1);
@@ -200,6 +205,31 @@ test("business mission records tool handoffs and guides a campaign with source e
  const reportPromise=page.waitForEvent("download");
  await page.getByRole("button",{name:"Download written report",exact:true}).click();
  expect((await reportPromise).suggestedFilename()).toBe("sentinelx-report.md");
+ await page.getByLabel("Improvement business name").fill("Browser Sample Workshop");
+ await page.getByLabel("Include a generated visual concept (one additional request in live mode).").check();
+ await page.getByRole("button",{name:"Prepare improvement draft",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Review improvement draft",exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Review improvement draft",exact:true}).click();
+ const improvement=page.getByRole("dialog",{name:"Review the proposed business improvement",exact:true});
+ await expect(improvement.getByTitle("Mission improvement preview")).toBeVisible();
+ await improvement.getByLabel("Improvement headline").fill("Discuss your bulk workshop requirements");
+ await improvement.getByRole("button",{name:"Save changes before review",exact:true}).click();
+ await expect(improvement).not.toBeVisible();
+ await page.getByRole("button",{name:"Review improvement draft",exact:true}).click();
+ await improvement.getByLabel("I reviewed this draft, including its claims and generated imagery, and approve this version.").check();
+ await improvement.getByRole("button",{name:"Approve reviewed improvement",exact:true}).click();
+ await expect(improvement).not.toBeVisible();
+ await expect(page.getByRole("button",{name:"Execute approved improvement & verify",exact:true})).toBeVisible();
+ // Local HTTP is intentionally blocked by the production public-HTTPS verifier.
+ // Exercise failed verification and the real correction approval gate, without faking a pass.
+ await page.getByLabel("Publish this approved self-hosted page and submit/remove one labeled synthetic test inquiry. This is not a customer lead.").check();
+ await page.getByRole("button",{name:"Execute approved improvement & verify",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Last execution result · failed",exact:true})).toBeVisible();
+ const receiptPromise=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download execution receipt",exact:true}).click();
+ expect((await receiptPromise).suggestedFilename()).toBe("sentinelx-execution-receipt.json");
+ await page.getByRole("button",{name:"Prepare corrected draft for new approval",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Execute approved improvement & verify",exact:true})).not.toBeVisible();
  await page.evaluate(()=>window.scrollTo(0,0));
  await page.screenshot({path:"test-results/business-mission-desktop.png",fullPage:true});
  await page.getByRole("button",{name:"Optional: create campaign",exact:true}).click();
@@ -213,9 +243,27 @@ test("business mission records tool handoffs and guides a campaign with source e
   return campaigns[0].mission_id;
  });
  expect(linked).toBe(report.id);
- await nav.getByRole("button",{name:"Website analysis",exact:true}).click();
+ await nav.getByRole("button",{name:"Business engine",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Website analysis report",exact:true})).toBeVisible();
  await page.setViewportSize({width:390,height:844});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.screenshot({path:"test-results/business-mission-mobile.png",fullPage:true});
+});
+
+test("voice-to-action keeps a sample transcript editable and never starts a mission",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business engine",exact:true}).click();
+ await page.getByLabel("Use sample mission (no network or credits)").check();
+ await page.getByLabel("Context type",{exact:true}).selectOption("voice");
+ const clip=Buffer.alloc(44+3200*2);
+ clip.write("RIFF",0);clip.writeUInt32LE(clip.length-8,4);clip.write("WAVEfmt ",8);clip.writeUInt32LE(16,16);clip.writeUInt16LE(1,20);clip.writeUInt16LE(1,22);clip.writeUInt32LE(16000,24);clip.writeUInt32LE(32000,28);clip.writeUInt16LE(2,32);clip.writeUInt16LE(16,34);clip.write("data",36);clip.writeUInt32LE(6400,40);
+ await page.getByLabel("Business context file").setInputFiles({name:"fixture.wav",mimeType:"audio/wav",buffer:clip});
+ await page.getByLabel("I can share this context with the model. Voice input is a draft, never execution approval.").check();
+ await page.getByRole("button",{name:"Transcribe voice goal",exact:true}).click();
+ await expect(page.getByLabel("Reviewed voice goal")).toHaveValue(/Sample voice goal/);
+ await page.getByLabel("Reviewed voice goal").fill("Review our bulk components and preserve the workshop quotation process.");
+ await page.getByRole("button",{name:"Use reviewed voice goal",exact:true}).click();
+ await expect(page.getByLabel("Business goal",{exact:true})).toHaveValue("Review our bulk components and preserve the workshop quotation process.");
+ await expect(page.locator(".mission-step")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Run sample mission",exact:true})).toBeEnabled();
 });

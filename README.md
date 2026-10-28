@@ -1,8 +1,8 @@
-# SentinelX — Business Intelligence to Action
+# SentinelX — Autonomous Multimodal Business Intelligence and Action Engine
 
 **Meta AI Developer Hackathon 2026 · Indie Developer track**
 
-SentinelX turns a small-business brief into an evidence-aware marketing plan, measured product imagery, creative concepts, an editable landing page and an approved export pack. Business owners stay in control: **no social account is automatically posted to, no order is placed, and approvals are recorded decisions, not external execution.**
+**The AI that understands a business and helps run it.** SentinelX connects a reusable Visual Business Twin, cited Opportunity Hunter, Creative Execution Studio, supervised agents and Voice-to-Action. It researches evidence, proposes improvements and verifies explicitly approved self-hosted delivery. Business owners stay in control: **approval records a decision; publication is a separate authorized action.** See the [original product scope and current boundaries](docs/ORIGINAL_PRODUCT_SCOPE.md).
 
 > Development / hackathon demonstration software. The real Meta text, vision, image and landing workflow is runtime-verified; broader production hardening remains incomplete. All sample fixtures are visibly labeled.
 
@@ -49,7 +49,8 @@ flowchart LR
 | Muse Spark structured text / image input | Central `MetaClient` via documented Chat Completions | **Verified on Hostinger, 28 October 2026** |
 | Muse Image generation | Central `MetaClient` via Images API | **Verified on Hostinger, 28 October 2026** |
 | SAM 3.1 segmentation | Raises `NotSupported` for live calls | **Not implemented** |
-| Muse Voice transcription | Fail-closed for live requests pending verification | **Not implemented** |
+| Muse Voice transcription | Scoped WAV transcription to an editable goal | Documentation/HTTP-contract verified; recent account verification appears in runtime status |
+| Cited opportunity discovery | Scoped Responses web search plus bounded candidate collection | Documentation/HTTP-contract verified; recent account verification appears in runtime status |
 | Open-weight Spark Open / Glimmer | Future eligible inference infrastructure | **Not deployed** |
 | Social publishing, measured ROI | Not performed | **Not implemented** |
 

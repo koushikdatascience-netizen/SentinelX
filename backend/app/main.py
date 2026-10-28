@@ -191,3 +191,7 @@ app.include_router(mission_router)
 
 from app.mission_assets import router as mission_assets_router
 app.include_router(mission_assets_router)
+from app.engine_context import router as engine_context_router
+app.include_router(engine_context_router)
+from app.engine_delivery import router as engine_delivery_router
+app.include_router(engine_delivery_router)

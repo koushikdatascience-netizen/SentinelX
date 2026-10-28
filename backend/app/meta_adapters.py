@@ -13,6 +13,6 @@ def capabilities():
     return [
         CapabilityStatus(capability="reasoning",mode="configured_not_tested" if active else "mock",note="MetaClient Chat Completions contract documented; live-account output unverified"),
         CapabilityStatus(capability="image",mode="configured_not_tested" if active else "sample",note="MetaClient single-image contract documented; live-account output unverified"),
-        CapabilityStatus(capability="voice",mode="not_implemented",note="Muse Voice transcription adapter pending account access and verified API schema"),
+        CapabilityStatus(capability="voice",mode="configured_not_tested" if active else "sample",note="Scoped WAV transcription contract documented; use runtime status for actual account verification"),
         CapabilityStatus(capability="segmentation",mode="not_implemented",note="SAM 3.1 adapter pending account access and verified API schema"),
     ]

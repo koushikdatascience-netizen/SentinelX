@@ -1,6 +1,8 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 import ReportAssets from "./ReportAssets";
+import BusinessContext from "./BusinessContext";
+import MissionDelivery from "./MissionDelivery";
 import {ProductIcon,SourceBadge} from "./ProductUI";
 
 const BASE=process.env.NEXT_PUBLIC_API_URL??"";
@@ -9,6 +11,7 @@ type Mission={id:string;goal:string;status:string;provenance:string;error?:strin
  sources:{id:string;url:string;title:string;text:string;role:string;origin:string;collected_at:string|null;sha256:string|null;media_inventory?:{kind:string;url:string;alt:string;content_analyzed:boolean}[]}[];
  checks:Check[];trace:{agent:string;kind:string;status:string;result?:string;duration_ms?:number}[];
  research?:{provenance:string;model:string|null;validated:boolean;data:{findings:{source_id:string;quote:string;observation:string;planning_constraint:string}[];unknowns:string[]}};
+ market_research?:{provenance:string;data:{summary:string;searched:boolean;citations:{url:string;title:string}[]}};
  plan:{summary:string;opportunities:{title:string;source_id:string;quote:string;hypothesis:string;proposed_action:string;success_check:string;priority?:string;existing_coverage?:string;why_change?:string}[];unknowns:string[];strengths?:{title:string;source_id:string;quote:string;why_keep:string}[];coverage_notes?:string[]}|null;
  limitations:string[];verification:{passed:boolean;checks:Check[];next_step:string;url:string;checked_at:string;
  before_after:{measurement:string;source_page:number|boolean|null;published_page:number|boolean}[];suggested_corrections:string[]}|null};
@@ -22,6 +25,9 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
  const [competitors,setCompetitors]=useState("");const [consent,setConsent]=useState(false);
  const [allowRepair,setAllowRepair]=useState(false);
  const [researchHandoff,setResearchHandoff]=useState(false);
+ const [discoverMarket,setDiscoverMarket]=useState(false),[marketQuery,setMarketQuery]=useState("");
+ const [contextIds,setContextIds]=useState<string[]>([]);
+ const [language,setLanguage]=useState("en");
  const [busy,setBusy]=useState(false);const [error,setError]=useState("");
  const [mission,setMission]=useState<Mission|null>(null);const [saved,setSaved]=useState<Saved[]>([]);
  const [pending,setPending]=useState("");const [pages,setPages]=useState<Page[]>([]);const [pageId,setPageId]=useState("");
@@ -60,7 +66,7 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
  },[mission?.id]);
  async function run(event:React.FormEvent){
   event.preventDefault();setBusy(true);setError("");
-  const inputs={workspace_id:workspace,website:url,goal:objective,competitors:competitors.split(/\n/).map(x=>x.trim()).filter(Boolean),consent_public_fetch:consent,generation_mode:mode,allow_quote_repair:allowRepair,research_handoff:researchHandoff};
+  const inputs={workspace_id:workspace,website:url,goal:objective,competitors:competitors.split(/\n/).map(x=>x.trim()).filter(Boolean),consent_public_fetch:consent,generation_mode:mode,allow_quote_repair:allowRepair,research_handoff:researchHandoff,discover_market:discoverMarket,market_query:marketQuery,context_ids:contextIds,language};
   const signature=JSON.stringify(inputs);
   if(request.current?.signature!==signature)request.current={signature,id:crypto.randomUUID()};
   const id=request.current!.id;setPending(id);
@@ -87,25 +93,30 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
  }
  return <section className="dashboard-ui mission-ui">
   <button className="breadcrumb-back" onClick={onDashboard}><ProductIcon name="back" size={16}/>Dashboard</button>
-  <div className="product-page-head"><div><div className="page-kicker">BUSINESS INTELLIGENCE → ACTION</div><h1>Website analysis</h1><p>Understand what works, what should change and why, with a clear record of what was inspected.</p></div>
+  <div className="product-page-head"><div><div className="page-kicker">AUTONOMOUS MULTIMODAL BUSINESS ENGINE</div><h1>Business mission</h1><p>Understand your business, research opportunities, prepare improvements and verify explicitly approved actions.</p></div>
    {saved.length>0&&<label className="campaign-picker">Saved missions<select aria-label="Saved missions" disabled={busy} value={mission?.id||""} onChange={event=>open(event.target.value).catch(()=>setError("Could not open mission."))}>{saved.map(row=><option key={row.id} value={row.id}>{row.goal} · {row.status}</option>)}</select></label>}
   </div>
   {error&&<div className="product-notice notice-error" role="alert">{error}</div>}
+  <BusinessContext token={token} workspace={workspace} mode={mode} onGoal={setObjective} onSelect={setContextIds}/>
   <div className="creation-layout mission-layout"><section className="product-card form-card"><h2>Analyze your business website</h2>
    <form onSubmit={run}><label>Business website<input required type="url" value={url} onChange={event=>setUrl(event.target.value)} placeholder="https://your-business.com"/></label>
-    <label>Business goal<textarea required minLength={10} maxLength={600} rows={3} value={objective} onChange={event=>setObjective(event.target.value)}/></label>
+    <label>Business goal<textarea aria-label="Business goal" required minLength={10} maxLength={600} rows={3} value={objective} onChange={event=>setObjective(event.target.value)}/></label>
+    <label>Mission language<select value={language} onChange={event=>setLanguage(event.target.value)}><option value="en">English</option><option value="bn">বাংলা</option><option value="hi">हिन्दी</option></select></label>
     <details className="subtle-details"><summary>Comparison websites (optional)</summary><label>Public comparison URLs<textarea rows={2} value={competitors} onChange={event=>setCompetitors(event.target.value)} placeholder="Up to two HTTPS URLs, one per line"/></label><p className="field-help">Only pages you specify are compared. SentinelX does not claim to discover the whole market.</p></details>
     <label className="checkbox-label"><input type="checkbox" checked={mode==="sample"} onChange={event=>onSample(event.target.checked)}/>Use sample mission (no network or credits)</label>
     <label className="checkbox-label"><input type="checkbox" required={mode==="live"} checked={consent} onChange={event=>setConsent(event.target.checked)}/>Inspect the supplied public pages and use bounded Meta requests.</label>
     <label className="checkbox-label"><input type="checkbox" checked={researchHandoff} onChange={event=>setResearchHandoff(event.target.checked)}/>Use separate evidence research and planning roles (two requests in live mode).</label>
+    <label className="checkbox-label"><input type="checkbox" checked={discoverMarket} onChange={event=>setDiscoverMarket(event.target.checked)}/>Discover market evidence and competitor candidates (one additional cited search request).</label>
+    {discoverMarket&&<label>Market research focus<input aria-label="Market research focus" maxLength={350} value={marketQuery} onChange={event=>setMarketQuery(event.target.value)} placeholder="Product category, customer needs and location"/></label>}
     <label className="checkbox-label"><input type="checkbox" checked={allowRepair} onChange={event=>setAllowRepair(event.target.checked)}/>Allow one additional budgeted request only if source quotes fail validation.</label><button className="primary wide" disabled={busy}><ProductIcon name="spark"/>{busy?"Working on your mission…":mode==="sample"?"Run sample mission":"Run business mission"}</button>
-    <p className="field-help">Up to three pages and {researchHandoff?"two AI requests":"one AI request"}. Optional citation repair permits at most one extra request within the same budget. Network failures are not retried; unchanged requests reuse saved results.</p>
+    <p className="field-help">{mode==="sample"?"Sample mode makes no network or model requests.":`${1+Number(researchHandoff)+Number(discoverMarket)} bounded AI requests; up to three supplied pages and two discovered candidate pages.`} Optional citation repair adds at most one request within the same budget. Unchanged requests reuse saved results.</p>
     {mission?.status==="failed"&&<button type="button" className="secondary" disabled={busy} onClick={()=>{request.current=null;setError("Ready for one new explicit attempt.")}}>Prepare a new attempt</button>}
    </form></section>
    <section className="product-card mission-trace"><h2>Execution trace</h2><p className="section-description">Real tool work and model reasoning are identified separately.</p>
     {!mission?.trace.length?<p className="muted">Start a mission to see its source collection, inspection, planning and verification handoffs.</p>:mission.trace.map((step,index)=><article className="mission-step" key={index}><span className={`mission-step-dot ${step.status}`}>{step.status==="completed"?<ProductIcon name="check" size={15}/>:index+1}</span><div><strong>{step.agent}</strong><small>{step.kind} · {step.status}{step.duration_ms!==undefined?` · ${(step.duration_ms/1000).toFixed(1)}s`:""}</small>{step.result&&<p>{step.result}</p>}</div></article>)}
     {mission&&<SourceBadge value={mission.provenance}/>}</section></div>
   {mission?.error&&<div className="product-notice notice-error">{mission.error}</div>}
+  {mission?.market_research&&<section className="product-card"><div className="section-heading"><h2>Opportunity Hunter · market evidence</h2><SourceBadge value={mission.market_research.provenance}/></div><p style={{whiteSpace:"pre-wrap"}}>{mission.market_research.data.summary}</p><p className="field-help">{mission.market_research.data.searched?"Provider search completed. Candidate sources are not automatically confirmed competitors or verified business facts.":"Sample fixture; no independent market search occurred."}</p>{mission.market_research.data.citations.map((source,index)=><p key={index}><a href={source.url} target="_blank" rel="noopener noreferrer">{source.title||source.url}</a></p>)}</section>}
   {mission?.research?.validated&&<section className="product-card"><div className="section-heading"><h2>Research handoff to the planner</h2><SourceBadge value={mission.research.provenance}/></div><p className="section-description">A separate research role identified these source claims and constraints. Quote matching does not independently verify the claims.</p>{mission.research.data.findings.map((finding,index)=><article className="finding" key={index}><p>{finding.observation}</p><blockquote>{finding.quote}<small>Source {finding.source_id}</small></blockquote><p><b>Planning constraint:</b> {finding.planning_constraint}</p></article>)}<h3>Research unknowns</h3>{mission.research.data.unknowns.map((text,index)=><p key={index}>{text}</p>)}</section>}
   {mission?.plan&&<><section className="product-card"><div className="section-heading"><h2>Website analysis report</h2><SourceBadge value={mission.provenance}/></div><p className="strategy-copy">{mission.plan.summary}</p>
    {(mission.plan.strengths?.length??0)>0&&<div className="report-strengths"><h3>What works · preserve these</h3>{mission.plan.strengths!.map((strength,index)=><article key={index}><h4>{strength.title}</h4><p>{strength.why_keep}</p><blockquote>{strength.quote}<small>Exact quote matched to {strength.source_id}</small></blockquote></article>)}</div>}
@@ -116,6 +127,7 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
     <div className="mission-checks">{mission.checks.map((check,index)=><article key={index}><span className={check.passed?"check-pass":"check-review"}>{check.passed?"Observed":"Review"}</span><div><strong>{check.source_id} · {check.name}</strong><p>{check.detail}</p></div></article>)}</div>
    </section>
    <ReportAssets token={token} workspace={workspace} mission={mission.id} mode={mode}/>
+   <MissionDelivery token={token} workspace={workspace} mission={mission.id} mode={mode} opportunities={mission.plan.opportunities} onChanged={()=>open(mission.id).catch(()=>setError("Could not refresh verification."))}/>
    <details className="product-card"><summary>Optional next step: create and verify a landing page</summary><h2>Execute, then verify</h2><p className="section-description">Create a landing draft from this mission’s campaign. Review it, explicitly publish it, then check the public page and form. Approval alone never publishes it.</p>
     <button className="secondary" onClick={onLanding}>Open landing pages<ProductIcon name="arrow" size={16}/></button>
     {pages.length>0&&<div className="mission-verification-form"><label>Page from this mission<select aria-label="Page to verify" value={pageId} onChange={event=>setPageId(event.target.value)}><option value="">Choose a published page</option>{pages.map(page=><option key={page.id} value={page.id} disabled={!page.published}>{page.spec.headline} · {page.published?"published":"draft"}</option>)}</select></label><label className="checkbox-label"><input type="checkbox" checked={testConsent} onChange={event=>setTestConsent(event.target.checked)}/>Submit and remove one clearly labeled synthetic test inquiry. This is not a customer lead.</label><button className="primary" disabled={!pageId||!testConsent||busy} onClick={verify}>Verify public page & form</button></div>}
