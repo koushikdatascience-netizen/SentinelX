@@ -57,12 +57,10 @@ class PinnedHTTPS(http.client.HTTPSConnection):
             raise
 
 
-def request_public(url,*,method="GET",body=None,content_types=("text/html",),same_host=None,allow_url=None,max_bytes=MAX_BYTES):
+def request_public(url,*,method="GET",body=None):
     if method not in ("GET","POST"):raise ValueError("Unsupported method")
     for redirect in range(3):
         host,family,address,normalized=resolve_target(url)
-        if same_host is not None and host!=same_host:raise ValueError("Redirect left the authorized host")
-        if allow_url is not None and not allow_url(normalized):raise ValueError("robots.txt disallows this target or redirect")
         parsed=urlsplit(normalized)
         path=parsed.path+("?"+parsed.query if parsed.query else "")
         connection=PinnedHTTPS(host,family,address)
@@ -74,7 +72,7 @@ def request_public(url,*,method="GET",body=None,content_types=("text/html",),sam
                 sock.close()
         deadline_timer=Timer(15,abort);deadline_timer.daemon=True;deadline_timer.start()
         try:
-            headers={"Host":host,"Accept":", ".join(content_types),"Accept-Encoding":"identity",
+            headers={"Host":host,"Accept":"text/html","Accept-Encoding":"identity",
                      "User-Agent":"SentinelX/0.5 bounded owner-requested website review"}
             if body is not None:
                 if not isinstance(body,bytes) or len(body)>8192:raise ValueError("Invalid form body")
@@ -88,19 +86,18 @@ def request_public(url,*,method="GET",body=None,content_types=("text/html",),sam
                 continue
             if response.getheader("Content-Encoding", "identity").lower() not in ("identity",""):
                 raise ValueError("Compressed responses are not supported")
-            if int(response.getheader("Content-Length","0"))>max_bytes:raise ValueError("Response exceeds size limit")
+            if int(response.getheader("Content-Length","0"))>MAX_BYTES:raise ValueError("Page exceeds 1 MB")
             content=bytearray();deadline=time.monotonic()+10
             while True:
                 remaining=deadline-time.monotonic()
                 if remaining<=0:raise ValueError("Page retrieval exceeded time limit")
                 if connection.sock:connection.sock.settimeout(min(8,remaining))
-                chunk=response.read1(min(16384,max_bytes+1-len(content)))
+                chunk=response.read1(min(16384,MAX_BYTES+1-len(content)))
                 if not chunk:break
                 content.extend(chunk)
-                if len(content)>max_bytes:raise ValueError("Response exceeds size limit")
-            content_type=response.getheader("Content-Type","").lower().split(";",1)[0].strip()
-            if content_type not in content_types:raise ValueError("Unexpected content type")
-            return {"url":normalized,"status":response.status,"content_type":content_type,"html":content.decode("utf-8",errors="replace"),"body":bytes(content),
+                if len(content)>MAX_BYTES:raise ValueError("Page exceeds 1 MB")
+            if "text/html" not in response.getheader("Content-Type","").lower():raise ValueError("Expected HTML")
+            return {"url":normalized,"status":response.status,"html":content.decode("utf-8",errors="replace"),
                     "sha256":hashlib.sha256(content).hexdigest(),"bytes":len(content),
                     "collected_at":datetime.now(timezone.utc).isoformat()}
         finally:
@@ -125,12 +122,6 @@ class InspectHTML(HTMLParser):
         if tag=="form":self.signals["forms"]+=1
         if tag=="h1":self.signals["h1_count"]+=1
         if tag=="meta" and attrs.get("name", "").lower()=="viewport":self.signals["viewport"]=True
-        if tag=="meta" and (attrs.get("property","").lower() in ("og:image","og:logo") or attrs.get("name","").lower() in ("twitter:image","twitter:image:src")):
-            value=attrs.get("content")
-            if value and len(self.media)<30:self.media.append({"kind":"brand_image","url":value[:2000],"alt":"","content_analyzed":False})
-        if tag=="link" and any(token in attrs.get("rel","").lower().split() for token in ("icon","apple-touch-icon")):
-            value=attrs.get("href")
-            if value and len(self.media)<30:self.media.append({"kind":"site_icon","url":value[:2000],"alt":"","content_analyzed":False})
         if tag=="img":
             self.signals["images"]+=1
             if not (attrs.get("alt") or "").strip():self.signals["images_without_alt"]+=1
@@ -163,5 +154,4 @@ def collect_page(url):
     page=request_public(url)
     if page["status"]!=200:raise ValueError("Website did not return HTTP 200")
     html=page.pop("html")
-    page.pop("body",None)
     return {**page,**inspect_html(html),"origin":"retrieved_public_page"}

@@ -195,18 +195,3 @@ from app.engine_context import router as engine_context_router
 app.include_router(engine_context_router)
 from app.engine_delivery import router as engine_delivery_router
 app.include_router(engine_delivery_router)
-
-from app.intelligence_routes import router as intelligence_router
-from app.data_hub import router as data_hub_router,UploadLimit
-from app.research_jobs import start_worker,stop_worker
-app.include_router(intelligence_router)
-app.include_router(data_hub_router)
-app.add_middleware(UploadLimit)
-
-@app.on_event("startup")
-def initialize_research_worker():
-    app.state.research_worker=start_worker()
-
-@app.on_event("shutdown")
-def shutdown_research_worker():
-    stop_worker(getattr(app.state,"research_worker",None))

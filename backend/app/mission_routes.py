@@ -40,7 +40,6 @@ class StartMission(BaseModel):
     context_ids:list[str]=Field(default_factory=list,max_length=3)
     language:Literal["en","bn","hi"]="en"
     market_evidence_id:str|None=Field(default=None,max_length=36)
-    research_job_id:str|None=Field(default=None,max_length=36)
 
 
 class VerifyPage(BaseModel):
@@ -74,17 +73,6 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
     live=generation_is_live(user,body.generation_mode)
     if live and not body.consent_public_fetch:raise HTTPException(422,"Consent to inspect the public URLs is required")
     business_context=context_rows(db,user,body.workspace_id,body.context_ids,live)
-    research_pages=None
-    if body.research_job_id:
-        from app.intelligence_routes import load_job
-        research_job=load_job(db,user,body.workspace_id,body.research_job_id)
-        research_data=json.loads(research_job.payload_json)
-        if not live or research_job.state!="completed" or not research_data["pages"]:
-            raise HTTPException(422,"Collected research requires a completed job and explicit live planning")
-        if research_data["website"].rstrip("/")!=str(body.website).rstrip("/"):
-            raise HTTPException(422,"Research belongs to a different website")
-        if body.competitors or body.discover_market:raise HTTPException(422,"Use the selected research sources without additional discovery or comparison URLs")
-        research_pages=research_data["pages"]
     if body.market_evidence_id and (not live or not body.discover_market):raise HTTPException(422,"Saved search requires live discovery mode")
     cached_search=saved_search(db,user,body.workspace_id,body.market_evidence_id,str(body.website)) if body.market_evidence_id else None
     new_search=body.discover_market and not cached_search
@@ -93,7 +81,6 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
              "language":body.language,
              "sources":[],"checks":[],"plan":None,"trace":[],"verification":None,
              "business_context":business_context,
-             "research_job_id":body.research_job_id,
              "limitations":["Only the supplied public pages are inspected; this is not independent competitor discovery.",
                 "Static HTML can omit content rendered by JavaScript. Hypotheses are not proven causes of lost sales.",
                 "No traffic, revenue or conversion improvement has been measured."]}
@@ -126,7 +113,6 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
         else:
             comparison_limit=(800 if body.research_handoff else 1400) if planning else 1400
             business_limit=(4500 if body.research_handoff else 6000) if planning else 6000
-        if research_pages:business_limit=comparison_limit=6000//max(1,len(payload["sources"]))
         return [{"id":s["id"],"role":s["role"],"title":s["title"][:120],
             "text":s["text"][:business_limit if s["role"]=="business" else comparison_limit]} for s in payload["sources"]]
 
@@ -134,11 +120,8 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
 
     try:
         if live:claim_attempt(db,body.workspace_id)
-        with stage("Source collector","saved_public_evidence" if research_pages else "network" if live else "fixture") as event:
-            if research_pages:
-                payload["sources"]=[{**source,"id":f"S{index}","research_source_id":source["id"]} for index,source in enumerate(research_pages,1)]
-                payload["limitations"].append("Reused owner-selected research snapshots at their original capture time; no fresh crawl in this planning request.")
-            elif live:
+        with stage("Source collector","network" if live else "fixture") as event:
+            if live:
                 for index,url in enumerate([body.website,*body.competitors],1):
                     source=collect_page(str(url))
                     if len(source["text"])<40:raise ValueError("Page has too little readable static text")
@@ -148,8 +131,7 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
         if body.discover_market:
             with stage("Opportunity hunter","saved_search" if cached_search else "model_search" if live else "fixture") as event:
                 result=cached_search or (MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=row.id,max_tokens=1800).search(
-                    "Find up to 15 plausible direct nearby competitors for the requested location and business category, with official-site source links where possible. "
-                    "Do not claim a definitive ranking, direct competition or exact distance unless cited evidence supports it; return fewer when uncertain. "
+                    "Find up to three public competitor or supplier candidates and relevant market evidence. "
                     "Use one web search and link sources; candidates are not confirmed competitors. Business website: "+str(body.website)+
                     ". Goal: "+body.goal[:300]+". Research focus: "+body.market_query+
                     ". Business page title: "+payload["sources"][0]["title"][:200]) if live else {

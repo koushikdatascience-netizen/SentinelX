@@ -8,12 +8,10 @@
 
 ## The product loop
 
-The **Research & data** workspace adds bounded multi-page website discovery, durable evidence facts and reviewable social candidates, selected-competitor comparisons, private multi-file parsing, deterministic data quality/totals and an exportable intelligence report. Its collected public evidence can feed the existing Business engine without a second crawl. No private uploaded data is sent to AI. See [implementation, safety limits and incomplete scope](docs/PRODUCT_EXPANSION_RELEASE.md); Maps, OAuth connectors, MCP and the general universal agent are not claimed as completed.
-
 1. **Brief:** The owner supplies their description, goal, optional website URL, product imagery and preferred language (English, Bengali or Hindi).
 2. **Image measurements:** Pillow reads real pixels (resolution, brightness, contrast, texture proxy, color palette) and produces a documented technical-readiness heuristic. Optional Meta image analysis requires explicit live authorization.
 3. **Business audit:** Produce a 7-day campaign with positioning hypotheses and evidence/assumption references. Demo mode uses samples; live mode uses structured Muse Spark responses.
-4. **Creative concepts:** Generate 1–3 variants. Demo mode creates local labeled gradient examples; live mode uses Muse Image and scores brief alignment using image input to Muse Spark. Campaign posts include an image prompt and a timed Reels/Shorts shooting plan; the plan is not a rendered video.
+4. **Creative concepts:** Generate 1–3 variants. Demo mode creates local labeled gradient examples; live mode uses Muse Image and scores brief alignment using image input to Muse Spark.
 5. **Landing page:** Generate and edit a validated, autoescaped page from three script-free mobile templates. Optionally embed a selected campaign creative, preview safely, obtain explicit approval and publish a read-only page with consented lead capture.
 6. **Approval and export:** View proposed/approved/rejected artifacts, record reviewer/time/note, explicitly reopen decisions, and export only approved posts, images, landing HTML and evidence in a ZIP.
 
