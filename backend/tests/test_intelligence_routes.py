@@ -140,11 +140,13 @@ def test_visual_asset_batch_uses_one_budgeted_vision_request(authenticated_clien
     from tests.test_site_research import HOME
     from app.meta_client import MetaClient
     image=io.BytesIO();Image.new("RGB",(80,40),(128,64,32)).save(image,format="PNG");payload=image.getvalue()
+    other=io.BytesIO();Image.new("RGB",(80,40),(64,128,32)).save(other,format="PNG");product_payload=other.getvalue()
     html=HOME+'<meta property="og:image" content="https://example.com/logo.png"><img src="https://example.com/product.png">'
     fake_site(monkeypatch);original=site_research.request_public
     def pages(url,**kwargs):
         if url.endswith(("logo.png","product.png")):
-            return {"url":url,"status":200,"content_type":"image/png","body":payload,"sha256":hashlib.sha256(payload).hexdigest(),
+            image_bytes=product_payload if url.endswith("product.png") else payload
+            return {"url":url,"status":200,"content_type":"image/png","body":image_bytes,"sha256":hashlib.sha256(image_bytes).hexdigest(),
                 "collected_at":"2026-10-28T00:00:00+00:00","html":""}
         if url.endswith("/"):
             return {"url":url,"html":html,"status":200,"sha256":"c"*64,"bytes":len(html),"collected_at":"2026-10-28T00:00:00+00:00"}
@@ -262,7 +264,8 @@ def test_malformed_paid_visual_response_fails_clearly_and_is_not_retried(authent
     calls=transport(monkeypatch,chat(json.dumps(_structured_findings(2,duplicate=True))))
     scope={"workspace_id":wid};form={"analyze_with_meta":"true","consent_to_provider":"true"}
     # Two panels are needed to exercise duplicate panel indices; add a second screenshot.
-    files.append(("files",("public-page-2.png",files[0][1][1],"image/png")))
+    distinct=io.BytesIO();Image.new("RGB",(120,80),(80,120,20)).save(distinct,format="PNG")
+    files.append(("files",("public-page-2.png",distinct.getvalue(),"image/png")))
     failed=client.post(path,params=scope,data=form,files=files)
     assert failed.status_code==502 and "invalid numbered visual findings" in failed.text
     retried=client.post(path,params=scope,data=form,files=files)
