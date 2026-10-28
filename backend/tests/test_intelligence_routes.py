@@ -126,6 +126,58 @@ def test_explicit_visual_review_measures_selected_site_asset_and_sends_only_with
     assert saved[0]["semantic_review"]["text"]=="A logo-like brand image."
 
 
+def test_visual_asset_batch_uses_one_budgeted_vision_request(authenticated_client,monkeypatch):
+    import io
+    from PIL import Image
+    from app import public_web,site_research
+    from tests.test_site_research import HOME
+    from app.meta_client import MetaClient
+    image=io.BytesIO();Image.new("RGB",(80,40),(128,64,32)).save(image,format="PNG");payload=image.getvalue()
+    html=HOME+'<meta property="og:image" content="https://example.com/logo.png"><img src="https://example.com/product.png">'
+    fake_site(monkeypatch);original=site_research.request_public
+    def pages(url,**kwargs):
+        if url.endswith(("logo.png","product.png")):
+            return {"url":url,"status":200,"content_type":"image/png","body":payload,"sha256":("a" if url.endswith("logo.png") else "b")*64,
+                "collected_at":"2026-10-28T00:00:00+00:00","html":""}
+        if url.endswith("/"):
+            return {"url":url,"html":html,"status":200,"sha256":"c"*64,"bytes":len(html),"collected_at":"2026-10-28T00:00:00+00:00"}
+        return original(url,**kwargs)
+    def transport(url,**kwargs):
+        if url.endswith("robots.txt"):
+            return {"url":url,"status":404,"content_type":"text/plain","html":"","body":b"","sha256":"d"*64,"collected_at":"2026-10-28T00:00:00+00:00"}
+        return pages(url,**kwargs)
+    monkeypatch.setattr(site_research,"request_public",pages);monkeypatch.setattr(public_web,"request_public",transport)
+    client=authenticated_client;wid,jid,_=begin(client);run_job(jid,pause=lambda _:None)
+    monkeypatch.setattr("app.campaign_routes.generation_is_live",lambda *args:True)
+    calls=[]
+    def vision(self,payload,mime,prompt,*args,**kwargs):
+        calls.append((payload,mime,prompt));assert mime=="image/jpeg";return {"provenance":"live_meta","model":"muse-spark-1.3","data":"Image 1 and 2 show the same warm wood palette."}
+    monkeypatch.setattr(MetaClient,"vision",vision)
+    scope="?workspace_id="+wid;path=f"/api/v1/intelligence/research/{jid}/visual-review-batch"+scope
+    body={"asset_urls":["https://example.com/logo.png","https://example.com/product.png"],"analyze_with_meta":True,"consent_to_provider":True}
+    first=client.post(path,json=body);assert first.status_code==200,first.text
+    assert first.json()["provider_requests"]==1 and len(first.json()["images"])==2
+    assert first.json()["batch_review"]["image_count"]==2 and len(calls)==1
+    reused=client.post(path,json=body);assert reused.status_code==200 and reused.json()["reused"] is True
+    assert len(calls)==1
+
+
+def test_owner_screenshot_batch_is_local_by_default_and_does_not_store_image_bytes(authenticated_client,monkeypatch):
+    import io
+    from PIL import Image
+    image=io.BytesIO();Image.new("RGB",(120,80),(20,80,160)).save(image,format="PNG");payload=image.getvalue()
+    client=authenticated_client;fake_site(monkeypatch)
+    wid,jid,_=begin(client)
+    run_job(jid,pause=lambda _:None)
+    response=client.post(f"/api/v1/intelligence/research/{jid}/visual-screenshot-batch",params={"workspace_id":wid},
+        files=[("files",("homepage.png",payload,"image/png"))])
+    assert response.status_code==200,response.text
+    result=response.json();assert result["provider_requests"]==0
+    assert result["images"][0]["source"]=="owner_supplied_screenshot"
+    assert result["images"][0]["local_visual_measurements"]["width"]==120
+    assert "body" not in result["images"][0] and "contact_sheet" not in result
+
+
 def test_social_search_requires_linked_profile_consent_and_reuses_saved_result(authenticated_client,monkeypatch):
     from app.meta_client import MetaClient
     fake_site(monkeypatch);client=authenticated_client;wid,jid,_=begin(client);run_job(jid,pause=lambda _:None)

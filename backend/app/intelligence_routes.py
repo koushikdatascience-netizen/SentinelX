@@ -7,7 +7,7 @@ from datetime import timedelta
 from typing import Literal
 from uuid import UUID,uuid4
 from urllib.parse import urlsplit
-from fastapi import APIRouter,Depends,HTTPException,Response
+from fastapi import APIRouter,Depends,File,Form,HTTPException,Response,UploadFile
 from pydantic import BaseModel,Field
 from sqlalchemy import select,func
 from sqlalchemy.orm import Session
@@ -163,6 +163,12 @@ class SocialSearchRequest(BaseModel):
     consent_public_search:bool=False
 
 
+class VisualAssetBatchRequest(BaseModel):
+    asset_urls:list[str]=Field(min_length=1,max_length=4)
+    analyze_with_meta:bool=False
+    consent_to_provider:bool=False
+
+
 @router.post("/research/{job_id}/visual-review")
 def visual_review(job_id:str,body:VisualAssetRequest,workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
     """Analyze only a same-site image explicitly present in a saved page snapshot."""
@@ -178,7 +184,9 @@ def visual_review(job_id:str,body:VisualAssetRequest,workspace_id:str,user:User=
     if saved and (not body.analyze_with_meta or saved.get("semantic_review")):return saved
     if body.analyze_with_meta and selected in state.get("visual_meta_attempted",[]):
         raise HTTPException(409,"A Meta review was already attempted for this image in this research job; no automatic retry is made")
-    if not saved and len(state.get("visual_reviews",[]))>=10:raise HTTPException(429,"At most 10 distinct website images may be reviewed per research job")
+    from app.visual_batches import reviewed_visual_ids
+    if not saved and len(reviewed_visual_ids(state)|{"url:"+selected})>10:
+        raise HTTPException(429,"At most 10 distinct uploaded or website images may be visually reviewed per research job")
     from app.public_web import request_public
     from app.image_scoring import measure_image
     from urllib.robotparser import RobotFileParser
@@ -231,6 +239,67 @@ def visual_review(job_id:str,body:VisualAssetRequest,workspace_id:str,user:User=
     state["visual_reviews"].append(result);state["visual_reviews"]=state["visual_reviews"][-30:]
     row.payload_json=json.dumps(state);row.updated_at=utcnow();db.commit()
     return result
+
+
+@router.post("/research/{job_id}/visual-review-batch")
+def visual_review_batch(job_id:str,body:VisualAssetBatchRequest,workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
+    """Fetch up to four listed same-site images and review them in one model request."""
+    db.scalar(select(Workspace).where(Workspace.id==workspace_id).with_for_update())
+    row=load_job(db,user,workspace_id,job_id,True)
+    if row.state!="completed":raise HTTPException(409,"Complete website research before reviewing its images")
+    state=json.loads(row.payload_json)
+    selected=[canonical_url(value) for value in body.asset_urls]
+    if any(value is None for value in selected) or len(set(selected))!=len(selected):
+        raise HTTPException(422,"Choose 1 to 4 distinct valid image URLs")
+    known={item.get("url") for page in state["pages"] for item in page.get("media_inventory",[])
+        if item.get("visual_review_available")}
+    if any(value not in known for value in selected):raise HTTPException(422,"Choose only eligible images listed in this research report")
+    from app.public_web import request_public
+    from app.visual_batches import prepare_batch,review_batch
+    from urllib.robotparser import RobotFileParser
+    host=urlsplit(state["website"]).hostname
+    try:
+        robots=request_public("https://"+host+"/robots.txt",content_types=("text/plain","text/html"),same_host=host)
+        policy=RobotFileParser();policy.parse([] if robots["status"]==404 else robots["html"].splitlines() if robots["status"]==200 else ["User-agent: *","Disallow: /"])
+        inputs=[]
+        for url in selected:
+            if not policy.can_fetch("SentinelX",url):raise ValueError("robots.txt disallows an image path")
+            fetched=request_public(url,content_types=("image/png","image/jpeg","image/webp"),same_host=host,max_bytes=2_500_000)
+            if fetched["status"]!=200:raise ValueError("An image could not be retrieved")
+            inputs.append({"body":fetched["body"],"mime":fetched["content_type"],"sha256":fetched["sha256"],
+                "asset_url":url,"source":"retrieved_public_asset"})
+        prepared=prepare_batch(inputs)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from None
+    except Exception:raise HTTPException(502,"Public image batch could not be retrieved") from None
+    return review_batch(prepared=prepared,state=state,row=row,db=db,user=user,workspace_id=workspace_id,
+        website=state["website"],analyze_with_meta=body.analyze_with_meta,consent_to_provider=body.consent_to_provider)
+
+
+@router.post("/research/{job_id}/visual-screenshot-batch")
+async def visual_screenshot_batch(job_id:str,workspace_id:str,files:list[UploadFile]=File(...),
+        analyze_with_meta:bool=Form(False),consent_to_provider:bool=Form(False),
+        user:User=Depends(current_user),db:Session=Depends(session)):
+    """Review up to four owner-supplied screenshots; image bytes are not persisted."""
+    db.scalar(select(Workspace).where(Workspace.id==workspace_id).with_for_update())
+    row=load_job(db,user,workspace_id,job_id,True)
+    if row.state!="completed":raise HTTPException(409,"Complete website research before reviewing screenshots")
+    if not 1<=len(files)<=4:raise HTTPException(422,"Upload 1 to 4 screenshots per batch")
+    from app.visual_batches import MAX_BATCH_BYTES,MAX_BATCH_IMAGE_BYTES,prepare_batch,review_batch
+    images=[];total=0
+    try:
+        for upload in files:
+            payload=await upload.read(MAX_BATCH_IMAGE_BYTES+1)
+            if not payload or len(payload)>MAX_BATCH_IMAGE_BYTES:raise ValueError("Each screenshot must be no larger than 2.5 MB")
+            total+=len(payload)
+            if total>MAX_BATCH_BYTES:raise ValueError("Combined screenshot batch exceeds 8 MB")
+            images.append({"body":payload,"mime":upload.content_type,"source":"owner_supplied_screenshot"})
+    finally:
+        for upload in files:await upload.close()
+    try:prepared=prepare_batch(images)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from None
+    state=json.loads(row.payload_json)
+    return review_batch(prepared=prepared,state=state,row=row,db=db,user=user,workspace_id=workspace_id,
+        website=state["website"],analyze_with_meta=analyze_with_meta,consent_to_provider=consent_to_provider)
 
 
 @router.post("/research/{job_id}/social-search")
@@ -322,6 +391,7 @@ def report(job_id:str,workspace_id:str,format:Literal["json","html"]="json",user
     row=load_job(db,user,workspace_id,job_id);data=job_info(row,True)
     data["findings"]=[finding for page in data["pages"] for finding in findings(page)]
     data["visual_reviews"]=json.loads(row.payload_json).get("visual_reviews",[])
+    data["visual_batches"]=list(json.loads(row.payload_json).get("visual_batches",{}).values())
     data["facts"]=twin(workspace_id,user,db)["facts"]
     data["datasets"]=[dataset_info(dataset) for dataset in db.scalars(select(BusinessDataset).where(BusinessDataset.workspace_id==workspace_id)).all()]
     data["comparison"]=[{"url":page["url"],"role":page["role"],"title":page["title"],"description":page["description"],
@@ -360,7 +430,7 @@ def report(job_id:str,workspace_id:str,format:Literal["json","html"]="json",user
     for anchor,title,value in [("summary","Executive summary",data["summary"]),("facts","Business identity and social evidence",data["facts"]),
         ("pages","Page audit and SEO observations",data["findings"]),("comparison","Competitor comparison",{"pages":data["comparison"],"insights":data["comparison_insights"]}),
         ("social-posts","Public social-post searches",data["social_searches"]),
-        ("visuals","Reviewed brand images",data["visual_reviews"]),
+        ("visuals","Reviewed brand images and screenshot batches",{"website_assets":data["visual_reviews"],"batches":data["visual_batches"]}),
         ("data","Private data quality",data["datasets"]),("coverage","Coverage and unknowns",{key:data[key] for key in ("errors","limitations","integrations")})]:
         sections.append("<section id='"+anchor+"'><h2>"+title+"</h2><pre>"+escape(json.dumps(value,ensure_ascii=False,indent=2))+"</pre></section>")
     sections.append("</html>")

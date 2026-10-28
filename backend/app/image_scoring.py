@@ -1,10 +1,11 @@
 """Interpretable local-only image measurements. Not an aesthetic or sales-quality prediction."""
 import io
 from collections import Counter
-from PIL import Image, ImageFilter, ImageStat, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFilter, ImageStat, UnidentifiedImageError
 
 MAX_BYTES=5_000_000
 MAX_PIXELS=20_000_000
+MAX_CONTACT_SHEET_IMAGES=4
 
 def measure_image(payload:bytes)->dict:
     if not payload or len(payload)>MAX_BYTES:
@@ -52,3 +53,35 @@ def measure_image(payload:bytes)->dict:
         raise ValueError("Image exceeds safety pixel limit") from exc
     except (UnidentifiedImageError,OSError) as exc:
         raise ValueError("Unreadable image") from exc
+
+
+def make_contact_sheet(payloads:list[bytes])->bytes:
+    """Downscale 1-4 reviewed images into one numbered, bounded vision input."""
+    if not 1<=len(payloads)<=MAX_CONTACT_SHEET_IMAGES:
+        raise ValueError(f"Choose 1 to {MAX_CONTACT_SHEET_IMAGES} images per visual batch")
+    cell_w,cell_h,label_h=720,820,36
+    columns=2 if len(payloads)>1 else 1
+    rows=(len(payloads)+columns-1)//columns
+    sheet=Image.new("RGB",(columns*cell_w,rows*(cell_h+label_h)),"white")
+    draw=ImageDraw.Draw(sheet)
+    for index,payload in enumerate(payloads):
+        # Reuse the strict format, size and pixel checks before decoding for layout.
+        measure_image(payload)
+        with Image.open(io.BytesIO(payload)) as source:
+            image=source.convert("RGB")
+            image.thumbnail((cell_w-16,cell_h-16),Image.Resampling.LANCZOS)
+            x=(index%columns)*cell_w+(cell_w-image.width)//2
+            y=(index//columns)*(cell_h+label_h)+label_h+(cell_h-image.height)//2
+            draw.text(((index%columns)*cell_w+12,(index//columns)*(cell_h+label_h)+10),
+                      f"Image {index+1}",fill="black")
+            sheet.paste(image,(x,y))
+            image.close()
+    output=io.BytesIO()
+    for quality in (82,72,62):
+        output.seek(0);output.truncate(0)
+        sheet.save(output,format="JPEG",quality=quality,optimize=True)
+        if output.tell()<=5_000_000:
+            sheet.close()
+            return output.getvalue()
+    sheet.close()
+    raise ValueError("Contact sheet exceeds the 5 MB vision input limit")
