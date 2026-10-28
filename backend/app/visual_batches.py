@@ -50,6 +50,8 @@ def prepare_batch(images:list[dict])->dict:
             "asset_url":item.get("asset_url"),"sha256":digest,"local_visual_measurements":local,
             "provenance":"user_supplied","semantic_review":None})
         payloads.append(payload)
+    if len({item["sha256"] for item in prepared}) != len(prepared):
+        raise ValueError("Choose distinct images; duplicate image bytes are not allowed in one batch")
     # Order is meaningful: model responses refer to numbered panels.
     batch_key=hashlib.sha256("\n".join(item["sha256"] for item in prepared).encode()).hexdigest()
     return {"batch_key":batch_key,"images":prepared,"contact_sheet":make_contact_sheet(payloads)}
