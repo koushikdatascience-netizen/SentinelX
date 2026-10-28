@@ -12,6 +12,7 @@ from app.mission import sample_plan
 from app.landing import sample_landing
 import base64
 import httpx
+import pytest
 from openai import OpenAI
 
 
@@ -30,13 +31,17 @@ def approve(client,request,job):
     assert client.post(f'/api/v1/approvals/{review["id"]}/decide',params=scope,json={"decision":"approved","note":"Explicit owner review in offline test"}).status_code==200
 
 
-def test_draft_pauses_then_explicit_execution_verifies_and_replays_without_side_effects(authenticated_client,monkeypatch):
+@pytest.mark.parametrize("edited",[False,True])
+def test_draft_pauses_then_explicit_execution_verifies_and_replays_without_side_effects(authenticated_client,monkeypatch,edited):
     client=authenticated_client;mission,request,job=draft(client)
     scope={"workspace_id":request["workspace_id"]};root=f'/api/v1/missions/{mission["id"]}'
     assert job["awaiting_approval"] is True and job["external_publication"] is False
     assert job["trace"][-1]["kind"]=="human" and job["creative_id"]
     page=client.get(f'/api/v1/landing/{job["page_id"]}',params=scope).json()
     assert not page["published"] and page["spec"]["hero_image_variant_id"]==job["creative_id"]
+    if edited:
+        response=client.patch(f'/api/v1/landing/{job["page_id"]}',params=scope,json={"spec":{**page["spec"],"headline":"Reviewed workshop inquiry improvement"}})
+        assert response.status_code==200,response.text
     assert client.post(root+"/prepare",json=request).json()["id"]==job["id"]
     execute={**scope,"request_id":str(uuid4()),"page_id":job["page_id"],"consent_publish":True,"consent_synthetic_inquiry":True}
     assert client.post(root+"/execute",json=execute).status_code==409
@@ -53,6 +58,8 @@ def test_draft_pauses_then_explicit_execution_verifies_and_replays_without_side_
     assert result.status_code==200,result.text
     receipt=result.json()
     assert receipt["status"]=="completed" and receipt["external_publication"] is True and receipt["business_impact_measured"] is False
+    assert receipt["provenance"]==("user_supplied" if edited else "sample")
+    assert receipt["source_mission_provenance"]=="sample"
     assert receipt["verification"]["passed"] is True and len(calls)==2
     assert client.get(f'/api/v1/landing/{job["page_id"]}/leads',params=scope).json()==[]
     assert client.post(root+"/execute",json=execute).json()==receipt and len(calls)==2
