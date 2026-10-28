@@ -70,6 +70,10 @@ async function accountAndWorkspace(page:Page) {
  await page.getByRole("button",{name:"Create workspace",exact:true}).click();
  await expect(page.getByLabel("Active workspace")).not.toHaveValue("");
  await page.getByRole("button",{name:"Evidence reports",exact:true}).click();
+ await page.getByLabel("Business website").fill("https://fixture.example/");
+ await page.getByLabel("Business objective").fill("Improve qualified enquiries from local homeowners");
+ await page.getByLabel("Page title").fill("Fixture Workshop — Handmade Furniture");
+ await page.getByLabel("Owner-supplied website text (unverified)").fill("We create handmade solid-wood furniture and custom cabinetry. Customers can request consultations and quotations for bespoke projects.");
 }
 
 test("owner evidence, recorded review and downloadable audit",async({page})=>{
@@ -77,6 +81,7 @@ test("owner evidence, recorded review and downloadable audit",async({page})=>{
  await page.getByRole("button",{name:"Generate evidence-backed audit"}).click();
  await expect(page.getByRole("heading",{name:"Report history"})).toBeVisible();
  await expect(page.getByText("We create handmade solid-wood furniture",{exact:false}).first()).toBeVisible();
+ await page.getByLabel("Proposed action").fill("Prepare an improved homepage CTA for owner approval");
  await page.getByRole("button",{name:"Create proposal"}).click();
  await page.getByRole("button",{name:"Approve",exact:true}).click();
  await expect(page.getByText("approved",{exact:true})).toBeVisible();
