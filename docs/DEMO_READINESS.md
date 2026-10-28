@@ -25,7 +25,7 @@ The empty-text smoke response was an earlier result, not the current integration
 
 Website analysis inspects bounded supplied public HTTPS pages and up to 6,000 characters of collected homepage text, plus smaller comparison snapshots; HTML media inventory is distinguished from content review. Campaigns produce seven posts. Pixel measurements and live vision, generated images, landing previews, approval records, ZIP exports and explicit publication are implemented. The older Evidence reports provider draft still uses a 1,200-character pasted excerpt and short copy; it is a separate limited tool, not the main product.
 
-Owners can attach image, MP4 or PDF reviews and create business briefs, inquiry checklists and shooting scripts. PDF/MP4 adapters are documented and mock-tested but not yet verified with this live account. No automatic inspection of every page/image/video is claimed. SAM, voice and generated video are unsupported; printable HTML/Markdown documents are not binary PDF/DOCX generation.
+Owners can attach image, MP4 or PDF reviews and create business briefs, inquiry checklists and shooting scripts. PDF/MP4 adapters are documented and mock-tested but not yet verified with this live account. No automatic inspection of every page/image/video is claimed. SAM and generated video are unsupported; scoped voice transcription and cited search are now implemented, with recent account verification exposed by runtime status; printable HTML/Markdown documents are not binary PDF/DOCX generation.
 
 ## Budgets and quote reliability
 
@@ -38,3 +38,7 @@ Quotes normalize whitespace, NFC Unicode and equivalent curly quotes/dashes whil
 See [SUBMISSION_DISCLOSURE.md](SUBMISSION_DISCLOSURE.md). Accepted participant rules and permitted pre-existing-code scope still require confirmation. Git dates alone cannot prove when code was authored. Record a judge-ready demo and obtain owner usefulness feedback; no measured conversion or revenue uplift is claimed.
 
 A judge-access browser check on 28 October opened a fresh no-login guest workspace successfully, confirmed sample runtime, received HTTP 403 for attempted live generation, and confirmed app reservations were unchanged. Repository visibility was verified PUBLIC. Participant-guide requirements, pre-kickoff commits and the three-minute recording plan are now tracked in HACKATHON_CODE_PROVENANCE.md and DEMO_SCRIPT.md; indie eligibility remains UNCONFIRMED.
+
+## Original product continuation
+
+See [ORIGINAL_PRODUCT_SCOPE.md](ORIGINAL_PRODUCT_SCOPE.md) for the retained five-part application vision and the connected Business engine workflow. The implementation now includes reusable multimodal context, editable voice intake, bounded cited discovery, a direct solution/optional visual draft, an explicit review/publication gate, execution receipts and correction proposals. Tests and documentation alone do not establish live-account success for the newly added voice/search paths. Public runtime status and saved private artifacts distinguish that evidence. Continuous monitoring, SAM masks and broader operational adapters remain unfinished.
