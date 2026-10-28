@@ -33,23 +33,33 @@ def grounded_response(response):
     if response.get("status")!="completed":raise ValueError("Search response incomplete")
     searches=[item for item in response.get("output",[]) if item.get("type")=="web_search_call" and item.get("status")=="completed"]
     if len(searches)!=1:raise ValueError("Exactly one completed search is required")
-    text="";citations=[];hits=[]
+    text="";citations=[];hits=[];annotation_seen=False
     for item in response.get("output",[]):
         if item.get("type")!="message":continue
         for block in item.get("content",[]):
             if block.get("type")!="output_text":continue
-            value=block.get("text","");offset=len(text)
+            value=block.get("text","")
             if not isinstance(value,str):raise ValueError("Invalid search text")
-            for citation in block.get("annotations",[]):
+            if text:text+="\n\n"
+            offset=len(text)
+            for citation in block.get("annotations") or []:
+                if citation.get("type")=="url_citation":annotation_seen=True
                 start=citation.get("start_index");end=citation.get("end_index")
                 if citation.get("type")!="url_citation" or not public_link(citation.get("url")):continue
                 if not isinstance(start,int) or not isinstance(end,int) or not 0<=start<end<=len(value):continue
                 citations.append({"url":citation["url"],"title":str(citation.get("title","Source"))[:200],
                     "start_index":start+offset,"end_index":end+offset})
             text+=value
-    if not text.strip() or len(text)>12000 or not citations:raise ValueError("Search must return bounded text with valid URL citations")
+    if not text.strip() or len(text)>12000:raise ValueError("Search must return bounded text")
     for item in (searches[0].get("results") or [])[:10]:
         if item.get("type")=="text_result" and public_link(item.get("url")):
             hits.append({"url":item["url"],"title":str(item.get("title","Source"))[:200],"snippet":str(item.get("snippet",""))[:1000]})
+    if annotation_seen and not citations:raise ValueError("Invalid search citation annotations")
+    inline=bool(citations)
+    if not citations:
+        if not hits:raise ValueError("Search returned neither valid annotations nor public source results")
+        citations=[{"url":hit["url"],"title":hit["title"],"start_index":None,"end_index":None} for hit in hits]
     return {"summary":text,"citations":citations[:20],"results":hits,"searched":True,
-        "limitation":"Provider search citations are evidence pointers, not independent verification of business claims."}
+        "citation_mode":"url_annotations" if inline else "provider_results","has_inline_citations":inline,
+        "limitation":"Provider URL annotations are evidence pointers, not independent verification of business claims." if inline else
+            "The provider returned search-result links without inline URL annotations. Summary claims are not span-cited. Only independently collected page text can support the mission's source-checked quotes."}
