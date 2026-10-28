@@ -1,7 +1,16 @@
 import io
 import wave
 import pytest
-from app.engine_inputs import public_link,wav_duration,grounded_response
+from app.engine_inputs import public_link,wav_duration,grounded_response,context_excerpt
+
+
+def test_context_excerpt_retains_observations_and_unknowns_without_leading_metadata():
+    original="> "+"Provenance metadata. "*40+"\n\nObserved turned wooden legs.\n"+"Scene detail. "*80+"\n> Product label remains quoted.\nUnknown: dimensions."
+    excerpt=context_excerpt(original,True)
+    assert excerpt.startswith("Observed turned wooden legs.")
+    assert "Unknown: dimensions." in excerpt and "Product label remains quoted." in excerpt
+    assert len(excerpt)<=520 and "[excerpt omitted]" in excerpt
+    assert context_excerpt("> Owner-supplied quotation.")=="> Owner-supplied quotation."
 
 
 def audio(channels=1,seconds=1):

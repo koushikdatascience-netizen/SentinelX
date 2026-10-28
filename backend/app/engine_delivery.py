@@ -23,6 +23,7 @@ from app.landing import LandingSpec,sample_landing
 from app.campaign import unsupported_claims
 from app.landing_routes import _owned_page,update_page,UpdateLanding
 from app.approval_routes import ensure_board
+from app.engine_context import context_handoff
 
 router=APIRouter(prefix="/api/v1/missions",tags=["Supervised business execution"])
 
@@ -105,7 +106,7 @@ def prepare(mission_id:str,body:DraftImprovement,user:User=Depends(current_user)
                 "Use response_language for the copy and language field. Return JSON.",
                 json.dumps({"business_name":body.business_name,"response_language":mission.get("language","en"),"goal":mission["goal"],"opportunity":opportunity,
                     "sources":[{"id":s["id"],"text":s["text"][:1800 if s["role"]=="business" else 300]} for s in mission["sources"]],
-                    "business_context_unverified":[{"kind":c["kind"],"text":c["text"][:400]} for c in mission.get("business_context",[])],
+                    "business_context_unverified":context_handoff(mission.get("business_context",[])),
                     "failed_verification":mission.get("verification") if body.correction else None},ensure_ascii=False),LandingSpec.model_json_schema())
             if response["provenance"]!="live_meta":raise ValueError("Live design cannot substitute sample content")
             spec=LandingSpec.model_validate(response["data"]);data["model"]=response["model"]
@@ -124,6 +125,7 @@ def prepare(mission_id:str,body:DraftImprovement,user:User=Depends(current_user)
             from app.image_scoring import measure_image
             prompt=("Illustrative business improvement hero creative, clearly a generated concept, not documentary product photography. "
                 "No invented logos, endorsements or text claims. Business context: "+mission["sources"][0]["text"][:300]+
+                ". Visual context (prior unverified interpretation): "+" ".join(c["text"][:200] for c in context_handoff(mission.get("business_context",[])) if c["kind"]=="business_twin")[:400]+
                 ". Improvement: "+opportunity["proposed_action"])[:1500]
             if live:
                 claim_attempt(db,body.workspace_id)

@@ -9,6 +9,17 @@ from tests.test_mission_routes import live_transport,inputs
 from tests.test_meta_client import live,transport,chat
 
 
+def test_context_handoff_keeps_real_visual_observations_and_original_audit_text():
+    from app.engine_context import context_handoff
+    original="> "+"Unverified interpretation. "*30+"\n\nObserved turned wooden legs on a plain background.\nUnknown: exact dimensions."
+    twin={"id":"twin","kind":"business_twin","provenance":"live_meta","sha256":"digest","text":original}
+    notes={"id":"notes","kind":"business_twin","provenance":"user_supplied","text":"> Keep this owner instruction."}
+    selected=context_handoff([twin,notes])
+    assert selected[0]["text"].startswith("Observed turned wooden legs")
+    assert "Unknown: exact dimensions." in selected[0]["text"]
+    assert selected[1]["text"]==notes["text"] and twin["text"]==original
+
+
 def test_notes_and_sample_twin_are_owned_reusable_and_free(authenticated_client,monkeypatch):
     client=authenticated_client;wid=inputs(client)["workspace_id"]
     monkeypatch.setattr(meta_client,"OpenAI",lambda **kwargs:pytest.fail("Sample context called SDK"))

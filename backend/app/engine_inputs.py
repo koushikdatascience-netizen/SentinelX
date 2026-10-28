@@ -16,6 +16,17 @@ def public_link(value):
     except (ValueError,TypeError):return False
 
 
+def context_excerpt(text,omit_quoted_intro=False):
+    """Select bounded prior-output excerpts; keep the complete original for audit."""
+    if omit_quoted_intro:
+        lines=text.splitlines()
+        while lines and (not lines[0].strip() or lines[0].lstrip().startswith(">")):
+            lines.pop(0)
+        text="\n".join(lines)
+    text=text.strip()
+    return text if len(text)<=520 else text[:390]+"\n[excerpt omitted]\n"+text[-110:]
+
+
 def wav_duration(payload,mime):
     if mime not in ("audio/wav","audio/x-wav") or not isinstance(payload,bytes) or not 44<=len(payload)<=3_000_000:
         raise ValueError("Use a mono 16-bit PCM WAV recording, up to 60 seconds")
