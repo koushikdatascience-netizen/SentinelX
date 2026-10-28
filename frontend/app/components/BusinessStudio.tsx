@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 import BusinessMission from "./BusinessMission";
+import type {BusinessProfile} from "./BusinessProfile";
 import {EmptyState,Modal,ProductIcon,SourceBadge} from "./ProductUI";
 export type StudioView="mission"|"dashboard"|"brief"|"photos"|"audit"|"campaign"|"creatives"|"landing"|"approvals";
 
@@ -72,6 +73,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
  }
  useEffect(()=>{setMissionId(null);setImages([]);setCampaign(null);setVariants([]);setPage(null);setBoard([]);setSelectedVariant(null);setLandingPages([]);setEditor(null);setReviewItem(null);setError("");setNotice("");photoUrls.current.forEach(URL.revokeObjectURL);photoUrls.current=[];},[workspace]);
  useEffect(()=>()=>photoUrls.current.forEach(URL.revokeObjectURL),[]);
+ useEffect(()=>{let active=true;if(workspace)api<BusinessProfile|null>(`/api/v1/workspaces/${workspace}/business-profile`).then(profile=>{if(active&&profile){setBusinessName(profile.details.name);setWebsite(profile.details.website);setDescription(profile.details.description);setWhatsapp(profile.details.phone)}}).catch(()=>{});return()=>{active=false}},[token,workspace]);
  useEffect(()=>{if(campaign)loadBoard().catch(e=>setError(String(e)))},[campaign,page,view]);
  useEffect(()=>{
    let active=true;

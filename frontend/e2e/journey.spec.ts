@@ -18,11 +18,13 @@ async function accountAndWorkspace(page:Page) {
  await page.getByLabel("Email address").fill(email);
  await page.getByLabel("Password",{exact:true}).fill("StrongPassword123");
  await page.getByRole("button",{name:"Create account",exact:false}).click();
- await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
- await page.getByRole("button",{name:/^Sign in(?:\s*→)?$/}).click();
- await page.getByRole("button",{name:"Settings",exact:true}).click();
- await page.getByLabel("Workspace name").fill("Browser demo workshop");
- await page.getByRole("button",{name:"Create workspace",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Let’s get to know your business"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Your business workspace"})).toHaveCount(0);
+ await page.getByLabel("Business name",{exact:true}).fill("Browser workshop");
+ await page.getByLabel("Industry",{exact:true}).selectOption("Arts & crafts");
+ await page.getByRole("button",{name:"Save & continue"}).click();
+ await expect(page.getByRole("heading",{name:"Start discovering your brand?"})).toBeVisible();
+ await page.getByRole("button",{name:"Skip for now"}).click();
  await expect(page.getByLabel("Active workspace")).not.toHaveValue("");
  await page.getByRole("button",{name:"Evidence reports",exact:true}).click();
  await page.getByLabel("Business website").fill("https://fixture.example/");
@@ -30,6 +32,40 @@ async function accountAndWorkspace(page:Page) {
  await page.getByLabel("Page title").fill("Fixture Workshop — Handmade Furniture");
  await page.getByLabel("Owner-supplied website text (unverified)").fill("We create handmade solid-wood furniture and custom cabinetry. Customers can request consultations and quotations for bespoke projects.");
 }
+
+test("business onboarding skips collection, saves editable details and uploads, then starts background research explicitly",async({page})=>{
+ const starts:string[]=[];
+ page.on("request",request=>{if(request.method()==="POST"&&request.url().endsWith("/business-profile/research"))starts.push(request.url())});
+ await accountAndWorkspace(page);
+ expect(starts).toHaveLength(0);
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByLabel("Business name",{exact:true}).fill("My saved workshop");
+ await page.getByLabel("Industry",{exact:true}).selectOption("Other");
+ await page.getByLabel("Your industry",{exact:true}).fill("Custom workshop components");
+ await page.getByRole("button",{name:"Add social page"}).click();
+ await page.getByLabel("Platform 1",{exact:true}).selectOption("instagram");
+ await page.getByLabel("Page link 1",{exact:true}).fill("https://instagram.com/fixture-workshop");
+ await page.getByText("Add a logo, images or business documents",{exact:false}).click();
+ await page.getByLabel("Business logo",{exact:true}).setInputFiles({name:"logo.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
+ await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
+ await page.getByRole("button",{name:"Save business details",exact:true}).click();
+ await expect(page.getByRole("status")).toContainText("Business details saved");
+ expect(starts).toHaveLength(0);
+ await page.getByRole("tab",{name:/Brand assets/}).click();
+ await expect(page.getByRole("img",{name:"logo.png"})).toBeVisible();
+ await page.reload();
+ await expect(page.getByRole("heading",{name:"Business & research",exact:true})).toBeVisible();
+ await expect(page.getByLabel("Business name",{exact:true})).toHaveValue("My saved workshop");
+ await expect(page.getByLabel("Your industry",{exact:true})).toHaveValue("Custom workshop components");
+ await expect(page.getByLabel("Page link 1",{exact:true})).toHaveValue("https://instagram.com/fixture-workshop");
+ await page.getByRole("tab",{name:"Activity",exact:true}).click();
+ await expect(page.getByText("No research requests have been made.",{exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Start new research",exact:true}).click();
+ await expect(page.getByRole("status")).toContainText("Research queued");
+ expect(starts).toHaveLength(1);
+ await expect(page.getByText("Research finished.",{exact:false})).toBeVisible({timeout:15000});
+ await expect(page.getByText("Only owner-supplied information is available.",{exact:false})).toBeVisible();
+});
 
 test("owner evidence, recorded review and downloadable audit",async({page})=>{
  await accountAndWorkspace(page);
