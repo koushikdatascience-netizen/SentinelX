@@ -244,7 +244,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
    {title:"Evidence reports",description:"Review source notes and your report history.",icon:"report",action:onReports},
    {title:"Workspace settings",description:"Manage your workspace and usage allowance.",icon:"settings",action:onSettings}
  ];
- tools.unshift({view:"mission",title:"Business mission",description:"Find a sourced opportunity and verify an approved improvement.",icon:"spark"});
+ tools.unshift({view:"mission",title:"Website analysis",description:"What works, what to change and why, with source evidence.",icon:"spark"});
  const selectedVisual=variants.find(v=>v.selected)||variants[0];
  const heroUrl=selectedVisual?variantImages[selectedVisual.id]:null;
  const pending=board.filter(a=>a.state==="proposed").length;
@@ -257,7 +257,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
  return <section className="dashboard-ui">
    {view!=="dashboard"&&<button className="breadcrumb-back" onClick={()=>onNavigate("dashboard")}><ProductIcon name="back" size={16}/>Dashboard</button>}
    <div className="product-page-head"><div><div className="page-kicker">{view==="dashboard"?"WORKSPACE":"YOUR TOOLS"}</div><h1>{titles[view][0]}</h1><p>{titles[view][1]}</p></div>
-     <div className="page-head-actions">{view==="dashboard"?<><span className={`runtime-pill ${runtime?.mode==="live"?"runtime-live":""}`}><span/>{runtime?.mode==="live"?"Live AI enabled":runtime?.mode==="sample"?"Sample workspace":runtime?.mode==="unavailable"?"AI unavailable":"Checking AI service"}</span><button className="primary" onClick={()=>onNavigate("mission")}><ProductIcon name="spark"/>Start a mission</button></>:savedCampaigns.length>0&&view!=="brief"&&view!=="photos"?<label className="campaign-picker">Campaign<select aria-label="Saved campaigns" value={campaign?.id||""} disabled={busy} onChange={e=>action(()=>openCampaign(e.target.value))}>{savedCampaigns.map(c=><option key={c.id} value={c.id}>{c.goal}</option>)}</select></label>:null}</div>
+     <div className="page-head-actions">{view==="dashboard"?<><span className={`runtime-pill ${runtime?.mode==="live"?"runtime-live":""}`}><span/>{runtime?.mode==="live"?"Live AI enabled":runtime?.mode==="sample"?"Sample workspace":runtime?.mode==="unavailable"?"AI unavailable":"Checking AI service"}</span><button className="primary" onClick={()=>onNavigate("mission")}><ProductIcon name="spark"/>Analyze website</button></>:savedCampaigns.length>0&&view!=="brief"&&view!=="photos"?<label className="campaign-picker">Campaign<select aria-label="Saved campaigns" value={campaign?.id||""} disabled={busy} onChange={e=>action(()=>openCampaign(e.target.value))}>{savedCampaigns.map(c=><option key={c.id} value={c.id}>{c.goal}</option>)}</select></label>:null}</div>
    </div>
    {error&&<div className="product-notice notice-error" role="alert"><ProductIcon name="close"/><span>{error}</span><button aria-label="Dismiss error" onClick={()=>setError("")}><ProductIcon name="close" size={16}/></button></div>}
    {notice&&<div className="product-notice" role="status"><ProductIcon name="check"/><span>{notice}</span><button aria-label="Dismiss notification" onClick={()=>setNotice("")}><ProductIcon name="close" size={16}/></button></div>}

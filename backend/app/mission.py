@@ -12,6 +12,17 @@ class Opportunity(BaseModel):
     hypothesis:str=Field(min_length=20,max_length=450)
     proposed_action:str=Field(min_length=20,max_length=400)
     success_check:str=Field(min_length=15,max_length=300)
+    priority:Literal["high","medium","low"]="medium"
+    existing_coverage:str=Field(default="",max_length=450)
+    why_change:str=Field(default="",max_length=450)
+
+
+class Strength(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    title:str=Field(min_length=5,max_length=120)
+    source_id:str=Field(min_length=2,max_length=20)
+    quote:str=Field(min_length=12,max_length=240)
+    why_keep:str=Field(min_length=15,max_length=400)
 
 
 class MissionPlan(BaseModel):
@@ -19,12 +30,14 @@ class MissionPlan(BaseModel):
     summary:str=Field(min_length=20,max_length=700)
     opportunities:list[Opportunity]=Field(min_length=1,max_length=3)
     unknowns:list[str]=Field(min_length=1,max_length=5)
+    strengths:list[Strength]=Field(default_factory=list,max_length=5)
+    coverage_notes:list[str]=Field(default_factory=list,max_length=6)
 
 
 def validate_plan(data,sources):
     plan=MissionPlan.model_validate(data)
     evidence={source["id"]:" ".join(source["text"].split()) for source in sources}
-    for item in plan.opportunities:
+    for item in [*plan.opportunities,*plan.strengths]:
         if item.source_id not in evidence or " ".join(item.quote.split()) not in evidence[item.source_id]:
             raise ValueError("Opportunity quote does not match the collected source")
     return plan.model_dump()
@@ -51,9 +64,38 @@ def sample_source():
 
 def sample_plan():
     return {"summary":"Sample mission: clarify how a visitor can request a custom-furniture consultation.",
+      "strengths":[{"title":"A clear made-to-order offering","source_id":"S1","quote":"We build custom furniture.",
+                    "why_keep":"Preserve this simple description so visitors can identify the workshop's service."}],
+      "coverage_notes":["Text and HTML checks use a sample fixture. No real image, video, device layout or website was inspected."],
       "opportunities":[{"title":"Make consultation requests easier to start","source_id":"S1",
         "quote":"Discuss your requirements with our workshop.",
         "hypothesis":"Visitors may need a clearer inquiry path. This is a sample hypothesis, not a measured cause of lost inquiries.",
         "proposed_action":"Prepare a page describing the consultation process and a working inquiry form.",
-        "success_check":"After approval, check that the public page loads and a labeled synthetic inquiry is stored."}],
+        "success_check":"After approval, check that the public page loads and a labeled synthetic inquiry is stored.",
+        "priority":"medium","existing_coverage":"The sample asks visitors to discuss requirements but does not describe the next step.",
+        "why_change":"A precise inquiry instruction is a testable improvement; no sales uplift is established."}],
       "unknowns":["No real website was retrieved in sample mode.","Traffic, sales and conversion impact have not been measured."]}
+
+
+def report_markdown(payload):
+    plan=payload.get("plan") or {}
+    lines=["# SentinelX website report","",f'Provenance: {payload["provenance"]}',
+           "Claims and recommendations require owner review. No business impact has been measured.","",plan.get("summary","Report incomplete"),
+           "","## What works"]
+    for item in plan.get("strengths",[]):
+        lines.extend(["", "### "+item["title"],item["why_keep"],f'> {item["quote"]} (source {item["source_id"]})'])
+    lines.extend(["","## What to change and why"])
+    for item in plan.get("opportunities",[]):
+        lines.extend(["","### "+item["title"],"Priority: "+item.get("priority","review"),item["hypothesis"],
+           "Already present: "+item.get("existing_coverage","Not recorded in this older report"),
+           "Why: "+item.get("why_change","Review hypothesis"),"Proposed change: "+item["proposed_action"],
+           "Verification: "+item["success_check"],f'> {item["quote"]} (source {item["source_id"]})'])
+    lines.extend(["","## Sources and coverage"])
+    for source in payload["sources"]:
+        lines.extend([f'- {source["id"]}: {source["url"]}',f'  Origin: {source["origin"]}; collected: {source.get("collected_at")}; SHA-256: {source.get("sha256")}'])
+    lines.extend(["- "+note for note in plan.get("coverage_notes",[])])
+    lines.extend(["","## Attached media reviews and documents"])
+    for asset in payload.get("assets",[]):
+        lines.extend(["","### "+asset.get("filename",asset["kind"]),"Provenance: "+asset["provenance"],asset["limitation"],asset["text"]])
+    lines.extend(["","## Unknowns and limits",*["- "+note for note in [*plan.get("unknowns",[]),*payload.get("limitations",[])]]])
+    return "\n".join(lines)
