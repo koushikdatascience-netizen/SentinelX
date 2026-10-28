@@ -18,6 +18,18 @@ router=APIRouter(prefix="/api/v1/business-context",tags=["Visual Business Twin a
 def context_info(row):return {"id":row.id,"status":row.status,**json.loads(row.result_json)}
 
 
+def saved_search(db,user,workspace_id,evidence_id,website):
+    owned(db,user,workspace_id)
+    row=db.scalar(select(WorkflowRun).where(WorkflowRun.id==evidence_id,WorkflowRun.workspace_id==workspace_id))
+    data=json.loads(row.result_json) if row else {}
+    if not row or data.get("operation")!="search_evidence":raise HTTPException(404,"Search evidence not found")
+    if row.website.rstrip("/")!=website.rstrip("/"):raise HTTPException(422,"Saved search belongs to a different business website")
+    if row.status!="completed" or data.get("validation_status")!="validated" or data.get("provenance")!="live_meta":
+        raise HTTPException(409,"Search evidence is not validated live output")
+    return {"provenance":"live_meta","model":data["model"],"data":data["data"],"evidence_id":row.id,
+        "captured_at":data["captured_at"],"reused":True}
+
+
 def context_rows(db,user,workspace_id,ids,live=False):
     owned(db,user,workspace_id)
     result=[]
