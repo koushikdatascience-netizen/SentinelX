@@ -198,6 +198,8 @@ app.include_router(engine_delivery_router)
 
 from app.business_routes import router as business_router
 app.include_router(business_router)
+from app.workbench import router as workbench_router
+app.include_router(workbench_router)
 
 @app.on_event("startup")
 def initialize_business_research():

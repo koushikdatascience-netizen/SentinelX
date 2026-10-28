@@ -87,6 +87,66 @@ test("owner evidence, recorded review and downloadable audit",async({page})=>{
  expect(text).toContain("approved (no external execution)");
 });
 
+test("single business consent wraps on mobile and research progress opens in a modal",async({page})=>{
+ await accountAndWorkspace(page);
+ const nav=page.getByRole("navigation",{name:"Main navigation"});
+ await nav.getByRole("button",{name:"Business & research",exact:true}).click();
+ const consent=page.getByLabel("I am authorized to provide these business materials.",{exact:false});
+ await expect(consent).toHaveCount(1);
+ await page.setViewportSize({width:390,height:844});
+ await consent.check();await expect(consent).toBeChecked();
+ await consent.uncheck();await expect(consent).not.toBeChecked();
+ await consent.check();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const fits=await page.locator(".consent-card .business-check").evaluate(label=>{const bounds=label.getBoundingClientRect();const span=label.querySelector("span")!.getBoundingClientRect();return span.right<=bounds.right+1&&span.left>=bounds.left});
+ expect(fits).toBe(true);
+ await page.screenshot({path:"test-results/consent-mobile.png",fullPage:true});
+ await page.getByRole("button",{name:"Save business details",exact:true}).click();
+ await expect(page.getByRole("status")).toContainText("Business details saved");
+ await page.getByRole("tab",{name:"Activity",exact:true}).click();
+ await page.getByRole("button",{name:"Start new research",exact:true}).click();
+ await nav.getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.getByRole("button",{name:/View (live|research) progress/}).click();
+ const progress=page.getByRole("dialog",{name:"Research agent progress"});
+ await expect(progress).toBeVisible();
+ await expect(progress.getByRole("heading",{name:"Live activity"})).toBeVisible();
+ await expect(progress.getByText("pages collected",{exact:true})).toBeVisible();
+ await page.screenshot({path:"test-results/research-progress-modal.png"});
+ await progress.getByRole("button",{name:"Keep working"}).click();
+ await expect(progress).not.toBeVisible();
+});
+
+test("dashboard document parser and image editor run locally in dedicated modals",async({page})=>{
+ await accountAndWorkspace(page);
+ const nav=page.getByRole("navigation",{name:"Main navigation"});
+ await nav.getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.locator(".tool-card").filter({hasText:"Document parser"}).click();
+ const parser=page.getByRole("dialog",{name:"Document parser & converter"});
+ await expect(parser).toBeVisible();
+ await parser.getByLabel("Business document",{exact:true}).setInputFiles({name:"business.txt",mimeType:"text/plain",buffer:Buffer.from("Workshop services include custom components and owner-reviewed quotations.")});
+ await parser.getByLabel("I am authorized to process this file",{exact:false}).check();
+ await parser.getByRole("button",{name:"Extract document batch"}).click();
+ await expect(parser.getByText("Workshop services include custom components",{exact:false})).toBeVisible();
+ const exported=page.waitForEvent("download");await parser.getByRole("button",{name:"Download Markdown"}).click();
+ expect((await exported).suggestedFilename()).toBe("sentinelx-documents.md");
+ await parser.getByRole("button",{name:"Close dialog"}).click();
+ await page.locator(".tool-card").filter({hasText:"Image editor"}).click();
+ const editor=page.getByRole("dialog",{name:"Image editor",exact:true});
+ await editor.getByLabel("Image to edit").setInputFiles({name:"fixture.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
+ await editor.getByLabel("I am authorized to process this file",{exact:false}).check();
+ await editor.getByLabel("Width",{exact:true}).fill("200");await editor.getByLabel("Height",{exact:true}).fill("150");
+ await editor.getByRole("button",{name:"Apply image edits"}).click();
+ await expect(editor.getByRole("img",{name:"Saved business visual"})).toBeVisible();
+ await editor.getByRole("button",{name:"Close dialog"}).click();
+ await page.locator(".tool-card").filter({hasText:"Competitor research"}).click();
+ const research=page.getByRole("dialog",{name:"Competitor research",exact:true});
+ await expect(research.getByLabel("Use my saved business details",{exact:false})).toBeChecked();
+ await research.getByLabel("Location",{exact:true}).fill("Kalyani");
+ await research.getByLabel("Your prompt",{exact:true}).fill("Find comparable local wooden parts workshops.");
+ await expect(research.getByRole("button",{name:"Start research",exact:true})).toBeDisabled();
+ await expect(research.getByText("Live AI is not configured.",{exact:false})).toBeVisible();
+});
+
 test("mocked provider draft is validated, rendered and exported",async({page})=>{
  await accountAndWorkspace(page);
  await page.getByRole("checkbox",{name:/Enable explicit provider inference/}).check();
@@ -126,7 +186,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  const navigation=page.getByRole("navigation",{name:"Main navigation"});
  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Your business workspace"})).toBeVisible();
-  await expect(page.locator(".tool-card")).toHaveCount(10);
+  await expect(page.locator(".tool-card")).toHaveCount(11);
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
  await expect(page.getByRole("heading",{name:"Create a campaign"})).toBeVisible();
@@ -189,18 +249,13 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.reload();
  await expect(page.getByRole("heading",{name:"Review & export",exact:true})).toBeVisible();
  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
+ // This request stub is explicit offline test data; the product keeps live mode as its default.
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"sample",is_guest:false,live_enabled:false,message:"Offline browser test fixture"}}));
  await page.locator(".tool-card").filter({hasText:"Review a photo"}).click();
  await page.getByLabel("Upload a product photo").setInputFiles({name:"fixture-product.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
- // A fresh page session defaults to live; select sample explicitly for this offline fixture.
- await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
- await page.getByText("Generation options",{exact:true}).click();
- await page.getByLabel("Use sample data (no credits)").check();
- await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"Review a photo"}).click();
  await page.getByRole("button",{name:"Analyze photo",exact:true}).click();
  await expect(page.locator(".photo-result").getByText("fixture-product.png",{exact:true})).toBeVisible();
- await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.getByRole("dialog",{name:"Photo review",exact:true}).getByRole("button",{name:"Close dialog",exact:true}).click();
  await page.setViewportSize({width:390,height:844});
  await expect(page.getByRole("heading",{name:"Your business workspace"})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
