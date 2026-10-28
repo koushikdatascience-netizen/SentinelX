@@ -1,12 +1,13 @@
 import {test,expect,Page} from "@playwright/test";
 
-test("owner entry uses real product messaging without sample generator CTAs",async({page})=>{
+test("owner entry explains the product and offers a clearly labeled demo",async({page})=>{
  await page.goto("/");
- await expect(page.getByRole("heading",{name:"From business evidence to verified action."})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Understand your business. Act with evidence."})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
- await expect(page.getByRole("button",{name:"Sign in",exact:false})).toHaveCount(1);
- await expect(page.getByRole("button",{name:/try.*demo|sample workspace/i})).toHaveCount(0);
- await expect(page.getByText("01 Business audit")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/^Sign in(?:\s*→)?$/})).toHaveCount(1);
+ await expect(page.getByRole("button",{name:/Try interactive demo/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Try the sample workspace/})).toBeVisible();
+ await expect(page.getByText("01 Business audit")).toBeVisible();
 });
 
 
@@ -89,7 +90,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  const navigation=page.getByRole("navigation",{name:"Main navigation"});
  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Your business workspace"})).toBeVisible();
-  await expect(page.locator(".tool-card")).toHaveCount(11);
+  await expect(page.locator(".tool-card")).toHaveCount(10);
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
  await expect(page.getByRole("heading",{name:"Create a campaign"})).toBeVisible();
@@ -111,7 +112,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.getByRole("button",{name:"Edit day 1 post",exact:true}).click();
  await page.keyboard.press("Escape");
  await expect(edit).not.toBeVisible();
- await page.getByRole("button",{name:/Generate this image or view saved visuals/}).first().click();
+ await page.getByRole("button",{name:"Create or view visuals"}).first().click();
  await page.getByRole("button",{name:"Generate visuals",exact:true}).click();
  await expect(page.locator(".visual-card")).toHaveCount(1);
  const days=page.getByLabel("Choose campaign day");
