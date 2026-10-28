@@ -1,8 +1,9 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 import BusinessMission from "./BusinessMission";
+import ResearchWorkspace,{ResearchSeed} from "./ResearchWorkspace";
 import {EmptyState,Modal,ProductIcon,SourceBadge} from "./ProductUI";
-export type StudioView="mission"|"dashboard"|"brief"|"photos"|"audit"|"campaign"|"creatives"|"landing"|"approvals";
+export type StudioView="research"|"mission"|"dashboard"|"brief"|"photos"|"audit"|"campaign"|"creatives"|"landing"|"approvals";
 
 const BASE=process.env.NEXT_PUBLIC_API_URL ?? "";
 type Provenance="live_meta"|"sample"|"user_supplied";
@@ -18,6 +19,7 @@ type SavedCampaign={id:string;goal:string;provenance:Provenance};
 const demoDescription="We build handcrafted solid wood furniture, custom cabinetry and made-to-measure interiors. Prospective clients can request a consultation and discuss their requirements.";
 export default function BusinessStudio({token,workspace,view,onNavigate,onReports,onSettings}:{token:string;workspace:string;view:StudioView;onNavigate:(view:StudioView)=>void;onReports:()=>void;onSettings:()=>void}){
  const [missionId,setMissionId]=useState<string|null>(null);
+ const [researchSeed,setResearchSeed]=useState<ResearchSeed|null>(null);
  const [website,setWebsite]=useState("https://kamalwoodcraft.in");
  const [description,setDescription]=useState(demoDescription);
  const [businessName,setBusinessName]=useState("Kamal Woodcraft");
@@ -70,7 +72,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
    try{await fn()}catch(e){setError(e instanceof Error?e.message:"Something went wrong")}
    finally{setBusy(false)}
  }
- useEffect(()=>{setMissionId(null);setImages([]);setCampaign(null);setVariants([]);setPage(null);setBoard([]);setSelectedVariant(null);setLandingPages([]);setEditor(null);setReviewItem(null);setError("");setNotice("");photoUrls.current.forEach(URL.revokeObjectURL);photoUrls.current=[];},[workspace]);
+ useEffect(()=>{setResearchSeed(null);setMissionId(null);setImages([]);setCampaign(null);setVariants([]);setPage(null);setBoard([]);setSelectedVariant(null);setLandingPages([]);setEditor(null);setReviewItem(null);setError("");setNotice("");photoUrls.current.forEach(URL.revokeObjectURL);photoUrls.current=[];},[workspace]);
  useEffect(()=>()=>photoUrls.current.forEach(URL.revokeObjectURL),[]);
  useEffect(()=>{if(campaign)loadBoard().catch(e=>setError(String(e)))},[campaign,page,view]);
  useEffect(()=>{
@@ -223,6 +225,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
  function editPost(item:Item){setEditFields({caption:item.caption,cta:item.cta,creative_brief:item.creative_brief});setEditor(item)}
  async function copy(text:string){try{await navigator.clipboard.writeText(text);setNotice("Copied to clipboard.")}catch{setError("Clipboard access is unavailable in this browser.")}}
  const titles:Record<StudioView,[string,string]>={
+   research:["Research & data","Collect public evidence and understand private business data."],
    mission:["Business mission","Research a concrete opportunity and verify its delivery."],
    dashboard:["Your business workspace","Understand, research, create, approve and verify business improvements."],
    brief:["Create a campaign","Tell us what you offer. Get a business strategy and seven days of tailored content."],
@@ -244,6 +247,7 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
    {title:"Evidence reports",description:"Review source notes and your report history.",icon:"report",action:onReports},
    {title:"Workspace settings",description:"Manage your workspace and usage allowance.",icon:"settings",action:onSettings}
  ];
+ tools.unshift({view:"research",title:"Research & data",description:"Website discovery, Business Twin, competitors and private files.",icon:"report"});
  tools.unshift({view:"mission",title:"Run a business mission",description:"Business twin, opportunity research, approved execution and verification.",icon:"spark"});
  const selectedVisual=variants.find(v=>v.selected)||variants[0];
  const heroUrl=selectedVisual?variantImages[selectedVisual.id]:null;
@@ -253,7 +257,8 @@ export default function BusinessStudio({token,workspace,view,onNavigate,onReport
  const landingApproved=landingReview?.state==="approved";
  const needCampaign=<EmptyState title="Start with a campaign" action={<button className="primary" onClick={()=>onNavigate("brief")}><ProductIcon name="plus"/>Create campaign</button>}>Create a campaign or open saved work from the dashboard to use this tool.</EmptyState>;
  if(!workspace)return <EmptyState icon="dashboard" title="Let’s set up your workspace" action={<button className="primary" onClick={onSettings}>Create a workspace<ProductIcon name="arrow"/></button>}>Give your business a workspace to keep its campaigns, photos and pages together.</EmptyState>;
- if(view==="mission")return <BusinessMission key={workspace} token={token} workspace={workspace} website={website} goal={goal} mode={generationMode} onSample={setSampleMode} onDashboard={()=>onNavigate("dashboard")} onLanding={()=>onNavigate("landing")} onCampaign={(id,missionGoal,source,context)=>{setMissionId(id);if(context)setDescription(context);setGoal(missionGoal);setWebsite(source);setNotice("This campaign will use the mission’s collected evidence. Review the website excerpt prefilled in your business description.");onNavigate("brief")}}/>;
+ if(view==="research")return <ResearchWorkspace key={workspace} token={token} workspace={workspace} onDashboard={()=>onNavigate("dashboard")} onPrepare={seed=>{setResearchSeed(seed);setWebsite(seed.website);setGoal(seed.goal);onNavigate("mission")}}/>;
+ if(view==="mission")return <BusinessMission seed={researchSeed||undefined} key={workspace+(researchSeed?.research_id||"")} token={token} workspace={workspace} website={website} goal={goal} mode={generationMode} onSample={setSampleMode} onDashboard={()=>onNavigate("dashboard")} onLanding={()=>onNavigate("landing")} onCampaign={(id,missionGoal,source,context)=>{setMissionId(id);if(context)setDescription(context);setGoal(missionGoal);setWebsite(source);setNotice("This campaign will use the mission’s collected evidence. Review the website excerpt prefilled in your business description.");onNavigate("brief")}}/>;
  return <section className="dashboard-ui">
    {view!=="dashboard"&&<button className="breadcrumb-back" onClick={()=>onNavigate("dashboard")}><ProductIcon name="back" size={16}/>Dashboard</button>}
    <div className="product-page-head"><div><div className="page-kicker">{view==="dashboard"?"WORKSPACE":"YOUR TOOLS"}</div><h1>{titles[view][0]}</h1><p>{titles[view][1]}</p></div>
