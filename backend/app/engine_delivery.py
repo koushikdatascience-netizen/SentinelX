@@ -194,7 +194,8 @@ def execute(mission_id:str,body:ExecuteImprovement,user:User=Depends(current_use
     if page.approval_state!="approved":raise HTTPException(409,"Review and explicitly approve the draft before execution")
     row,data,new=claim_job(db,user,mission,body,"engine_execution")
     if not new:return data
-    data.update(page_id=page.id,spec_sha256=hashlib.sha256(page.spec_json.encode()).hexdigest(),
+    data.update(page_id=page.id,provenance=page.provenance,source_mission_provenance=mission["provenance"],
+        spec_sha256=hashlib.sha256(page.spec_json.encode()).hexdigest(),
         business_impact_measured=False,trace=[])
     try:
         update_page(page.id,body.workspace_id,UpdateLanding(published=True),user,db)
