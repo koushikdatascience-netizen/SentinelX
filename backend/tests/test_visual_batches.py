@@ -55,3 +55,9 @@ def test_structured_vision_output_is_ordered_and_keeps_summary_separate():
 ])
 def test_structured_vision_rejects_missing_duplicate_and_malformed_mappings(data,expected):
     with pytest.raises(ValueError,match=expected):validate_vision_output(data,2)
+
+
+def test_rejects_duplicate_image_bytes_within_single_batch():
+    payload=png()
+    with pytest.raises(ValueError,match="duplicate image bytes"):
+        prepare_batch([{"body":payload,"mime":"image/png"},{"body":payload,"mime":"image/png"}])
