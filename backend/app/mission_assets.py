@@ -13,6 +13,7 @@ from app.workspace_routes import create_model_run
 from app.mission_routes import load_mission
 from app.campaign_routes import generation_is_live,claim_attempt
 from app.meta_client import MetaClient
+from app.engine_context import context_handoff
 
 router=APIRouter(prefix="/api/v1/missions",tags=["Report media and documents"])
 
@@ -115,8 +116,11 @@ def document(mission_id:str,body:CreateDocument,user:User=Depends(current_user),
                 "Use only supplied facts; label assumptions and owner-fill placeholders. No invented prices, certifications, "
                 "customer quotes or delivery promises. Cite source IDs for factual details. A video_script is a shooting script "
                 "with scenes and on-screen copy, never a claim that a video was rendered.",
-                json.dumps({"document":body.kind,"instructions":body.instructions,"plan":mission["plan"],
-                    "sources":[{"id":s["id"],"text":s["text"][:2400]} for s in mission["sources"]]}))
+                json.dumps({"document":body.kind,"instructions":body.instructions,"plan_summary":mission["plan"]["summary"],
+                    "opportunities":[{key:item.get(key,"") for key in ("title","proposed_action","why_change","source_id","quote")} for item in mission["plan"]["opportunities"]],
+                    "unknowns":[text[:180] for text in mission["plan"]["unknowns"]],
+                    "business_context_unverified":context_handoff(mission.get("business_context",[])),
+                    "sources":[{"id":s["id"],"text":s["text"][:1800 if s["role"]=="business" else 300]} for s in mission["sources"]]}))
             result["text"]=response["data"];result["model"]=response["model"]
         else:result["text"]="# Sample "+body.kind.replace("_"," ")+"\n\nIllustrative fixture; no AI call.\n\n- Confirm product and quantity.\n- Supply design, dimensions and required date.\n- Owner to verify quotation and delivery terms."
         row.status="completed"

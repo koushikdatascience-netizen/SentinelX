@@ -69,3 +69,23 @@ def test_strength_quotes_are_verified():
     from app.mission import sample_plan,sample_source,validate_plan
     plan=sample_plan();plan["strengths"][0]["quote"]="This is invented supporting evidence."
     with pytest.raises(ValueError):validate_plan(plan,[sample_source()])
+
+
+def test_document_http_prompt_receives_substantive_saved_twin(authenticated_client,monkeypatch):
+    from app.workspace_store import SessionLocal,WorkflowRun
+    from tests.test_mission_routes import inputs,live_transport
+    from tests.test_meta_client import chat
+    client=authenticated_client;body=inputs(client);live_transport(monkeypatch)
+    report=client.post("/api/v1/missions",json={**body,"generation_mode":"live","consent_public_fetch":True}).json()
+    original="> "+"Provenance disclaimer. "*40+"\n\nObserved turned wooden legs against a plain background.\nUnknown dimensions."
+    with SessionLocal.begin() as db:
+        row=db.get(WorkflowRun,report["id"]);data=json.loads(row.result_json)
+        data["business_context"]=[{"id":"test-twin","kind":"business_twin","provenance":"live_meta","sha256":"fixture","text":original}]
+        row.result_json=json.dumps(data)
+    calls=transport(monkeypatch,chat("Draft: improve product framing; dimensions remain unknown."))
+    result=client.post(f'/api/v1/missions/{report["id"]}/documents',json={"workspace_id":body["workspace_id"],"generation_mode":"live"})
+    assert result.status_code==201,result.text
+    assert result.json()["provenance"]=="live_meta" and len(calls)==1
+    prompt=json.loads(json.loads(calls[0].content)["messages"][1]["content"])
+    assert prompt["business_context_unverified"][0]["text"].startswith("Observed turned wooden legs")
+    assert "Unknown dimensions." in prompt["business_context_unverified"][0]["text"]

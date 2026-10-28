@@ -20,7 +20,7 @@ from app.meta_client import MetaClient,MetaError
 from app.mission import MissionPlan,validate_plan,technical_checks,sample_source,sample_plan,CitationMismatch
 from app.mission_research import ResearchBrief,validate_research,sample_research
 from app.public_web import collect_page,request_public,inspect_html
-from app.engine_context import context_rows,saved_search
+from app.engine_context import context_rows,saved_search,context_handoff
 
 router=APIRouter(prefix="/api/v1/missions",tags=["Business missions"])
 
@@ -116,8 +116,7 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
         return [{"id":s["id"],"role":s["role"],"title":s["title"][:120],
             "text":s["text"][:business_limit if s["role"]=="business" else comparison_limit]} for s in payload["sources"]]
 
-    context_handoff=[{"id":item["id"],"kind":item["kind"],"provenance":item["provenance"],
-        "text":item["text"][:400],"owner_notes":item.get("owner_notes","")[:200]} for item in business_context]
+    selected_context=context_handoff(business_context)
 
     try:
         if live:claim_attempt(db,body.workspace_id)
@@ -178,7 +177,7 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
                         "Use only exact quotes from supplied source IDs; distinguish what the website claims from "
                         "independently verified facts. Record unknowns. Do not invent market research, prices, "
                         "customer behavior or business outcomes. Return JSON for a separate planning role.",
-                        json.dumps({"goal":body.goal,"response_language":body.language,"sources":model_sources(),"business_context_unverified":context_handoff},ensure_ascii=False),
+                        json.dumps({"goal":body.goal,"response_language":body.language,"sources":model_sources(),"business_context_unverified":selected_context},ensure_ascii=False),
                         ResearchBrief.model_json_schema())
                     if result["provenance"]!="live_meta":raise ValueError("Research cannot substitute sample content")
                     research=result["data"];research_model=result["model"]
@@ -212,7 +211,7 @@ def start(body:StartMission,user:User=Depends(current_user),db:Session=Depends(s
                     "and keep its unknowns unresolved unless the supplied evidence resolves them. Business context is unverified "
                     "owner input or model interpretation, not independent facts. Use response_language for explanations, "
                     "preserving original source quote language. Return JSON.",
-                    json.dumps({"goal":body.goal,"response_language":body.language,"sources":model_sources(True),"business_context_unverified":context_handoff,
+                    json.dumps({"goal":body.goal,"response_language":body.language,"sources":model_sources(True),"business_context_unverified":selected_context,
                          "html_checks":payload["checks"],"validated_research":payload.get("research")},ensure_ascii=False),
                     MissionPlan.model_json_schema())
                 if result["provenance"]!="live_meta":raise ValueError("Live mission cannot substitute fixture output")

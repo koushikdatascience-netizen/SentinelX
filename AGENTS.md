@@ -10,7 +10,7 @@ SentinelX is an evidence-first, human-supervised business intelligence project f
 
 ## Critical guardrails
 - Never expose or commit MODEL_API_KEY, any secrets, or customer data.
-- Meta's $150 promotional credits were visible in the owner's Billing interface on October 27, 2026; real text, structured campaign/landing output, vision and image generation were verified in the deployed owner workspace on October 28, 2026. SAM and voice remain unsupported.
+- Meta's $150 promotional credits were visible in the owner's Billing interface on October 27, 2026; real text, structured campaign/landing output, vision, image generation, bounded web search and WAV transcription were verified in the deployed owner workspace on October 28, 2026. Voice verification used explicitly synthetic speech. SAM pixel masks remain unsupported. See docs/BUSINESS_ENGINE_VERIFICATION.md for evidence and limits.
 - Default `INFERENCE_PROVIDER=demo`, `ALLOW_PAID_INFERENCE=false`, `ENABLE_LIVE_MULTIMODAL=false` in public/staging. Do not change defaults casually.
 - Meta smoke action must remain manual, gated, single-call, and secret-safe. Review provider's exact supported schema before treating adapter as operational.
 - Action approvals are decisions, not executions; never claim external publishing or autonomous business impact.
