@@ -11,3 +11,8 @@
 
 /* Public product story */
 .hero-loop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:30px 0 24px;max-width:560px}.hero-loop span{border:1px solid #7c8eb653;background:#182446ac;padding:13px 10px;color:#d4ddf5;border-radius:11px;font-weight:700;font-size:.75rem}.auth-art>.primary{font-size:.95rem;padding:14px 24px}.auth-art>.muted{font-size:.78rem;margin-top:14px}.auth-form>.secondary{margin:17px 0}.studio .status{text-transform:capitalize}@media(max-width:700px){.hero-loop{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* The public entry point is an owner-access surface, never a fixture generator. */
+.entry-transparency{margin-top:28px;max-width:500px;padding:15px 18px;border:1px solid rgba(166,179,209,.24);border-radius:12px;background:rgba(10,18,38,.45);font-size:.85rem!important;line-height:1.55;color:#d4def1!important}
+.auth-form .text-button:focus-visible,.auth-form button:focus-visible{outline:3px solid #9bafff;outline-offset:3px}
+@media(max-width:760px){.auth-wrap{grid-template-columns:1fr}.auth-art{padding:40px 26px 30px;min-height:unset}.auth-art h1{font-size:clamp(2.05rem,7vw,3rem);margin:18px 0}.auth-art p{font-size:.95rem}.auth-form{max-width:560px;padding:35px 26px 48px}.auth-form .brand{margin-bottom:34px}.entry-transparency{margin-top:16px}}

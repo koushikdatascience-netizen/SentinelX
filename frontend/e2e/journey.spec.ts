@@ -1,5 +1,15 @@
 import {test,expect,Page} from "@playwright/test";
 
+test("owner entry uses real product messaging without sample generator CTAs",async({page})=>{
+ await page.goto("/");
+ await expect(page.getByRole("heading",{name:"From business evidence to verified action."})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Sign in",exact:false})).toHaveCount(1);
+ await expect(page.getByRole("button",{name:/try.*demo|sample workspace/i})).toHaveCount(0);
+ await expect(page.getByText("01 Business audit")).toHaveCount(0);
+});
+
+
 test("research, owner review, private data and evidence handoff stay connected",async({page})=>{
  await accountAndWorkspace(page);
  await page.getByRole("button",{name:"Research & data",exact:true}).click();
@@ -60,6 +70,10 @@ async function accountAndWorkspace(page:Page) {
  await page.getByRole("button",{name:"Create workspace",exact:true}).click();
  await expect(page.getByLabel("Active workspace")).not.toHaveValue("");
  await page.getByRole("button",{name:"Evidence reports",exact:true}).click();
+ await page.getByLabel("Business website").fill("https://fixture.example/");
+ await page.getByLabel("Business objective").fill("Improve qualified enquiries from local homeowners");
+ await page.getByLabel("Page title").fill("Fixture Workshop — Handmade Furniture");
+ await page.getByLabel("Owner-supplied website text (unverified)").fill("We create handmade solid-wood furniture and custom cabinetry. Customers can request consultations and quotations for bespoke projects.");
 }
 
 test("owner evidence, recorded review and downloadable audit",async({page})=>{
@@ -67,6 +81,7 @@ test("owner evidence, recorded review and downloadable audit",async({page})=>{
  await page.getByRole("button",{name:"Generate evidence-backed audit"}).click();
  await expect(page.getByRole("heading",{name:"Report history"})).toBeVisible();
  await expect(page.getByText("We create handmade solid-wood furniture",{exact:false}).first()).toBeVisible();
+ await page.getByLabel("Proposed action").fill("Prepare an improved homepage CTA for owner approval");
  await page.getByRole("button",{name:"Create proposal"}).click();
  await page.getByRole("button",{name:"Approve",exact:true}).click();
  await expect(page.getByText("approved",{exact:true})).toBeVisible();
@@ -131,6 +146,9 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
  await expect(page.getByRole("heading",{name:"Create a campaign"})).toBeVisible();
+ await page.getByLabel("Business name",{exact:true}).fill("Fixture Woodworks");
+ await page.getByLabel("What do you offer?").fill("We produce custom furniture and wooden parts for local customers who need quotations.");
+ await page.getByLabel("What should this campaign achieve?").fill("Improve qualified requests for custom woodworking quotations.");
  await page.getByText("Generation options",{exact:true}).click();
  await page.getByLabel("Use sample data (no credits)").check();
  await page.getByRole("button",{name:"Create sample campaign",exact:true}).click();
@@ -214,6 +232,8 @@ test("business mission records tool handoffs and guides a campaign with source e
  const nav=page.getByRole("navigation",{name:"Main navigation"});
  await nav.getByRole("button",{name:"Business engine",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Business mission",exact:true})).toBeVisible();
+ await page.getByLabel("Business website").fill("https://example.org/");
+ await page.getByLabel("Business goal").fill("Improve qualified requests for furniture workshop quotations.");
  await page.getByLabel("Use sample mission (no network or credits)").check();
  await page.getByLabel("Business operations context").fill("Trade components only; preserve bulk order constraints and the existing quotation process.");
  await page.getByLabel("I can share this context with the model. Voice input is a draft, never execution approval.").check();
@@ -280,6 +300,7 @@ test("business mission records tool handoffs and guides a campaign with source e
  await page.screenshot({path:"test-results/business-mission-desktop.png",fullPage:true});
  await page.getByRole("button",{name:"Optional: create campaign",exact:true}).click();
  await expect(page.getByText("Mission evidence will guide this campaign.",{exact:true})).toBeVisible();
+ await page.getByLabel("Business name",{exact:true}).fill("Fixture Woodworks");
  await page.getByRole("button",{name:"Create sample campaign",exact:true}).click();
  await expect(page.locator(".post-card")).toHaveCount(7);
  const linked=await page.evaluate(async()=>{
