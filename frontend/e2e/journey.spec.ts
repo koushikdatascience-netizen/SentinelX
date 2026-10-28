@@ -1,5 +1,51 @@
 import {test,expect,Page} from "@playwright/test";
 
+test("research, owner review, private data and evidence handoff stay connected",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("button",{name:"Research & data",exact:true}).click();
+ await page.getByLabel("Business name",{exact:true}).fill("Evidence workshop");
+ await page.getByLabel("Public website URL").fill("https://fixture.example/");
+ await page.getByLabel("I confirm this business name and website belong in my workspace.").check();
+ await page.getByLabel("Retrieve accessible public pages from these sites, respecting robots.txt.").check();
+ await page.getByRole("button",{name:"Start website research",exact:true}).click();
+ await expect(page.locator(".research-progress")).toContainText("completed",{timeout:30000});
+ await expect(page.locator(".research-progress")).toContainText("3 pages collected");
+ await page.getByRole("button",{name:"Social",exact:true}).click();
+ await page.getByRole("button",{name:"Review profile identity"}).first().click();
+ await page.getByLabel("Review note").fill("Owner reviewed fixture identity for offline browser testing.");
+ await page.getByRole("button",{name:"Confirm from my review"}).click();
+ await expect(page.getByText(/owner confirmed · linked/)).toBeVisible();
+ await page.getByRole("button",{name:"Data Hub",exact:true}).click();
+ await page.getByLabel("Business files (up to five)").setInputFiles([
+  {name:"sales.csv",mimeType:"text/csv",buffer:Buffer.from("product,amount\nLeg,10\nPanel,20\n")},
+  {name:"notes.txt",mimeType:"text/plain",buffer:Buffer.from("Owner-supplied fixture: bulk trade requests require quantities and drawings.")}
+ ]);
+ await page.getByLabel("I am authorized to store and locally analyze these private files.").check();
+ await page.getByRole("button",{name:"Upload and analyze files"}).click();
+ await expect(page.locator(".research-ui").getByRole("status")).toContainText("2 file versions saved");
+ await page.locator(".research-fact-list article").filter({hasText:"sales.csv"}).getByRole("button",{name:"Preview & quality"}).click();
+ await expect(page.getByRole("dialog")).toContainText("30");
+ await page.getByRole("button",{name:"Close dialog"}).click();
+ await page.getByRole("button",{name:"Ask evidence",exact:true}).click();
+ await page.getByLabel("sales.csv · v1").check();
+ await page.getByLabel("Your question").fill("What is the total amount in my sales data?");
+ await page.getByRole("button",{name:"Find supporting evidence"}).click();
+ await expect(page.locator(".research-answer")).toContainText('"sum": "30"');
+ await page.getByRole("button",{name:"Report",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Business intelligence report"})).toBeVisible();
+ await page.screenshot({path:"test-results/research-workspace-desktop.png",fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await page.screenshot({path:"test-results/research-workspace-mobile.png",fullPage:true});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBeTruthy();
+ await page.setViewportSize({width:1280,height:800});
+ const downloadPromise=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download printable report"}).click();
+ expect((await downloadPromise).suggestedFilename()).toBe("sentinelx-intelligence.html");
+ await page.getByRole("button",{name:"Continue in business engine"}).click();
+ await expect(page.getByRole("heading",{name:"Business mission"})).toBeVisible();
+ await expect(page.getByLabel(/Use the selected research snapshots/)).toBeChecked();
+});
+
 async function accountAndWorkspace(page:Page) {
  await page.goto("/");
  const email=`browser-${crypto.randomUUID()}@example.org`;
@@ -81,7 +127,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  const navigation=page.getByRole("navigation",{name:"Main navigation"});
  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Your business workspace"})).toBeVisible();
- await expect(page.locator(".tool-card")).toHaveCount(10);
+  await expect(page.locator(".tool-card")).toHaveCount(11);
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
  await expect(page.getByRole("heading",{name:"Create a campaign"})).toBeVisible();

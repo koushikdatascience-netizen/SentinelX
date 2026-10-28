@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 import ReportAssets from "./ReportAssets";
+import type {ResearchSeed} from "./ResearchWorkspace";
 import BusinessContext from "./BusinessContext";
 import MissionDelivery from "./MissionDelivery";
 import {ProductIcon,SourceBadge} from "./ProductUI";
@@ -18,15 +19,16 @@ type Mission={id:string;goal:string;status:string;provenance:string;error?:strin
 type Saved={id:string;goal:string;status:string};
 type Page={id:string;campaign_id:string;published:boolean;spec:{headline:string};provenance:string};
 
-export default function BusinessMission({token,workspace,website,goal,mode,onSample,onDashboard,onCampaign,onLanding}:{
- token:string;workspace:string;website:string;goal:string;mode:"sample"|"live";onSample:(sample:boolean)=>void;
+export default function BusinessMission({token,workspace,website,goal,mode,seed,onSample,onDashboard,onCampaign,onLanding}:{
+ token:string;workspace:string;website:string;goal:string;seed?:ResearchSeed;mode:"sample"|"live";onSample:(sample:boolean)=>void;
  onDashboard:()=>void;onCampaign:(id:string,goal:string,website:string,description:string)=>void;onLanding:()=>void}){
- const [url,setUrl]=useState(website);const [objective,setObjective]=useState("Review the website: preserve its strengths, identify specific changes and explain why. Do not recommend features already present.");
+ const [url,setUrl]=useState(seed?.website||website);const [objective,setObjective]=useState(seed?.goal||"Review the website: preserve its strengths, identify specific changes and explain why. Do not recommend features already present.");
  const [competitors,setCompetitors]=useState("");const [consent,setConsent]=useState(false);
  const [allowRepair,setAllowRepair]=useState(false);
  const [researchHandoff,setResearchHandoff]=useState(false);
  const [discoverMarket,setDiscoverMarket]=useState(false),[marketQuery,setMarketQuery]=useState("");
  const [contextIds,setContextIds]=useState<string[]>([]);
+ const [useResearch,setUseResearch]=useState(Boolean(seed));
  const [language,setLanguage]=useState("en");
  const [reuseSearch,setReuseSearch]=useState(false);
  const [busy,setBusy]=useState(false);const [error,setError]=useState("");
@@ -67,7 +69,7 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
  },[mission?.id]);
  async function run(event:React.FormEvent){
   event.preventDefault();setBusy(true);setError("");
-  const inputs={workspace_id:workspace,website:url,goal:objective,competitors:competitors.split(/\n/).map(x=>x.trim()).filter(Boolean),consent_public_fetch:consent,generation_mode:mode,allow_quote_repair:allowRepair,research_handoff:researchHandoff,discover_market:discoverMarket,market_query:marketQuery,context_ids:contextIds,language,market_evidence_id:mode==="live"&&discoverMarket&&reuseSearch?mission?.market_research?.evidence_id:null};
+  const inputs={workspace_id:workspace,website:url,goal:objective,competitors:competitors.split(/\n/).map(x=>x.trim()).filter(Boolean),consent_public_fetch:consent,generation_mode:mode,allow_quote_repair:allowRepair,research_handoff:researchHandoff,discover_market:discoverMarket,market_query:marketQuery,context_ids:useResearch&&seed?[...new Set([seed.context_id,...contextIds])].slice(0,3):contextIds,research_job_id:useResearch?seed?.research_id:null,language,market_evidence_id:mode==="live"&&discoverMarket&&reuseSearch?mission?.market_research?.evidence_id:null};
   const signature=JSON.stringify(inputs);
   if(request.current?.signature!==signature)request.current={signature,id:crypto.randomUUID()};
   const id=request.current!.id;setPending(id);
@@ -98,6 +100,7 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
    {saved.length>0&&<label className="campaign-picker">Saved missions<select aria-label="Saved missions" disabled={busy} value={mission?.id||""} onChange={event=>open(event.target.value).catch(()=>setError("Could not open mission."))}>{saved.map(row=><option key={row.id} value={row.id}>{row.goal} · {row.status}</option>)}</select></label>}
   </div>
   {error&&<div className="product-notice notice-error" role="alert">{error}</div>}
+  {seed&&<label className="check-row"><input type="checkbox" checked={useResearch} onChange={e=>setUseResearch(e.target.checked)}/>Use the selected research snapshots and public context. Live planning is explicit; no new crawl is needed. Leave extra competitor URLs and discovery off.</label>}
   <BusinessContext token={token} workspace={workspace} mode={mode} onGoal={setObjective} onSelect={setContextIds}/>
   <div className="creation-layout mission-layout"><section className="product-card form-card"><h2>Analyze your business website</h2>
    <form onSubmit={run}><label>Business website<input required type="url" value={url} onChange={event=>setUrl(event.target.value)} placeholder="https://your-business.com"/></label>
