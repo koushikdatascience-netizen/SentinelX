@@ -15,6 +15,7 @@ from app.auth import current_user
 from app.workspace_store import EvidenceQuota, User, WorkflowRun, session
 from app.workspace_routes import EvidenceRunInput, owned
 from app.providers import configured_provider, infer
+from app.mission import normalize_quote
 
 router = APIRouter(prefix="/api/v1/workspaces", tags=["Evidence drafts"])
 
@@ -65,7 +66,7 @@ def validate_analysis(text: str, excerpt: str, deliverable: str = "homepage") ->
     if any(len(item) > 300 for item in analysis.assumptions):
         raise ValueError("Assumption exceeds limit")
     for item in analysis.recommendations:
-        if item.quote not in excerpt:
+        if normalize_quote(item.quote) not in normalize_quote(excerpt):
             raise ValueError("Citation quote is not present in supplied evidence")
     return analysis.model_dump()
 

@@ -102,6 +102,32 @@ def test_sample_guest_cannot_fetch_live_web(authenticated_client,monkeypatch):
     assert calls==[]
 
 
+@pytest.mark.parametrize("second_valid,budget,expected_calls,expected_status",[(True,50,2,201),(False,50,2,502),(True,5,1,502)])
+def test_optional_citation_repair_is_once_validated_and_budgeted(authenticated_client,monkeypatch,second_valid,budget,expected_calls,expected_status):
+    live_transport(monkeypatch)
+    monkeypatch.setenv("META_RUN_BUDGET_CENTS",str(budget))
+    client=authenticated_client;body=inputs(client)
+    body.update(generation_mode="live",consent_public_fetch=True,allow_quote_repair=True)
+    good=sample_plan();bad=sample_plan();bad["opportunities"][0]["quote"]="This quote is absent from the source."
+    replies=iter([bad,good if second_valid else bad]);calls=[]
+    def handle(request):
+        calls.append(request)
+        return httpx.Response(200,json={"id":"fixture","object":"chat.completion","created":1,"model":"muse-spark-1.3",
+           "choices":[{"index":0,"message":{"role":"assistant","content":json.dumps(next(replies))},"finish_reason":"stop"}],
+           "usage":{"prompt_tokens":20,"completion_tokens":50,"total_tokens":70}})
+    monkeypatch.setattr(meta_client,"OpenAI",lambda **kwargs:OpenAI(**kwargs,http_client=httpx.Client(transport=httpx.MockTransport(handle))))
+    response=client.post("/api/v1/missions",json=body)
+    assert response.status_code==expected_status,response.text
+    assert len(calls)==expected_calls
+    saved=client.get(f'/api/v1/missions/{body["request_id"]}',params={"workspace_id":body["workspace_id"]}).json()
+    assert sum(step["agent"]=="Citation repair" for step in saved["trace"])==1
+    if expected_status==201:
+        assert saved["plan"]["opportunities"][0]["quote"]==good["opportunities"][0]["quote"]
+        client.post("/api/v1/missions",json=body)
+        assert len(calls)==2
+    else:assert saved["status"]=="failed" and saved["plan"] is None
+
+
 def test_approved_public_execution_verification_and_cleanup(authenticated_client,monkeypatch):
     client=authenticated_client;body=inputs(client);scope={"workspace_id":body["workspace_id"]}
     mission=client.post("/api/v1/missions",json=body).json()

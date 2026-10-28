@@ -1,5 +1,6 @@
 import pytest
 from app.mission import sample_plan,sample_source,validate_plan,technical_checks
+from app.mission import normalize_quote
 
 
 def test_plan_must_cite_exact_collected_text():
@@ -19,3 +20,10 @@ def test_inspector_reports_measurements_not_sales_claims():
     assert len(checks)==4
     assert next(check for check in checks if check["name"]=="Inquiry forms")["passed"] is False
     assert all(check["source_id"]=="S1" for check in checks)
+
+
+def test_quote_normalization_accepts_spacing_and_typography_only():
+    assert normalize_quote('We\u00a0make “custom” parts — carefully.\nNext step')==normalize_quote('We make "custom" parts - carefully. Next   step')
+    assert normalize_quote('MOQ 20-50')!=normalize_quote('MOQ 20-500')
+    assert normalize_quote('We do not promise delivery')!=normalize_quote('We promise delivery')
+    assert normalize_quote('Paid')!=normalize_quote('paid')

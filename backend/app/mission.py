@@ -1,7 +1,19 @@
 """Grounded mission handoffs. Tool measurements are separate from AI hypotheses."""
 from typing import Literal
+import unicodedata
 from pydantic import BaseModel,ConfigDict,Field
 from app.public_web import inspect_html
+
+
+class CitationMismatch(ValueError):
+    pass
+
+
+def normalize_quote(text):
+    """Normalize typography and spacing, never words, case, numbers or negation."""
+    text=unicodedata.normalize("NFC",text).translate(str.maketrans({
+        "\u2018":"'","\u2019":"'","\u201c":'"',"\u201d":'"',"\u2013":"-","\u2014":"-","\u2011":"-"}))
+    return " ".join(text.split())
 
 
 class Opportunity(BaseModel):
@@ -36,10 +48,10 @@ class MissionPlan(BaseModel):
 
 def validate_plan(data,sources):
     plan=MissionPlan.model_validate(data)
-    evidence={source["id"]:" ".join(source["text"].split()) for source in sources}
+    evidence={source["id"]:normalize_quote(source["text"]) for source in sources}
     for item in [*plan.opportunities,*plan.strengths]:
-        if item.source_id not in evidence or " ".join(item.quote.split()) not in evidence[item.source_id]:
-            raise ValueError("Opportunity quote does not match the collected source")
+        if item.source_id not in evidence or normalize_quote(item.quote) not in evidence[item.source_id]:
+            raise CitationMismatch("Opportunity quote does not match the collected source")
     return plan.model_dump()
 
 
