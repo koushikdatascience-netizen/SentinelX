@@ -1,24 +1,17 @@
-# SentinelX: judge-facing two-minute demo script
+# SentinelX three-minute submission demo — guide-derived draft
 
-**Verify this exact path in deployed browser before recording.** The demo path is not evidence of live Meta inference; disclose sample vs live exactly as shown. Target run time ~120 seconds.
+The owner-supplied Participant Guide requires a **three-minute video** highlighting actual work built during the event. Eligibility remains **UNCONFIRMED**; see [HACKATHON_CODE_PROVENANCE.md](HACKATHON_CODE_PROVENANCE.md). Do not record the earlier scaffold as a new contribution. Show only features confirmed as developed in the allowed window, with explicit source/sample/model labels.
 
-| Time | Screen/action | Narration |
-|---|---|---|
-| 0–15s | Product hero, Try interactive demo (or static /demo if isolated guest sessions are disabled) | "Small businesses lack the resources to translate raw business information into trustworthy marketing assets." |
-| 15–30s | Studio: Brief & photos; inspect sample woodcraft business and upload one consented product image | "SentinelX starts with the owner's goals and technical photo measurements. These are real pixel measurements, not pretend model insights." |
-| 30–45s | Business audit | "We separate owner-supplied evidence from assumptions and mark whether the content came from a sample or a real Meta call." |
-| 45–65s | 7-day campaign editable cards | "A coherent week of posts is produced in the chosen language and platform, editable before approval." |
-| 65–80s | Generate sample creative variants, compare, select | "Creative variants are samples here unless the Meta image capability is live-verified and enabled." |
-| 80–100s | Generate landing page, select warm template, preview | "We generate validated fields, never arbitrary model HTML. The public page is script-free, consent-aware, and requires owner approval." |
-| 100–115s | Approval board; approve an item/landing, ZIP export | "Decisions are auditable. Only approved assets export, with source labels, and no social accounts are auto-published." |
-| 115–120s | /api/v1/status and final value proposition | "One workflow takes a business owner from evidence to reviewed, usable assets." |
+| Time | Screen/action | What must be evidenced |
+| --- | --- | --- |
+| 0:00–0:20 | Business problem and contribution disclosure | A bulk furniture-parts workshop gets incomplete inquiries. State that authentication/infrastructure/prototype foundations predate the listed kickoff; identify the later work being demonstrated. |
+| 0:20–0:55 | Website analysis, collected source and execution trace | Show an actual retrieved page, timestamp/hash, measured HTML signals and live-versus-tool stages. Preserve existing WhatsApp/MOQ features rather than recommending them again. No claim every page/image/video was inspected. |
+| 0:55–1:25 | Source-quoted strength and justified change; one real product-media assessment | Explain why a finding matters, what already exists and what remains a hypothesis. Use a consented image with actual Meta interpretation; do not present file validation, authored fixtures or unverified MP4/PDF adapters as demonstrated live inference. |
+| 1:25–1:55 | Mission-guided artifact, saved generated visual or useful document | Show a real, usable output linked to source context. Label generated imagery. Distinguish a shooting script from rendered video. Campaign creation is optional rather than the product's only purpose. |
+| 1:55–2:30 | Owner review and technical delivery verification | Approval records a decision. If an eligible live test page is prepared, explicitly publish, run consented synthetic form verification and show cleanup. If showing a recording, label it; do not substitute a sample for an unverified live result. |
+| 2:30–2:50 | Evidence of practical usefulness and engineering | Show actual owner feedback or task timing if collected, exact passing test counts and a failure/repair boundary. No invented conversion/revenue uplift or independent autonomous-agent claims. |
+| 2:50–3:00 | Public links and honest limits | Public repository, no-login sample link, code-provenance record and unfinished capabilities. End within the required three minutes. |
 
-## Must-pass recording checklist
+The guide lists simple image analyzers among anti-projects. The demo must establish the useful source-to-action business workflow, not rely on feature count or generic photo scoring. This script is preparation, not an assertion that the full technical verification or usefulness study has already been recorded.
 
-- GitHub Actions backend, PostgreSQL migrations and Playwright browser journeys green on the exact commit being recorded.
-- Live HTTPS URL verified from an unrelated browser/device. No secret leaks, console errors, or broken links.
-- Guest demo enabled only if its rate limits and expiry are tested; otherwise use the independent /demo route and login to a prepared isolated workspace.
-- Meta live models only shown as live after actual successful smoke calls and the deployed app's own /api/v1/status reports LIVE.
-- Keep demo account and any collected lead PII fictional and consented; no real customer names or payment details in recording.
-- Verify approval before publish, successful safe preview, ZIP contains only approved records, sample tags survive export.
-- Review entire video for false claims and clock time, upload before official deadline, verify playable URL and submission receipt.
+Before recording: exact release CI green, public product/repository/video accessible, no secrets/customer PII in screen/logs, provenance labels visible, new contributions isolated, accepted rules and indie scaffold clarification reviewed. Submission deadline from the supplied guide is **4 November 2026, 9 PM Eastern = 5 November 2026, 7:30 AM IST**. Recheck the portal and submit early.

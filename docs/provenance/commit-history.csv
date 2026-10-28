@@ -1,0 +1,258 @@
+commit_sha,author_date,committer_date,subject
+1075a84aab6ae1fc802a35584e3549000b3d1d32,2026-10-26T14:40:00+05:30,2026-10-26T14:40:00+05:30,chore: initialize SentinelX hackathon repository
+1cb64702e2bfb574f0cc0c6c5e14572276fa0820,2026-10-26T14:40:29+05:30,2026-10-26T14:40:29+05:30,feat: add SentinelX backend scaffold and workflow primitives
+fac8e33a03f7f22051ef630b421775a2ef3c21df,2026-10-26T14:40:31+05:30,2026-10-26T14:40:31+05:30,feat: add SentinelX backend scaffold and workflow primitives
+a69c75e37c892c3910533e5fee40b953e41f576a,2026-10-26T14:40:34+05:30,2026-10-26T14:40:34+05:30,feat: add SentinelX backend scaffold and workflow primitives
+b7107bbc135ba104c6e27cabbd4ad46e5dc13268,2026-10-26T14:40:36+05:30,2026-10-26T14:40:36+05:30,feat: add SentinelX backend scaffold and workflow primitives
+e04fde7b4a87b9fa83f5ba6211c719c764b36668,2026-10-26T14:40:39+05:30,2026-10-26T14:40:39+05:30,feat: add SentinelX backend scaffold and workflow primitives
+4b1ebfd1a32b0fc6a7a861166ddc855824a9ffbb,2026-10-26T14:40:41+05:30,2026-10-26T14:40:41+05:30,feat: add SentinelX backend scaffold and workflow primitives
+c5b2fb6883eaae734e8ec8865b008e69e64e3281,2026-10-26T14:40:44+05:30,2026-10-26T14:40:44+05:30,feat: add SentinelX backend scaffold and workflow primitives
+091114394b2f302e37643061714fa57f6b8f8478,2026-10-26T14:41:20+05:30,2026-10-26T14:41:20+05:30,feat: implement SentinelX analysis research and approval APIs
+2f4b199a78652ff7d2e7335f901b9c11f4b27f52,2026-10-26T14:41:53+05:30,2026-10-26T14:41:53+05:30,test: add public website research and approval lifecycle checks
+7c58f68c7cc9a0374b36041682fcda25fb2711d6,2026-10-26T14:41:56+05:30,2026-10-26T14:41:56+05:30,test: add public website research and approval lifecycle checks
+b55663fb61c831f81f2cb22a6536a013254cfea2,2026-10-26T14:41:58+05:30,2026-10-26T14:41:58+05:30,test: add public website research and approval lifecycle checks
+c1ec387c3249916b171fe61d1917b83800f4c6a5,2026-10-26T14:42:01+05:30,2026-10-26T14:42:01+05:30,test: add public website research and approval lifecycle checks
+e58a8739ad5532671b4707a029225a28496328df,2026-10-26T14:42:12+05:30,2026-10-26T14:42:12+05:30,ci: run backend pytest on pushes and pull requests
+4d3c34b4b89e902ef29783c87f83c6a21c7194a5,2026-10-26T14:42:36+05:30,2026-10-26T14:42:36+05:30,"docs: document endpoints, local setup and prototype security limits"
+66ab97ba9293725676afb464e7a273424a7e70a0,2026-10-26T16:29:47+05:30,2026-10-26T16:29:47+05:30,feat: add mock-safe Meta model registry and multimodal workflow preview
+93300950107ec8dec528f46748baf01a10dff6ef,2026-10-26T16:29:49+05:30,2026-10-26T16:29:49+05:30,feat: add mock-safe Meta model registry and multimodal workflow preview
+d3c7dbfebfa5ab1122c6d0e4bca357089768a19a,2026-10-26T16:29:52+05:30,2026-10-26T16:29:52+05:30,feat: add mock-safe Meta model registry and multimodal workflow preview
+04dae9bce1b5096309a59b2ebebf210449e1b956,2026-10-26T16:29:55+05:30,2026-10-26T16:29:55+05:30,feat: add mock-safe Meta model registry and multimodal workflow preview
+05657abcb8821e9b00f60c8f8d6c2014e61b8cdf,2026-10-26T16:30:14+05:30,2026-10-26T16:30:14+05:30,feat: expose capability catalog and zero-cost workflow preview endpoints
+5642e82ff7916db95bbb45526b1db76a4f988aed,2026-10-26T16:30:30+05:30,2026-10-26T16:30:30+05:30,test: verify model catalog and safe multimodal workflow preview routes
+2693c5ca89026653fc626341b9e869a8646db4d3,2026-10-26T16:34:39+05:30,2026-10-26T16:34:39+05:30,feat: add persistent workspace auth and model capability boundaries
+063f20f6f2db03075267417d6a2a038ca7a80d78,2026-10-26T16:34:41+05:30,2026-10-26T16:34:41+05:30,feat: add persistent workspace auth and model capability boundaries
+9704eced6382c95a3c47e4fbb50b2d0b560f129a,2026-10-26T16:34:45+05:30,2026-10-26T16:34:45+05:30,feat: add persistent workspace auth and model capability boundaries
+9649500154b9359d701f504c1239f4cccb226956,2026-10-26T16:34:48+05:30,2026-10-26T16:34:48+05:30,feat: add persistent workspace auth and model capability boundaries
+d0e67ca3223e3401855546bbe1ec955a693f5700,2026-10-26T16:35:11+05:30,2026-10-26T16:35:11+05:30,feat: wire PostgreSQL authenticated workspaces into API and Compose
+27d20861fcddc6a046ce074b7dc8921419b8f149,2026-10-26T16:35:14+05:30,2026-10-26T16:35:14+05:30,feat: wire PostgreSQL authenticated workspaces into API and Compose
+dc328e704028459eabacc0c71bcc9053c2447796,2026-10-26T16:35:18+05:30,2026-10-26T16:35:18+05:30,feat: wire PostgreSQL authenticated workspaces into API and Compose
+ee633313906cc4f9cf7e71510dfab11bfe372273,2026-10-26T16:35:21+05:30,2026-10-26T16:35:21+05:30,feat: wire PostgreSQL authenticated workspaces into API and Compose
+8b07a889d1ec5186b3f7c67c6708e576456298f8,2026-10-26T16:36:21+05:30,2026-10-26T16:36:21+05:30,feat: add Next.js workspace dashboard and auth isolation test
+032a578115b43df23616b7b221557ca6a776d287,2026-10-26T16:36:23+05:30,2026-10-26T16:36:23+05:30,feat: add Next.js workspace dashboard and auth isolation test
+0b0c35e8f2eeee50edb75250b42425a11f538004,2026-10-26T16:36:26+05:30,2026-10-26T16:36:26+05:30,feat: add Next.js workspace dashboard and auth isolation test
+c12f6b09cb9c2735093bdcd1009737def033c124,2026-10-26T16:36:29+05:30,2026-10-26T16:36:29+05:30,feat: add Next.js workspace dashboard and auth isolation test
+ca0772447641b62f2dc86764bb3e1c8ef39b8bb3,2026-10-26T16:36:32+05:30,2026-10-26T16:36:32+05:30,feat: add Next.js workspace dashboard and auth isolation test
+7447a9b0075f374555a2b99c376107e329e64af7,2026-10-26T16:36:34+05:30,2026-10-26T16:36:34+05:30,feat: add Next.js workspace dashboard and auth isolation test
+7a4d0f2037827e91564d2f6a8d04a64f47cdfcf4,2026-10-26T16:36:37+05:30,2026-10-26T16:36:37+05:30,feat: add Next.js workspace dashboard and auth isolation test
+8db0d88d44ffa16b121a55a8c9d207119dc4abac,2026-10-26T16:37:18+05:30,2026-10-26T16:37:18+05:30,fix: enable localhost frontend CORS with restricted origins
+60bde4a0d118fd5dbe18be8e8dbb001343e83f88,2026-10-26T16:37:49+05:30,2026-10-26T16:37:49+05:30,feat: add authenticated image inspection and optional Muse Voice transcription
+66ffdfa350f303f5e5385ce975572f2c451a0b1f,2026-10-26T16:37:52+05:30,2026-10-26T16:37:52+05:30,feat: add authenticated image inspection and optional Muse Voice transcription
+15163c5ba4b1a3a4dddc2fa763f4606c2ee295ee,2026-10-26T16:38:01+05:30,2026-10-26T16:38:01+05:30,feat: wire validated image/voice endpoints and dependencies
+998390fdb8f1d5e363bc35e7b6a7560b1f143242,2026-10-26T16:38:04+05:30,2026-10-26T16:38:04+05:30,feat: wire validated image/voice endpoints and dependencies
+568a5a70b5da3534d0d5f85712d18cd5071f4673,2026-10-26T16:38:30+05:30,2026-10-26T16:38:30+05:30,feat: implement opt-in Muse Image generation adapter
+6fe9143afd4c6c50b5dfe1574fa0e7e52030ea7c,2026-10-26T16:38:33+05:30,2026-10-26T16:38:33+05:30,feat: expose authenticated Muse Image adapter
+c11c32d035c8661a10a7a9a976c9bb2342f7111d,2026-10-26T16:39:07+05:30,2026-10-26T16:39:07+05:30,"docs: explain PostgreSQL, auth, media adapters and security gaps"
+0a20b03f589c525bbc6af738f4c6233c2c99c106,2026-10-26T16:39:24+05:30,2026-10-26T16:39:24+05:30,ci: validate Next.js dashboard production build
+7fbadf23194b1cd84ce834f1a6b37262fda1b489,2026-10-26T16:42:45+05:30,2026-10-26T16:42:45+05:30,feat: provider-neutral free inference adapter and safe smoke tests
+c326610d09808daba2aa0f0b4927b9bd7f9e0ae0,2026-10-26T16:42:48+05:30,2026-10-26T16:42:48+05:30,feat: provider-neutral free inference adapter and safe smoke tests
+c7604383055a8a210947e9b08e1115c75b5e11ad,2026-10-26T16:42:51+05:30,2026-10-26T16:42:51+05:30,feat: provider-neutral free inference adapter and safe smoke tests
+168867887138c2a4c8b06698aa81cfb80f2c41e0,2026-10-26T16:42:58+05:30,2026-10-26T16:42:58+05:30,feat: expose authenticated provider switching endpoints
+baf4acf04f85c50a2edbcc9a455b76a8731ce0e9,2026-10-26T16:43:06+05:30,2026-10-26T16:43:06+05:30,docs: add opt-in free inference environment configuration
+b919505e478d2313b2beb8d7fedae3cdda416b5a,2026-10-26T16:43:18+05:30,2026-10-26T16:43:18+05:30,deploy: parameterize inference provider in Compose without exposing secrets
+2d1098a7d7285eede9c93857ce918f43ecad08b1,2026-10-26T16:43:42+05:30,2026-10-26T16:43:42+05:30,feat: persist opt-in external inference outputs in business workspace runs
+ca3800822ebd9ca283e8558d247c3e3575e8b069,2026-10-26T16:43:53+05:30,2026-10-26T16:43:53+05:30,feat: add optional provider inference to dashboard workflow runs
+d0d3c7b4ea4ddb07a21fdb685322cd90d04db38d,2026-10-26T16:44:26+05:30,2026-10-26T16:44:26+05:30,docs: guide free-provider development and staging deployment safely
+b442405765ed942c76e85be61a2b9089e08eebbd,2026-10-27T11:14:44+05:30,2026-10-27T11:14:44+05:30,docs: record official Meta $150 credit claim process
+4d2bbe041614fb963a090766c2c9fe01589034fc,2026-10-27T11:15:40+05:30,2026-10-27T11:15:40+05:30,feat: add source-linked evidence assessment and tests
+06d64c39c58129bddf92e77bf8e4632edc195d10,2026-10-27T11:15:43+05:30,2026-10-27T11:15:43+05:30,feat: add source-linked evidence assessment and tests
+56f111cd73906c624a567b99871a36ad9e3d56be,2026-10-27T11:27:38+05:30,2026-10-27T11:27:38+05:30,test: verify evidence cannot trigger execution
+20248c19ba963fbcf9d4e074fa675d1eac1c3cae,2026-10-27T11:27:48+05:30,2026-10-27T11:27:48+05:30,feat: connect authenticated evidence API
+1acb4620ec216b07bc12094d52c61b46bac8c05d,2026-10-27T11:38:57+05:30,2026-10-27T11:38:57+05:30,feat: evidence preserving website research pipeline
+b0121f2c9c950c2e5d0f65b2de68ce17e136be39,2026-10-27T11:39:31+05:30,2026-10-27T11:39:31+05:30,test: remove incomplete research integration test pending implementation
+2c1ae0ec357ea221238ab2c697509d113ae6725d,2026-10-27T13:01:56+05:30,2026-10-27T13:01:56+05:30,security: add atomic database budget reservation for opt-in text inference
+7bb73510f1cfe62dfa03ea9d98e8af7f186da3c3,2026-10-27T13:02:11+05:30,2026-10-27T13:02:11+05:30,security: fail closed on app budget before calling inference provider
+3f371be80963497ede0624925264ca552472206c,2026-10-27T13:02:23+05:30,2026-10-27T13:02:23+05:30,fix: register budget table before startup schema initialization
+b8c129408ee3a9193be75e2c3ec36900f9a43d9d,2026-10-27T13:02:33+05:30,2026-10-27T13:02:33+05:30,feat: show conservative inference budget reservations
+2bb189046aa21edce8ed4076104c759cfb909854,2026-10-27T13:02:49+05:30,2026-10-27T13:02:49+05:30,test: validate budget reservation and zero-spend Meta default controls
+82fb08a6700da8438af581fc5e7b20fbe41223a0,2026-10-27T13:03:10+05:30,2026-10-27T13:03:10+05:30,security: disable unbudgeted legacy paid inference by default
+3cecf991ce24ad11fa686b8e92c26be465427d34,2026-10-27T13:03:21+05:30,2026-10-27T13:03:21+05:30,security: gate unmetered image and voice requests behind explicit opt-in
+2543a3e1fbd9b8555997c5d07891b470cbf0e4e5,2026-10-27T13:03:24+05:30,2026-10-27T13:03:24+05:30,security: gate unmetered image and voice requests behind explicit opt-in
+6ff25aa6fd0a219d6d125a9842bf60f8f0ee399a,2026-10-27T13:03:59+05:30,2026-10-27T13:03:59+05:30,"docs: document Meta prices, credit verification and budget guard limits"
+d543b8fefc71700e87064de50280fa32019c7759,2026-10-27T13:28:38+05:30,2026-10-27T13:28:38+05:30,security: authenticate legacy write and research endpoints
+260f705feb8660f9c1f439221b5a7ce61f76b875,2026-10-27T13:28:41+05:30,2026-10-27T13:28:41+05:30,security: retire legacy unscoped action and research routes by default
+a15340502aed2d4e3c21eb285a2024225ffca117,2026-10-27T13:29:07+05:30,2026-10-27T13:29:07+05:30,test: explicitly enable legacy prototype only in backward-compatibility checks
+7a5b5fa2c01fe16f028a9f3f886c149bdaa267ed,2026-10-27T13:29:10+05:30,2026-10-27T13:29:10+05:30,test: explicitly enable legacy prototype only in backward-compatibility checks
+ada7548d7be7255c84320e9c6889f384bfcb8f93,2026-10-27T13:29:13+05:30,2026-10-27T13:29:13+05:30,test: explicitly enable legacy prototype only in backward-compatibility checks
+4e02c0d64815ec69d8165390133158eb65a7056c,2026-10-27T13:29:26+05:30,2026-10-27T13:29:26+05:30,test: scope legacy opt-in to individual test cases
+03a78a9c1439c5ce8c69c891f29fa02e2e3bcc48,2026-10-27T13:29:56+05:30,2026-10-27T13:29:56+05:30,test: shared authenticated API client fixture
+d842d54d45005507f42d2c2544978a01235d56e6,2026-10-27T13:30:31+05:30,2026-10-27T13:30:31+05:30,test: migrate legacy API tests to authenticated requests
+4f062ee16734e4126a5fd259bd1d607b484ac843,2026-10-27T13:30:34+05:30,2026-10-27T13:30:34+05:30,test: migrate legacy API tests to authenticated requests
+f2f17eb7d7943bef3db308d8b82ca23637b3b7fc,2026-10-27T13:30:37+05:30,2026-10-27T13:30:37+05:30,test: migrate legacy API tests to authenticated requests
+b7e0c6207619e3cde1deb29d306e52dd072e9996,2026-10-27T13:30:40+05:30,2026-10-27T13:30:40+05:30,test: migrate legacy API tests to authenticated requests
+0e79b8cfc0fa244aae318cbdde1085fe55661155,2026-10-27T14:20:29+05:30,2026-10-27T14:20:29+05:30,test: explicitly opt into legacy compatibility routes
+8df28d50b56b0ffd1dedca0844551e386a233160,2026-10-27T14:20:32+05:30,2026-10-27T14:20:32+05:30,test: explicitly opt into legacy compatibility routes
+c44700a4e03927d9942177ad0440bb5716eb5879,2026-10-27T14:20:34+05:30,2026-10-27T14:20:34+05:30,test: explicitly opt into legacy compatibility routes
+9995891f173f4ffb5deb9da9bf83b8dbd632a2af,2026-10-27T14:20:51+05:30,2026-10-27T14:20:51+05:30,refactor: remove duplicate imports from legacy route hardening
+4289b70275b9e9800b149bdd0eee1158bb2d8740,2026-10-27T14:22:17+05:30,2026-10-27T14:22:17+05:30,deploy: isolate ARM-compatible SentinelX staging on existing Oracle VM
+c0e67aeafc020015af902fdd74a61f5afb7b58fc,2026-10-27T14:22:19+05:30,2026-10-27T14:22:19+05:30,deploy: isolate ARM-compatible SentinelX staging on existing Oracle VM
+8f342bfa35b316c440f8851f8c542b68e811c6c6,2026-10-27T14:22:22+05:30,2026-10-27T14:22:22+05:30,deploy: isolate ARM-compatible SentinelX staging on existing Oracle VM
+e82eba4f72ee855c5f39d673e1e2ceda40636fdc,2026-10-27T14:22:25+05:30,2026-10-27T14:22:25+05:30,deploy: isolate ARM-compatible SentinelX staging on existing Oracle VM
+abb6e01f07e984c8db1e258739b6732486ac5555,2026-10-27T14:22:35+05:30,2026-10-27T14:22:35+05:30,fix: default dashboard to same-origin API for Nginx staging
+b28acad4ef787b41db59e5f1ecb08c89a03b5786,2026-10-27T14:22:58+05:30,2026-10-27T14:22:58+05:30,chore: ignore frontend builds and staging secrets
+2cf5ea40d90ce20aef7cb1088cf76fe1f3fd84e3,2026-10-27T14:23:33+05:30,2026-10-27T14:23:33+05:30,docs: provide safe Oracle VM validation and SentinelX subdomain staging procedure
+1353d2505b661fed1f00b5e5fff46b46dc111df4,2026-10-27T14:24:10+05:30,2026-10-27T14:24:10+05:30,feat: store source-attributed owner-supplied research and actionable proposal in PostgreSQL
+40b909d77c0f9a3d79b1e09e1846d8850f0d7d23,2026-10-27T14:24:26+05:30,2026-10-27T14:24:26+05:30,test: persisted no-spend business evidence-to-recommendation workflow
+d8d0f329a019b3b70a9d76fec56c081ea13ea4e3,2026-10-27T14:24:45+05:30,2026-10-27T14:24:45+05:30,feat: make user-supplied evidence audit accessible from demo dashboard
+d62b6ca800ff5870e0a97cb2345df7c8c1a5e913,2026-10-27T15:36:52+05:30,2026-10-27T15:36:52+05:30,"feat: persist auditable, scoped action review records"
+5f23d9059655723c17db6b99c7911f6e671539dc,2026-10-27T15:37:11+05:30,2026-10-27T15:37:11+05:30,feat: add tenant-safe action proposals and approval lifecycle APIs
+f36d2c79a8fa9fde481d957e19b8b71a659f78eb,2026-10-27T15:39:18+05:30,2026-10-27T15:39:18+05:30,feat: rebuild SentinelX as professional authenticated operations dashboard
+e1c50f860773f82e7db42e549d647fae4cf55b5f,2026-10-27T15:40:43+05:30,2026-10-27T15:40:43+05:30,style: deliver responsive polished dark SentinelX dashboard design
+d39a49f2302eeb8160b9a2ae71cf210822d8f816,2026-10-27T15:41:08+05:30,2026-10-27T15:41:08+05:30,test: persist approvals without execution and enforce tenant isolation
+b25405115d417d98d690a0dbf56323aad0d7482d,2026-10-27T15:41:34+05:30,2026-10-27T15:41:34+05:30,"docs: dashboard workflow, demo steps and honest production-readiness checklist"
+5a5b4f67d1d00f8f60ef01847c4073eb53d9b16f,2026-10-27T19:11:35+05:30,2026-10-27T19:11:35+05:30,feat: expose honest Meta model integration readiness states
+871e55174856f207f4a38230817acd2e92c83a1e,2026-10-27T19:11:51+05:30,2026-10-27T19:11:51+05:30,feat: authenticated Meta integration readiness endpoint
+df4b7981de31c8ede1a555534522798f1b9c5013,2026-10-27T19:12:18+05:30,2026-10-27T19:12:18+05:30,feat: professional image/voice intake and Meta model readiness panel
+0985b63294969d02db2822d1b9521282e1e94ab9,2026-10-27T19:12:30+05:30,2026-10-27T19:12:30+05:30,feat: connect multimodal workbench to configuration dashboard
+a1c0f68410983a977c4888c5be5277a6b8cbd07d,2026-10-27T19:12:49+05:30,2026-10-27T19:12:49+05:30,style: add responsive multimodal and model-status dashboard panels
+444c36d02108b5dfa055003028cefd20d3ba749e,2026-10-27T19:13:21+05:30,2026-10-27T19:13:21+05:30,feat: export source-attributed Markdown reports for authenticated business runs
+f77c381aac01f1e72f9747189d0e954202e68490,2026-10-27T19:13:36+05:30,2026-10-27T19:13:36+05:30,fix: format exported report with Markdown line breaks
+abecb22e5844735cd62fdc757f140620a60e7d69,2026-10-27T19:13:50+05:30,2026-10-27T19:13:50+05:30,feat: download secure audit reports directly from dashboard
+a0f9f0ad5df6854d90d4c3ea50ed060a7a798da0,2026-10-27T19:14:04+05:30,2026-10-27T19:14:04+05:30,test: verify evidence provenance and workspace-scoped report export
+47ffa6b8bd4791b2b9d5ecf40677fc481d80f1bc,2026-10-27T19:14:34+05:30,2026-10-27T19:14:34+05:30,docs: create hackathon demo and production-readiness checklist
+5331c4e39cefdf449324b6da3f8c8332f13781c7,2026-10-27T19:15:18+05:30,2026-10-27T19:15:18+05:30,feat: make zero-credit business recommendations evidence-aware instead of generic placeholders
+9fdf2ace1679d0bd167333a25d86f8895e86ee44,2026-10-27T19:15:29+05:30,2026-10-27T19:15:29+05:30,test: source-bound recommendations distinguish excerpt from entire site
+6d50e7ed08dc2f0ccacd21d6a889ebdcf13b10b6,2026-10-27T19:15:49+05:30,2026-10-27T19:15:49+05:30,feat: support local Ollama inference for zero-credit Meta open-weight experimentation
+c1bdf5e70d83dc84418357e6a9bb8ff8545fef79,2026-10-27T19:16:02+05:30,2026-10-27T19:16:02+05:30,test: local open-weight inference needs no hosted API credits
+ccb996ab4ecbebdf65e56b9b2fb9110ee80a3d5f,2026-10-27T19:16:26+05:30,2026-10-27T19:16:26+05:30,feat: opt-in provider inference control in business dashboard
+11789b14acb4c946fb8a9f643068fbf06b92a8cd,2026-10-27T19:18:06+05:30,2026-10-27T19:18:06+05:30,fix: avoid false price detection from words ending in rs
+4f8349e61820e8f6fa068b23ffb7c5f4860cab10,2026-10-27T19:18:24+05:30,2026-10-27T19:18:24+05:30,fix: use regex word boundaries to distinguish price terms
+dfecabd466c2df2129b2ed8992425a770321aa69,2026-10-27T22:03:21+05:30,2026-10-27T22:03:21+05:30,feat: prepare manual secret-safe Meta API smoke testing through GitHub Actions
+182e46ab80e9b78d325794c80fc6f90164fc8e0c,2026-10-27T22:03:36+05:30,2026-10-27T22:03:36+05:30,feat: prepare manual secret-safe Meta API smoke testing through GitHub Actions
+e65005651564b0d72c5e1fb2ffa7645e0b72325d,2026-10-27T22:03:41+05:30,2026-10-27T22:03:41+05:30,feat: prepare manual secret-safe Meta API smoke testing through GitHub Actions
+8d873c9c8e76691d994775b5b743b68ad74d8a81,2026-10-27T22:04:15+05:30,2026-10-27T22:04:15+05:30,docs: codex agent handoff and safe development guardrails
+e2b3a264d90ff9c6d48c7ca23afd6226de9bdb03,2026-10-27T22:33:32+05:30,2026-10-27T22:33:32+05:30,Harden Indie demo readiness and bounded Meta inference
+bac763c2056738f88d74ca9e879a9e15098ce0a8,2026-10-27T22:50:52+05:30,2026-10-27T22:50:52+05:30,Connect governed evidence drafts with migrations and browser verification
+fcac8b1bf5606f56ee70407f7c5300c0998978b0,2026-10-27T22:53:14+05:30,2026-10-27T22:53:14+05:30,Keep client evidence unverified and reject image decompression bombs
+239d1d029cdd527403de285e2053f189542740a1,2026-10-27T22:59:10+05:30,2026-10-27T22:59:10+05:30,Use hosted Chrome and avoid redundant browser setup in CI
+665afd30188605370c6a017b479e9cda35313f38,2026-10-27T23:51:47+05:30,2026-10-27T23:51:47+05:30,Add campaign packs and a no-login illustrative walkthrough
+bdf252440a198a5488971df4a685d2017613c72b,2026-10-28T00:05:37+05:30,2026-10-28T00:05:37+05:30,Centralize documented Meta contracts with scoped atomic reservations
+1c9489997b7fcf35048571211a8a1b59f706b2a7,2026-10-28T00:05:37+05:30,2026-10-28T00:05:37+05:30,Route Meta operations and single-capability smoke through scoped client
+2fafe316db63e7ec629a8d8c6b61b0f41c47c85f,2026-10-28T00:13:19+05:30,2026-10-28T00:13:19+05:30,"feat: consolidate opt-in Meta text, vision and image calls with budget reservations"
+75bd5d196c99a8ff09ff74204ae6a1133f15053e,2026-10-28T00:13:37+05:30,2026-10-28T00:13:37+05:30,"test: mock Meta SDK calls, paid gates, provenance and safe failure"
+dc8565150a3abd54628cbba2b301b568137dce19,2026-10-28T00:13:54+05:30,2026-10-28T00:13:54+05:30,docs: distinguish officially documented Meta API shapes from unverified live behavior
+8f18c96d5610bfa5932c543f141a1bae10243ef8,2026-10-28T00:14:36+05:30,2026-10-28T00:14:36+05:30,fix: remove unmetered direct Muse Image calls; use central guarded client
+17c74957c6429d9d8203b4a30f3c55d1d353b4bb,2026-10-28T00:15:25+05:30,2026-10-28T00:15:25+05:30,feat: add trustworthy local photo measurements and provenance
+0b63fd7d41217edf2506f05d72710a9d9122601b,2026-10-28T00:15:35+05:30,2026-10-28T00:15:35+05:30,feat: persist owner-scoped image assessment metadata without retaining photos
+9185089232685fe801326ef8693292759e7a7eee,2026-10-28T00:15:57+05:30,2026-10-28T00:15:57+05:30,feat: add owner-scoped product photo assessment endpoints
+50c5218b600c6265ac5f37acb7ebec0c3f156d4a,2026-10-28T00:16:08+05:30,2026-10-28T00:16:08+05:30,feat: register authenticated photo scoring API
+71312e6877b7f1e70367145c8dd384705dc4c3a0,2026-10-28T00:16:11+05:30,2026-10-28T00:16:11+05:30,db: add migration for workspace photo assessment metadata
+3337bb6da8672a09ba88465f13a00ca05d490fed,2026-10-28T00:16:23+05:30,2026-10-28T00:16:23+05:30,"test: local scoring, unauthenticated rejection and persisted image deletion"
+62d6e9e0539a00c6db4554360e046e98a8d7bf06,2026-10-28T00:17:34+05:30,2026-10-28T00:17:34+05:30,feat: quantify photo technical readiness with transparent measurement weights
+649fcb3bdd8b8e6e2196fd55faac2109119b54f9,2026-10-28T00:17:38+05:30,2026-10-28T00:17:38+05:30,security: enforce actual image format matches multipart MIME
+ccf53de97ff4c2bfd8366c9be628b159185733e8,2026-10-28T00:18:16+05:30,2026-10-28T00:18:16+05:30,security: require explicit live provider and multimodal opt-in for all Meta client calls
+b896b4be293edd2bc947cf830b47f2d59f57cb5c,2026-10-28T00:18:19+05:30,2026-10-28T00:18:19+05:30,test: set explicit live provider gates for mocked Meta requests
+f4bf79ae7b64736aa265073dfd7b5233cbc186a9,2026-10-28T00:18:33+05:30,2026-10-28T00:18:33+05:30,db: add tenant-linked campaign and seven-day item records
+62afb00cabb97c2a2d84e70035bc89a0b37117e0,2026-10-28T00:18:45+05:30,2026-10-28T00:18:45+05:30,db: migrate workspace campaign and editable item records
+56375cac89eef7c61ece20cf47d1afa45a2f0ebf,2026-10-28T00:19:21+05:30,2026-10-28T00:19:21+05:30,feat: schema-validated seven-day campaign plans and localized sample fixtures
+afd9275ba79931ca5d272bdfe0b699512c5df1a9,2026-10-28T00:19:33+05:30,2026-10-28T00:19:33+05:30,db: add durable workspace-level campaign generation quota
+bd6091aa2ef72199f973e81be56f14ebbbe9d612,2026-10-28T00:19:36+05:30,2026-10-28T00:19:36+05:30,db: migrate per-workspace paid campaign attempt quota
+176e40df3f288ed38d71141f5dde31c6bcecbe4c,2026-10-28T00:20:18+05:30,2026-10-28T00:20:18+05:30,feat: persist 7-day localized campaigns with workspace isolation and source attribution
+c932dbc2dd40a272f895d697f73bb764ab7ad21d,2026-10-28T00:20:34+05:30,2026-10-28T00:20:34+05:30,feat: expose authenticated campaign planning endpoints
+d7d6e2166f5962979b7d6c6c470dcf003453f238,2026-10-28T00:20:52+05:30,2026-10-28T00:20:52+05:30,"test: offline campaigns, localization, editable items and workspace access"
+355bd51b001f774d488b4b5faa34acc5709a2937,2026-10-28T00:21:26+05:30,2026-10-28T00:21:26+05:30,db: persist owner-controlled landing pages and consented leads
+abff8bd8e7d8550d19fafc217949038ed64088d1,2026-10-28T00:21:39+05:30,2026-10-28T00:21:39+05:30,db: migrate scoped landing pages and leads with rate-limit fields
+5075083a6b45b8b5fba5ed0f3255d23f6cc20ad0,2026-10-28T00:22:14+05:30,2026-10-28T00:22:14+05:30,"feat: strict landing spec, localized sample copy and safe Jinja renderer"
+59a70fad20d026177bba2561524e7153e537dd05,2026-10-28T00:22:48+05:30,2026-10-28T00:22:48+05:30,feat: add accessible modern landing-page template
+0517a813d509b643a3ed2a18022ed8e9a9413971,2026-10-28T00:22:51+05:30,2026-10-28T00:22:51+05:30,feat: add accessible warm landing-page template
+a4b686821f90533c4f419eabb095973e87212bee,2026-10-28T00:22:53+05:30,2026-10-28T00:22:53+05:30,feat: add accessible bold landing-page template
+27505c110940ce951a568d5d7548b507537b9fe3,2026-10-28T00:23:47+05:30,2026-10-28T00:23:47+05:30,"feat: safe landing generation, authenticated previews and rate-limited consented leads"
+00c856c2d8ab6ee94d78619880120adb8fc32a7a,2026-10-28T00:24:06+05:30,2026-10-28T00:24:06+05:30,feat: register public consented landing and private page management routes
+02bd6c5bdbbf2b693192a8aeb0d2db5133b3f1f5,2026-10-28T00:24:09+05:30,2026-10-28T00:24:09+05:30,deps: add maintained autoescaping Jinja2 template renderer
+5a632b67f7dbc003fb36e0d5791b19384b5b926f,2026-10-28T00:24:29+05:30,2026-10-28T00:24:29+05:30,"test: escape hostile content, consent leads, rate limits, exports and access"
+e916c50db5626fd474c0c60f16ef66636a3c047b,2026-10-28T00:25:04+05:30,2026-10-28T00:25:04+05:30,db: add unified approval records and append-only reviewer events
+93e23550fc0c2b6003e5600df37ba1f8447237c0,2026-10-28T00:25:17+05:30,2026-10-28T00:25:17+05:30,db: migrate reviewable campaign artifacts and append-only approval history
+8cfc558dade6364547d12026844413132bb0c56d,2026-10-28T00:25:42+05:30,2026-10-28T00:25:42+05:30,db: ensure only one review record per campaign artifact
+5d63b0bd4b8fe2d331c7e8f646da88dc7f5b3132,2026-10-28T00:25:46+05:30,2026-10-28T00:25:46+05:30,db: migrate unique approval-artifact constraint
+317c2b116d6a6ee28d62b9ee343f101ac4ba8353,2026-10-28T00:26:19+05:30,2026-10-28T00:26:19+05:30,feat: append-only approval board and approved-only campaign ZIP export
+da744b3b755289bcfbd3cf8f523f51780da47d13,2026-10-28T00:26:37+05:30,2026-10-28T00:26:37+05:30,security: require audited landing approval before publication
+448208e865ebc6824357b4aa6eed98ffb634f2da,2026-10-28T00:26:48+05:30,2026-10-28T00:26:48+05:30,feat: expose approval decisions and approved-only exports
+1a25d9df02e3e23454cbaea4e6b9828e35dd2bbf,2026-10-28T00:27:06+05:30,2026-10-28T00:27:06+05:30,test: require approval history before public landing publication
+ab7a3a3449ab006528991b4ce002ab8ebc4be886,2026-10-28T00:27:45+05:30,2026-10-28T00:27:45+05:30,"test: audited approvals, explicit reopen, tenant isolation and approved-only ZIP"
+f0abdc2db0efdb184a532043cff52b7b88a0ccff,2026-10-28T00:29:01+05:30,2026-10-28T00:29:01+05:30,db: persist bounded campaign creative variants and selection
+1884a5aa30f3824dc23c2ee4a07fe3138523b4ab,2026-10-28T00:29:11+05:30,2026-10-28T00:29:11+05:30,db: migrate bounded campaign creative variants
+d7499f4abcaa571d937a233065922c6b5902438e,2026-10-28T00:29:59+05:30,2026-10-28T00:29:59+05:30,"feat: bounded creative variants, sample gradients, Meta scoring and owner selection"
+f80e9a81a97e002e334b1bf2fff11e1e2dc7ed3d,2026-10-28T00:30:15+05:30,2026-10-28T00:30:15+05:30,feat: register owner-scoped campaign creative variants
+8106d57d141d49b2afdb97efe44fa74409a602cd,2026-10-28T00:30:18+05:30,2026-10-28T00:30:18+05:30,feat: include selected creative approvals and approved-only artwork in ZIP
+3df33f84f56d2f621b81bf32b6bd3e4875814f26,2026-10-28T00:30:49+05:30,2026-10-28T00:30:49+05:30,"test: deterministic sample creatives, isolation, selection and approved-only export"
+c127448fc2e59451026b2f9762e831c309200bad,2026-10-28T00:31:02+05:30,2026-10-28T00:31:02+05:30,feat: accept strictly scoped embedded hero imagery in landing render
+2bed0c57aff94edc995d39d2528e54182f612156,2026-10-28T00:31:08+05:30,2026-10-28T00:31:08+05:30,feat: render selected product creative in modern landing hero
+0af96f7ba2a9fdbe64bedae0dc9780214b9bbbe7,2026-10-28T00:31:11+05:30,2026-10-28T00:31:11+05:30,feat: render selected product creative in warm landing hero
+c4552ddb32c222fe759d4d1030cde330cda8eef8,2026-10-28T00:31:15+05:30,2026-10-28T00:31:15+05:30,feat: render selected product creative in bold landing hero
+eab623db730461b384b33441847a66569952e0b4,2026-10-28T00:31:36+05:30,2026-10-28T00:31:36+05:30,feat: embed only owner-selected campaign creatives in landing hero
+1a97b07a965d68f97e30a10e7afd38008038d5d4,2026-10-28T00:31:53+05:30,2026-10-28T00:31:53+05:30,feat: show selected campaign imagery on published landing pages
+4d49fc2ce702d62b414aa0583ab4a2d759c2e666,2026-10-28T00:31:56+05:30,2026-10-28T00:31:56+05:30,feat: include selected hero imagery in self-contained approved landing export
+46e7fa1cebedee929f2369b4951a5bac40a5fc34,2026-10-28T00:32:12+05:30,2026-10-28T00:32:12+05:30,safety: preserve sample disclosures after manual landing edits
+54c42108fb5eafd67ca8d04714873b4e553df9f9,2026-10-28T00:34:22+05:30,2026-10-28T00:34:22+05:30,"feat: build guided six-step business Studio UI for campaign, images, creatives and approval"
+0183574a659275acfddd6fdbd8c8da64e6e68d58,2026-10-28T00:34:38+05:30,2026-10-28T00:34:38+05:30,feat: expose six-step Business Studio from dashboard navigation
+b505d457576e5669999bc10afbe209cb0be4a8c4,2026-10-28T00:35:23+05:30,2026-10-28T00:35:23+05:30,"style: professional responsive Studio stepper, scoring, campaign cards and approval board"
+91250d88a3347d2904f7dd0ab515e34adea6a255,2026-10-28T00:35:52+05:30,2026-10-28T00:35:52+05:30,fix: correct image scoring syntax detected by CI
+20558cafa6505a180e91af058d783abe25282d2a,2026-10-28T00:36:50+05:30,2026-10-28T00:36:50+05:30,db: identify demo users and persist short-lived isolated guest sessions
+7b3e745c69dad45c679bbd6f5ae101420ff5efcd,2026-10-28T00:37:00+05:30,2026-10-28T00:37:00+05:30,db: migrate guest demo session expiry and rate limiting records
+59209fd8d77e9680c909944766dfc2e90a9e0ed4,2026-10-28T00:37:12+05:30,2026-10-28T00:37:12+05:30,auth: enforce short-lived demo token/session expiration
+52e8358fd0ec35ee986f75fabab1fb7b25662692,2026-10-28T00:37:38+05:30,2026-10-28T00:37:38+05:30,feat: opt-in rate-limited twenty-minute isolated guest sample sessions
+1b2fb9054b7d518492d116525a67495ba8a2fd65,2026-10-28T00:38:01+05:30,2026-10-28T00:38:01+05:30,security: prevent guest sample sessions from triggering external paid inference
+7a32b2a004d781c4e29c3371f47fbe188efece2d,2026-10-28T00:38:05+05:30,2026-10-28T00:38:05+05:30,security: prevent guest sample sessions from triggering external paid inference
+ac1528b1110b3095ffb987de302299ba577eb85c,2026-10-28T00:38:09+05:30,2026-10-28T00:38:09+05:30,security: prevent guest sample sessions from triggering external paid inference
+1e9a896ad8c6d03ddd0989a45b407bce45b8060a,2026-10-28T00:38:12+05:30,2026-10-28T00:38:12+05:30,security: prevent guest sample sessions from triggering external paid inference
+b4657177d32793fddba77a32912510a36eb74a9e,2026-10-28T00:38:16+05:30,2026-10-28T00:38:16+05:30,security: prevent guest sample sessions from triggering external paid inference
+75269c4b05e00fdc9f40dae3b62fe31f4059d379,2026-10-28T00:38:20+05:30,2026-10-28T00:38:20+05:30,security: prevent guest sample sessions from triggering external paid inference
+909d0bf9c92a695cd8349e3c72d2c07cb32c6339,2026-10-28T00:38:23+05:30,2026-10-28T00:38:23+05:30,security: prevent guest sample sessions from triggering external paid inference
+e063e35772a2e79ad93bb5b6791426d3094816de,2026-10-28T00:38:27+05:30,2026-10-28T00:38:27+05:30,security: prevent guest sample sessions from triggering external paid inference
+a019a593e65bf5c2b6b4381a9131636c0c2d2a73,2026-10-28T00:38:30+05:30,2026-10-28T00:38:30+05:30,security: prevent guest sample sessions from triggering external paid inference
+9cf965bccb5a277d33d322bd594c948ddc167991,2026-10-28T00:38:40+05:30,2026-10-28T00:38:40+05:30,feat: register bounded public sample demo session API
+bb470f6feef101d4b901a26f6f2d5b9ded63a72c,2026-10-28T00:39:06+05:30,2026-10-28T00:39:06+05:30,"test: zero-spend guest sessions, expiry, per-IP limits and paid-route denial"
+9529626fd282371e47996287d6a90c30f87e6a68,2026-10-28T00:39:38+05:30,2026-10-28T00:39:38+05:30,feat: create optional no-login isolated Studio trial with stronger product hero
+a05896a09a7e3a4a3e7a3a0f0ed24557792f2ea5,2026-10-28T00:39:50+05:30,2026-10-28T00:39:50+05:30,style: add product-loop hero and accessible guest demo CTA
+9bf043a36c8911c2a0537bf450b4c4b75e552149,2026-10-28T00:40:16+05:30,2026-10-28T00:40:16+05:30,db: record recent successful Meta API capabilities without payloads
+ba87450a3b5f8ee3c8347331db445e08e393f699,2026-10-28T00:40:27+05:30,2026-10-28T00:40:27+05:30,db: migrate honest recent Meta capability check records
+db29f59103d158484ab79f43cb6dfddcbdffe095,2026-10-28T00:40:46+05:30,2026-10-28T00:40:46+05:30,feat: record real successful Meta capabilities without falsely verifying mocks
+3c81c920de6eb9d6ca1e1b3a7f1490f801688360,2026-10-28T00:41:04+05:30,2026-10-28T00:41:04+05:30,feat: honest public live-vs-sample model capability status
+7af9a8c3a8f3702448a18dba7d484d005ec17703,2026-10-28T00:41:07+05:30,2026-10-28T00:41:07+05:30,feat: register public live verification status endpoint
+895f2bd3f61920c1f722f53e4e81cae3978c9d54,2026-10-28T00:41:52+05:30,2026-10-28T00:41:52+05:30,feat: one authorized Meta smoke call per capability with sanitized output
+15ef82a83581393c3b2cd2f118472b73e7b125b6,2026-10-28T00:42:06+05:30,2026-10-28T00:42:06+05:30,"ci: authorize exactly one Meta text, vision or image probe per manual invocation"
+f1c717c7100fe1a82f22d95c1385e3e970a60074,2026-10-28T00:43:03+05:30,2026-10-28T00:43:03+05:30,fix: require complete Meta responses and preserve sanitized token usage
+066999e1aa31e34b880580d1370bedb10837ff27,2026-10-28T00:43:25+05:30,2026-10-28T00:43:25+05:30,refactor: route all hosted Meta text inference through guarded shared client
+0fe00d9621127d73f653774ab38642b5f9897244,2026-10-28T00:43:42+05:30,2026-10-28T00:43:42+05:30,security: disable unmetered direct voice API request until verified
+6c1864a38f6169c48882246f4e0778daccd6b18d,2026-10-28T00:43:46+05:30,2026-10-28T00:43:46+05:30,security: permanently close legacy direct Meta inference bypass
+19cc6f0f17b5b5599b77c1a2f3e704428b600dfc,2026-10-28T00:44:23+05:30,2026-10-28T00:44:23+05:30,test: update Meta safety regressions for single shared client and gated smoke capabilities
+d07df2fbc0fa4d5eaa69c7caa302777f860110d1,2026-10-28T00:44:40+05:30,2026-10-28T00:44:40+05:30,test: supply explicit non-demo user fixture to inference handler
+012a7fe54fc566f6cf46d32270431352c72264c9,2026-10-28T00:45:33+05:30,2026-10-28T00:45:33+05:30,security: enforce workspace paid-attempt quota before Meta product photo analysis
+bc7a7e3bdcddf25c6151e84e4ff17f9a1d1c36eb,2026-10-28T00:46:01+05:30,2026-10-28T00:46:01+05:30,security: serialize lead rate checks and validate submitted phone characters
+830038e4f498998101deebff33ed23e2d14e6fc5,2026-10-28T00:46:46+05:30,2026-10-28T00:46:46+05:30,test: automate real browser campaign-to-approved-landing Studio journey
+f26a88375a2c9968e6105d7970f727294c22b646,2026-10-28T00:47:51+05:30,2026-10-28T00:47:51+05:30,"docs: replace prototype README with truthful judge-facing product, architecture and safety guide"
+1d67893ea2b4cb9340fe8de2bc96be4cd09eb016,2026-10-28T00:50:22+05:30,2026-10-28T00:50:22+05:30,"docs: clarify central Meta contracts, paid gates and unverified capabilities"
+5b0a8ddb1c31458c965b59a7913cbaa0bbefd6bf,2026-10-28T00:50:51+05:30,2026-10-28T00:50:51+05:30,docs: provide timed two-minute demo and objective recording checklist
+f545e9a09b0f9dee82142cd7176adf0d80ab059a,2026-10-28T00:51:25+05:30,2026-10-28T00:51:25+05:30,test: patch active chat-completions callable for invalid response fixtures
+a9fe8ae52d428085a4d475b0ee77a0153011d2a2,2026-10-28T00:52:56+05:30,2026-10-28T00:52:56+05:30,"docs: report feature PR readiness, verification gates and unverified model limitations"
+f9dd85d9688f8ba1bc233f8e5033a6b8b3c0c675,2026-10-28T01:05:12+05:30,2026-10-28T01:05:12+05:30,test: select actual login submit instead of guest demo CTA
+19f653a82fe6c9675093d797d8efd78450dceba4,2026-10-28T01:11:10+05:30,2026-10-28T01:11:10+05:30,Merge pull request #2 from koushikdatascience-netizen/codex/indie-demo-readiness
+a931a0d0bb1a55e783be1ad5c7116f08522aad8c,2026-10-28T01:11:33+05:30,2026-10-28T01:11:33+05:30,Merge pull request #3 from koushikdatascience-netizen/feat/meta-client-verified
+4db1273fd4c28d8fdf7913872c1e28644dafdcf4,2026-10-28T01:47:26+05:30,2026-10-28T01:47:26+05:30,Prepare Hostinger release and deployment workflow
+922e7afd342941e6c9aae220553ec02b94c7789d,2026-10-28T01:48:00+05:30,2026-10-28T01:48:00+05:30,Run CI on topic branch pushes
+01e0cdace866a3f0ec84f2a48dc2332169159a7a,2026-10-28T02:45:54+05:30,2026-10-28T02:45:54+05:30,Merge main product flows and harden production paths
+7f268413f757727858a6bf56f1aa845e4e68f688,2026-10-28T02:49:13+05:30,2026-10-28T02:49:13+05:30,Merge pull request #4 from koushikdatascience-netizen/codex/indie-demo-readiness
+62407329303dac03e14c777a84981fa19718cdf5,2026-10-28T02:55:06+05:30,2026-10-28T02:55:06+05:30,Isolate Hostinger SSH credential validation
+dbc1e8df8cdb9c313f6d8d57ce55801f801efdd8,2026-10-28T02:57:15+05:30,2026-10-28T02:57:15+05:30,Merge pull request #5 from koushikdatascience-netizen/codex/fix-hostinger-ssh-port
+f98c488b760ba87a4f48702245590ae254871388,2026-10-28T03:01:23+05:30,2026-10-28T03:01:23+05:30,Bind Hostinger SSH pin to configured host alias
+814894bb4dd0dec2c1778b7d4065a892dc88b634,2026-10-28T03:03:57+05:30,2026-10-28T03:03:57+05:30,Merge pull request #6 from koushikdatascience-netizen/codex/fix-hostinger-host-alias
+37b3a7fca7bae2a66ec8e8ae155f447a0e20440d,2026-10-28T03:08:56+05:30,2026-10-28T03:08:56+05:30,Fix Hostinger backend build context
+fe3ecd6b3e07a4186cd97906896f196c27cfc6dd,2026-10-28T03:11:19+05:30,2026-10-28T03:11:19+05:30,Merge pull request #7 from koushikdatascience-netizen/codex/fix-hostinger-backend-context
+692f34df55ba2f2838e682785e2b9f4e2361b4ea,2026-10-28T03:14:55+05:30,2026-10-28T03:14:55+05:30,Fix Hostinger frontend build context
+42968a17ea2b136827362032517dcc50cfad66de,2026-10-28T03:16:39+05:30,2026-10-28T03:16:39+05:30,Fix Compose path in image build CI
+51361398318b9cb59e4ab00f1d3cc0b01d3a03f7,2026-10-28T03:19:43+05:30,2026-10-28T03:19:43+05:30,Merge pull request #8 from koushikdatascience-netizen/codex/fix-hostinger-frontend-context
+9e2fc76bdbcc1132b87deba5c185c92639695fb5,2026-10-28T03:24:54+05:30,2026-10-28T03:24:54+05:30,Check Hostinger frontend and backend routes separately
+62821595ef85ccb8f3a3d600645c0be9c56b8579,2026-10-28T03:27:49+05:30,2026-10-28T03:27:49+05:30,Merge pull request #9 from koushikdatascience-netizen/codex/fix-hostinger-healthcheck-urls
+5f2e90723d3afed8eb2cf6ee1f043216484780ae,2026-10-28T03:55:06+05:30,2026-10-28T03:55:06+05:30,Make Studio use real scoped Meta generation and persist deliverables
+7fbf288588f0924044e231be6508e223cde174d9,2026-10-28T03:57:49+05:30,2026-10-28T03:57:49+05:30,Allow authenticated browser edits through configured CORS origins
+a23217066465b06b2f6d96504fdbf17e9f6759ff,2026-10-28T04:00:48+05:30,2026-10-28T04:00:48+05:30,Merge pull request #10 from koushikdatascience-netizen/codex/live-studio-completion
+88af558a859beea8992a092fbce6713f3238b9d9,2026-10-28T04:11:10+05:30,2026-10-28T04:11:10+05:30,Make saved creatives and approval reviews usable
+c9f95536af5a0409b3e34f64e98e8db29bd320da,2026-10-28T04:14:19+05:30,2026-10-28T04:14:19+05:30,Merge pull request #11 from koushikdatascience-netizen/codex/studio-review-usability
+1d36a4c0557fcbe40d9df99b5be663f7a44a1eac,2026-10-28T04:49:00+05:30,2026-10-28T04:49:00+05:30,Simplify workspace into dashboard and focused tool views
+6d303e2e1df0de0ff2d89be3575e6e4f98bff4d5,2026-10-28T04:49:37+05:30,2026-10-28T04:49:37+05:30,Keep skip navigation hidden until keyboard focus
+3357d3fb333845c4bb5b6f22cb18444f4c8c0ee0,2026-10-28T04:49:55+05:30,2026-10-28T04:49:55+05:30,Normalize skip navigation stylesheet newline
+da9ec1691e0617d97e4ba6a6a1ab20f84017ec8d,2026-10-28T04:54:42+05:30,2026-10-28T04:54:42+05:30,Merge pull request #12 from koushikdatascience-netizen/codex/simple-product-dashboard
+9eb567d9315329ed5b11a94ff7d99a1dd9f1581a,2026-10-28T05:27:03+05:30,2026-10-28T05:27:03+05:30,Connect collected business evidence to scoped missions and verified landing delivery
+50e4734eb56e5d0c3ba3aa93c12b4d843ee43a59,2026-10-28T05:31:15+05:30,2026-10-28T05:31:15+05:30,Merge pull request #13 from koushikdatascience-netizen/codex/evidence-to-action-mission
+1a3bc5469997e0872adf474fafc0a2df223b9c5c,2026-10-28T05:56:56+05:30,2026-10-28T05:56:56+05:30,Add balanced website reports with explicit media review and document exports
+d25d23b946d60b43b4ae3ac21deb6e13428ebc34,2026-10-28T06:00:40+05:30,2026-10-28T06:00:40+05:30,Merge pull request #14 from koushikdatascience-netizen/codex/complete-website-report

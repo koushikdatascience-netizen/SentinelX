@@ -1,5 +1,7 @@
 # Engineering review — October 27, 2026
 
+> Historical setup/planning notes. For current live verification, judge access, quotas and implemented capabilities, read [DEMO_READINESS.md](DEMO_READINESS.md). The old empty smoke response and early scaffold limitations are not the current product state.
+
 ## Completed in this review
 
 - Prevented competing approval requests from overwriting a recorded decision using a conditional database update. Approval remains a decision with no external execution.

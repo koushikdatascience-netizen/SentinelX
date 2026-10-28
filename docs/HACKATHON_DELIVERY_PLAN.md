@@ -1,5 +1,7 @@
 # SentinelX Indie submission plan
 
+> Historical setup/planning notes. For current live verification, judge access, quotas and implemented capabilities, read [DEMO_READINESS.md](DEMO_READINESS.md). The old empty smoke response and early scaffold limitations are not the current product state.
+
 Reviewed October 27, 2026. User confirms Indie developer track.
 
 ## Positioning
@@ -54,3 +56,11 @@ No Meta calls were made for this strategy review. Use mocks for development, sav
 - 1:50–2:00: show architecture and next experiment; distinguish live inference, deterministic processing and recorded replay.
 
 Suggested submission attachments: working demo URL/setup, short video, architecture diagram, test output, evaluation with sample count, sanitized model provenance, credit usage summary and a limitations statement. This list is a preparation recommendation, not verified portal requirements.
+
+## Participant-guide update supplied 28 October 2026
+
+The owner supplied the event Participant Guide and organizer announcements. See [HACKATHON_CODE_PROVENANCE.md](HACKATHON_CODE_PROVENANCE.md) for attachment hashes, source limitations, the 54 recorded pre-kickoff commits and the indie-track eligibility concern. **Eligibility remains UNCONFIRMED.** The guide requires new work, a public repository and a three-minute demo; its explicit existing-codebase exception is stated for startups and must not be assumed to cover indie entries. The guide lists simple image analyzers among anti-project examples. Do not position SentinelX as only an image analyzer or a generic chatbot.
+
+The guide supplies the judging weights: Impact 30%, Meta tooling 25%, Technical depth/execution 20%, Demo 25%. It lists indie prizes of $150K/$100K/$75K/$50K/$25K and bonus awards for viral project ($20K), eligible Meta open-weight build ($10K), community vote ($10K), agentic use case ($5K), and creative build ($5K). Prize stacking is not established by that list. Open-weight bonus eligibility needs an actual eligible model deployment and partner verification; a model name in code is not sufficient.
+
+The guide says building period 27 October–4 November, kickoff 26 October noon Eastern, and submission 4 November 9 PM Eastern. The EST/ET naming inconsistency and exact allowed coding-start rule require clarification. Use the updated [three-minute script](DEMO_SCRIPT.md); the earlier two-minute planning section is superseded. Do not add unrelated model integrations merely to target a bonus. Prioritize verified usefulness, the coherent source-to-action demo and truthful attribution.

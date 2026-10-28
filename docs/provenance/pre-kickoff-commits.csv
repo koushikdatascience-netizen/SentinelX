@@ -1,0 +1,55 @@
+commit_sha,author_date,committer_date,subject
+1075a84aab6ae1fc802a35584e3549000b3d1d32,2026-10-26T14:40:00+05:30,2026-10-26T14:40:00+05:30,chore: initialize SentinelX hackathon repository
+1cb64702e2bfb574f0cc0c6c5e14572276fa0820,2026-10-26T14:40:29+05:30,2026-10-26T14:40:29+05:30,feat: add SentinelX backend scaffold and workflow primitives
+fac8e33a03f7f22051ef630b421775a2ef3c21df,2026-10-26T14:40:31+05:30,2026-10-26T14:40:31+05:30,feat: add SentinelX backend scaffold and workflow primitives
+a69c75e37c892c3910533e5fee40b953e41f576a,2026-10-26T14:40:34+05:30,2026-10-26T14:40:34+05:30,feat: add SentinelX backend scaffold and workflow primitives
+b7107bbc135ba104c6e27cabbd4ad46e5dc13268,2026-10-26T14:40:36+05:30,2026-10-26T14:40:36+05:30,feat: add SentinelX backend scaffold and workflow primitives
+e04fde7b4a87b9fa83f5ba6211c719c764b36668,2026-10-26T14:40:39+05:30,2026-10-26T14:40:39+05:30,feat: add SentinelX backend scaffold and workflow primitives
+4b1ebfd1a32b0fc6a7a861166ddc855824a9ffbb,2026-10-26T14:40:41+05:30,2026-10-26T14:40:41+05:30,feat: add SentinelX backend scaffold and workflow primitives
+c5b2fb6883eaae734e8ec8865b008e69e64e3281,2026-10-26T14:40:44+05:30,2026-10-26T14:40:44+05:30,feat: add SentinelX backend scaffold and workflow primitives
+091114394b2f302e37643061714fa57f6b8f8478,2026-10-26T14:41:20+05:30,2026-10-26T14:41:20+05:30,feat: implement SentinelX analysis research and approval APIs
+2f4b199a78652ff7d2e7335f901b9c11f4b27f52,2026-10-26T14:41:53+05:30,2026-10-26T14:41:53+05:30,test: add public website research and approval lifecycle checks
+7c58f68c7cc9a0374b36041682fcda25fb2711d6,2026-10-26T14:41:56+05:30,2026-10-26T14:41:56+05:30,test: add public website research and approval lifecycle checks
+b55663fb61c831f81f2cb22a6536a013254cfea2,2026-10-26T14:41:58+05:30,2026-10-26T14:41:58+05:30,test: add public website research and approval lifecycle checks
+c1ec387c3249916b171fe61d1917b83800f4c6a5,2026-10-26T14:42:01+05:30,2026-10-26T14:42:01+05:30,test: add public website research and approval lifecycle checks
+e58a8739ad5532671b4707a029225a28496328df,2026-10-26T14:42:12+05:30,2026-10-26T14:42:12+05:30,ci: run backend pytest on pushes and pull requests
+4d3c34b4b89e902ef29783c87f83c6a21c7194a5,2026-10-26T14:42:36+05:30,2026-10-26T14:42:36+05:30,"docs: document endpoints, local setup and prototype security limits"
+66ab97ba9293725676afb464e7a273424a7e70a0,2026-10-26T16:29:47+05:30,2026-10-26T16:29:47+05:30,feat: add mock-safe Meta model registry and multimodal workflow preview
+93300950107ec8dec528f46748baf01a10dff6ef,2026-10-26T16:29:49+05:30,2026-10-26T16:29:49+05:30,feat: add mock-safe Meta model registry and multimodal workflow preview
+d3c7dbfebfa5ab1122c6d0e4bca357089768a19a,2026-10-26T16:29:52+05:30,2026-10-26T16:29:52+05:30,feat: add mock-safe Meta model registry and multimodal workflow preview
+04dae9bce1b5096309a59b2ebebf210449e1b956,2026-10-26T16:29:55+05:30,2026-10-26T16:29:55+05:30,feat: add mock-safe Meta model registry and multimodal workflow preview
+05657abcb8821e9b00f60c8f8d6c2014e61b8cdf,2026-10-26T16:30:14+05:30,2026-10-26T16:30:14+05:30,feat: expose capability catalog and zero-cost workflow preview endpoints
+5642e82ff7916db95bbb45526b1db76a4f988aed,2026-10-26T16:30:30+05:30,2026-10-26T16:30:30+05:30,test: verify model catalog and safe multimodal workflow preview routes
+2693c5ca89026653fc626341b9e869a8646db4d3,2026-10-26T16:34:39+05:30,2026-10-26T16:34:39+05:30,feat: add persistent workspace auth and model capability boundaries
+063f20f6f2db03075267417d6a2a038ca7a80d78,2026-10-26T16:34:41+05:30,2026-10-26T16:34:41+05:30,feat: add persistent workspace auth and model capability boundaries
+9704eced6382c95a3c47e4fbb50b2d0b560f129a,2026-10-26T16:34:45+05:30,2026-10-26T16:34:45+05:30,feat: add persistent workspace auth and model capability boundaries
+9649500154b9359d701f504c1239f4cccb226956,2026-10-26T16:34:48+05:30,2026-10-26T16:34:48+05:30,feat: add persistent workspace auth and model capability boundaries
+d0e67ca3223e3401855546bbe1ec955a693f5700,2026-10-26T16:35:11+05:30,2026-10-26T16:35:11+05:30,feat: wire PostgreSQL authenticated workspaces into API and Compose
+27d20861fcddc6a046ce074b7dc8921419b8f149,2026-10-26T16:35:14+05:30,2026-10-26T16:35:14+05:30,feat: wire PostgreSQL authenticated workspaces into API and Compose
+dc328e704028459eabacc0c71bcc9053c2447796,2026-10-26T16:35:18+05:30,2026-10-26T16:35:18+05:30,feat: wire PostgreSQL authenticated workspaces into API and Compose
+ee633313906cc4f9cf7e71510dfab11bfe372273,2026-10-26T16:35:21+05:30,2026-10-26T16:35:21+05:30,feat: wire PostgreSQL authenticated workspaces into API and Compose
+8b07a889d1ec5186b3f7c67c6708e576456298f8,2026-10-26T16:36:21+05:30,2026-10-26T16:36:21+05:30,feat: add Next.js workspace dashboard and auth isolation test
+032a578115b43df23616b7b221557ca6a776d287,2026-10-26T16:36:23+05:30,2026-10-26T16:36:23+05:30,feat: add Next.js workspace dashboard and auth isolation test
+0b0c35e8f2eeee50edb75250b42425a11f538004,2026-10-26T16:36:26+05:30,2026-10-26T16:36:26+05:30,feat: add Next.js workspace dashboard and auth isolation test
+c12f6b09cb9c2735093bdcd1009737def033c124,2026-10-26T16:36:29+05:30,2026-10-26T16:36:29+05:30,feat: add Next.js workspace dashboard and auth isolation test
+ca0772447641b62f2dc86764bb3e1c8ef39b8bb3,2026-10-26T16:36:32+05:30,2026-10-26T16:36:32+05:30,feat: add Next.js workspace dashboard and auth isolation test
+7447a9b0075f374555a2b99c376107e329e64af7,2026-10-26T16:36:34+05:30,2026-10-26T16:36:34+05:30,feat: add Next.js workspace dashboard and auth isolation test
+7a4d0f2037827e91564d2f6a8d04a64f47cdfcf4,2026-10-26T16:36:37+05:30,2026-10-26T16:36:37+05:30,feat: add Next.js workspace dashboard and auth isolation test
+8db0d88d44ffa16b121a55a8c9d207119dc4abac,2026-10-26T16:37:18+05:30,2026-10-26T16:37:18+05:30,fix: enable localhost frontend CORS with restricted origins
+60bde4a0d118fd5dbe18be8e8dbb001343e83f88,2026-10-26T16:37:49+05:30,2026-10-26T16:37:49+05:30,feat: add authenticated image inspection and optional Muse Voice transcription
+66ffdfa350f303f5e5385ce975572f2c451a0b1f,2026-10-26T16:37:52+05:30,2026-10-26T16:37:52+05:30,feat: add authenticated image inspection and optional Muse Voice transcription
+15163c5ba4b1a3a4dddc2fa763f4606c2ee295ee,2026-10-26T16:38:01+05:30,2026-10-26T16:38:01+05:30,feat: wire validated image/voice endpoints and dependencies
+998390fdb8f1d5e363bc35e7b6a7560b1f143242,2026-10-26T16:38:04+05:30,2026-10-26T16:38:04+05:30,feat: wire validated image/voice endpoints and dependencies
+568a5a70b5da3534d0d5f85712d18cd5071f4673,2026-10-26T16:38:30+05:30,2026-10-26T16:38:30+05:30,feat: implement opt-in Muse Image generation adapter
+6fe9143afd4c6c50b5dfe1574fa0e7e52030ea7c,2026-10-26T16:38:33+05:30,2026-10-26T16:38:33+05:30,feat: expose authenticated Muse Image adapter
+c11c32d035c8661a10a7a9a976c9bb2342f7111d,2026-10-26T16:39:07+05:30,2026-10-26T16:39:07+05:30,"docs: explain PostgreSQL, auth, media adapters and security gaps"
+0a20b03f589c525bbc6af738f4c6233c2c99c106,2026-10-26T16:39:24+05:30,2026-10-26T16:39:24+05:30,ci: validate Next.js dashboard production build
+7fbadf23194b1cd84ce834f1a6b37262fda1b489,2026-10-26T16:42:45+05:30,2026-10-26T16:42:45+05:30,feat: provider-neutral free inference adapter and safe smoke tests
+c326610d09808daba2aa0f0b4927b9bd7f9e0ae0,2026-10-26T16:42:48+05:30,2026-10-26T16:42:48+05:30,feat: provider-neutral free inference adapter and safe smoke tests
+c7604383055a8a210947e9b08e1115c75b5e11ad,2026-10-26T16:42:51+05:30,2026-10-26T16:42:51+05:30,feat: provider-neutral free inference adapter and safe smoke tests
+168867887138c2a4c8b06698aa81cfb80f2c41e0,2026-10-26T16:42:58+05:30,2026-10-26T16:42:58+05:30,feat: expose authenticated provider switching endpoints
+baf4acf04f85c50a2edbcc9a455b76a8731ce0e9,2026-10-26T16:43:06+05:30,2026-10-26T16:43:06+05:30,docs: add opt-in free inference environment configuration
+b919505e478d2313b2beb8d7fedae3cdda416b5a,2026-10-26T16:43:18+05:30,2026-10-26T16:43:18+05:30,deploy: parameterize inference provider in Compose without exposing secrets
+2d1098a7d7285eede9c93857ce918f43ecad08b1,2026-10-26T16:43:42+05:30,2026-10-26T16:43:42+05:30,feat: persist opt-in external inference outputs in business workspace runs
+ca3800822ebd9ca283e8558d247c3e3575e8b069,2026-10-26T16:43:53+05:30,2026-10-26T16:43:53+05:30,feat: add optional provider inference to dashboard workflow runs
+d0d3c7b4ea4ddb07a21fdb685322cd90d04db38d,2026-10-26T16:44:26+05:30,2026-10-26T16:44:26+05:30,docs: guide free-provider development and staging deployment safely

@@ -19,6 +19,7 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
  onDashboard:()=>void;onCampaign:(id:string,goal:string,website:string,description:string)=>void;onLanding:()=>void}){
  const [url,setUrl]=useState(website);const [objective,setObjective]=useState("Review the website: preserve its strengths, identify specific changes and explain why. Do not recommend features already present.");
  const [competitors,setCompetitors]=useState("");const [consent,setConsent]=useState(false);
+ const [allowRepair,setAllowRepair]=useState(false);
  const [busy,setBusy]=useState(false);const [error,setError]=useState("");
  const [mission,setMission]=useState<Mission|null>(null);const [saved,setSaved]=useState<Saved[]>([]);
  const [pending,setPending]=useState("");const [pages,setPages]=useState<Page[]>([]);const [pageId,setPageId]=useState("");
@@ -57,7 +58,7 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
  },[mission?.id]);
  async function run(event:React.FormEvent){
   event.preventDefault();setBusy(true);setError("");
-  const inputs={workspace_id:workspace,website:url,goal:objective,competitors:competitors.split(/\n/).map(x=>x.trim()).filter(Boolean),consent_public_fetch:consent,generation_mode:mode};
+  const inputs={workspace_id:workspace,website:url,goal:objective,competitors:competitors.split(/\n/).map(x=>x.trim()).filter(Boolean),consent_public_fetch:consent,generation_mode:mode,allow_quote_repair:allowRepair};
   const signature=JSON.stringify(inputs);
   if(request.current?.signature!==signature)request.current={signature,id:crypto.randomUUID()};
   const id=request.current!.id;setPending(id);
@@ -94,8 +95,8 @@ export default function BusinessMission({token,workspace,website,goal,mode,onSam
     <details className="subtle-details"><summary>Comparison websites (optional)</summary><label>Public comparison URLs<textarea rows={2} value={competitors} onChange={event=>setCompetitors(event.target.value)} placeholder="Up to two HTTPS URLs, one per line"/></label><p className="field-help">Only pages you specify are compared. SentinelX does not claim to discover the whole market.</p></details>
     <label className="checkbox-label"><input type="checkbox" checked={mode==="sample"} onChange={event=>onSample(event.target.checked)}/>Use sample mission (no network or credits)</label>
     <label className="checkbox-label"><input type="checkbox" required={mode==="live"} checked={consent} onChange={event=>setConsent(event.target.checked)}/>Inspect the supplied public pages and use one bounded Meta planning request.</label>
-    <button className="primary wide" disabled={busy}><ProductIcon name="spark"/>{busy?"Working on your mission…":mode==="sample"?"Run sample mission":"Run business mission"}</button>
-    <p className="field-help">Up to three pages. One AI request. Unchanged requests reuse their saved result; failures are never retried automatically.</p>
+    <label className="checkbox-label"><input type="checkbox" checked={allowRepair} onChange={event=>setAllowRepair(event.target.checked)}/>Allow one additional budgeted request only if source quotes fail validation.</label><button className="primary wide" disabled={busy}><ProductIcon name="spark"/>{busy?"Working on your mission…":mode==="sample"?"Run sample mission":"Run business mission"}</button>
+    <p className="field-help">Up to three pages and one AI request. Optional citation repair permits at most one extra request within the same budget. Network failures are not retried; unchanged requests reuse saved results.</p>
     {mission?.status==="failed"&&<button type="button" className="secondary" disabled={busy} onClick={()=>{request.current=null;setError("Ready for one new explicit attempt.")}}>Prepare a new attempt</button>}
    </form></section>
    <section className="product-card mission-trace"><h2>Execution trace</h2><p className="section-description">Real tool work and model reasoning are identified separately.</p>

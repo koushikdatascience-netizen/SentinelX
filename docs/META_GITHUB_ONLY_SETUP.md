@@ -1,5 +1,7 @@
 # Meta Model API setup without a development PC
 
+> Historical setup/planning notes. For current live verification, judge access, quotas and implemented capabilities, read [DEMO_READINESS.md](DEMO_READINESS.md). The old empty smoke response and early scaffold limitations are not the current product state.
+
 ## 1. Add your key as a GitHub Actions environment secret
 Repository: https://github.com/koushikdatascience-netizen/SentinelX
 
@@ -18,7 +20,7 @@ Check Meta's Usage and Billing screens afterward. GitHub Actions is ephemeral; t
 ## 3. Live application configuration later
 On the private deployment server (not on GitHub), configure `MODEL_API_KEY`, `INFERENCE_PROVIDER=meta`, `META_MODEL=muse-spark-1.3`, `ALLOW_PAID_INFERENCE=true`. Keep `META_APP_BUDGET_CENTS=100` for preliminary tests and `ENABLE_LIVE_MULTIMODAL=false`. The reserved-budget cap is **not** a Meta billing hard stop.
 
-The Hostinger staging Compose locks the app in demo mode and does not receive the Meta key. Do not enable a live key on public staging without deliberate budget controls and owner authorization. The deployment architecture is documented in [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
+Historical baseline: Hostinger originally ran without a Meta key. The current authorized owner runtime receives the production environment secret and uses scoped live inference; repository defaults remain demo. Do not enable a live key on public staging without deliberate budget controls and owner authorization. The deployment architecture is documented in [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md).
 
 ## 4. Codex pickup
 Clone the repo and read `docs/DASHBOARD_RELEASE.md`, `docs/DEMO_READINESS.md`, `docs/HOSTINGER_DEPLOYMENT.md` and this file. Run backend tests and Next.js production build. Inspect GitHub Actions checks before deployment. Never enable public anonymous paid inference.
