@@ -2,6 +2,36 @@
 
 **Eligibility: UNCONFIRMED.** Audited 28 October 2026 (IST). This is a factual code-history record, not an organizer decision or legal eligibility assessment. No history has been rewritten.
 
+## Owner account and file-level audit extension
+
+On 28 October the owner stated that SentinelX began approximately 1–2 days before the official 26 October kickoff, with substantive product development and Meta integrations during the event. Record that account separately from Git metadata: the earliest reachable commit is on 26 October; Git cannot establish when prior uncommitted/imported work was authored. Neither the account nor later commit dates erase earlier work. The existing project is retained.
+
+The expanded audit against main `d41b375d95b595098a0e71356668b67af38649be` adds:
+
+- [pre-kickoff-file-changes.csv](provenance/pre-kickoff-file-changes.csv): **54 commit-parent/file change rows**, with full commit and parent hashes, author/committer ISO timestamps, path, add/modify/delete status, old/new blob hashes and modes, and added/deleted line counts. Each recorded pre-kickoff commit changes one path. Merge commits would have separate comparisons for every parent; no merge changes are silently attributed to the wrong parent.
+- [pre-kickoff-tree.csv](provenance/pre-kickoff-tree.csv): the **38-file** tree at `d0d3c7b4ea4ddb07a21fdb685322cd90d04db38d`, including exact blob hashes and byte sizes. This is the latest recorded pre-kickoff state in this reachable history, not a claim that the first commit marks first authorship.
+- Inclusion uses **either** author or committer timestamp before 26 October noon Eastern (UTC−04:00); all 54 also precede the literal EST interpretation. Both timestamps are retained rather than selecting the more favorable one.
+
+### What actually existed at that baseline
+
+| Files in the 38-file tree | Pre-kickoff behavior / attribution |
+| --- | --- |
+| `backend/app/agents.py`, `workflows.py`, `orchestrator.py`, `model_registry.py` | Fixed proposed actions, action state machine, explicit seven-role mock preview and model catalogue. They were not real multi-agent inference. |
+| `backend/app/research.py`, `main.py` | Homepage retrieval prototype and HTML parser; legacy analysis/research/action routes. DNS validation was not the later pinned-connection collector. |
+| `backend/app/auth.py`, `workspace_routes.py`, `workspace_store.py` | Authentication, SQLAlchemy data structures and owner/workspace foundations. These are pre-kickoff project code. |
+| `backend/app/providers.py`, `inference_routes.py`, `meta_adapters.py`, `creative_routes.py`, `media_routes.py` | Provider configuration, draft SDK/HTTP Meta request implementations and readiness placeholders; local image validation and audio intake. **Meta request code already existed**: later verified client/integration work must not be described as the first presence of any Meta call code. Historical implementations are not evidence that they worked or used supported schemas. |
+| Eight `backend/tests/test_*.py` files | API, media, models, mock orchestration, providers, research, workflows and workspace tests already present. Later checks must be distinguished from these. |
+| `frontend/app/layout.tsx`, `page.tsx`, `style.css`, `next-env.d.ts`, `package.json`, `tsconfig.json` | Initial frontend shell/dashboard, styles and build configuration. Not newly authored during the later feature work merely because subsequently modified. |
+| `.github/workflows/ci.yml`, `.gitignore`, `README.md`, `backend/.env.example`, `backend/Dockerfile`, `backend/requirements.txt`, `docker-compose.yml`, three `docs/*.md` files | Existing configuration, dependencies, container/CI setup and planning documentation. Environment example is configuration, not a private credential disclosure. Exact paths are in the tree CSV. |
+
+To independently inspect a row without changing history: `git show --format=fuller --no-renames <commit> -- <path>`; compare its parent using `git diff --no-renames <parent> <commit> -- <path>`. For the root use `git show --root <commit> -- <path>`. `git cat-file -p <old_blob_or_new_blob>` resolves the exact recorded file bytes (skip an all-zero absent blob). `git ls-tree -r -l d0d3c7b4ea4ddb07a21fdb685322cd90d04db38d` reproduces the baseline inventory. Do not publish secret/customer material if any is discovered while inspecting historical content.
+
+### Confirmation and conditional compliance path
+
+The public event page does not resolve indie use of pre-event code. The owner-supplied guide's new-work requirement and startup-specific wording make clarification necessary, not automatic disqualification. A request the owner can send to organizers is: “Our Indie project began approximately 1–2 days before kickoff. We can disclose the exact existing foundation and demonstrate the later work separately. May we submit those later contributions on that foundation, and what exact build-start instant and disclosure do your accepted Official Rules require?” No organizer message has been sent by this audit.
+
+**Only if the accepted Official Rules explicitly prohibit use of this pre-event project code:** preserve this repository and propose a separate fresh repository/implementation after reviewing the actual clause. First agree the allowed problem scope, third-party dependencies, assets, prompts and prior knowledge with organizers. Write a new implementation and original tests from a requirements-level brief; do not copy/repackage the old source, CSS, tests, fixtures, generated artifacts or prompts unless specifically permitted. Record the actual new initialization and implementation dates, dependency attribution and subsequent commits. Compare for accidental reuse before submitting. A new history alone does not make copied work compliant, and a late restart does not itself guarantee eligibility. No fresh implementation or history rewrite has been performed or is assumed necessary now.
+
 ## Sources and scope
 
 Source snapshot: `d25d23b946d60b43b4ae3ac21deb6e13428ebc34`. Remote main was fetched; `git rev-parse --is-shallow-repository` returned **false**. `git log --all` covers 257 commits reachable from the locally available refs, with one root. It cannot establish missing/deleted branches, earlier source authored outside Git, or work imported with later timestamps.

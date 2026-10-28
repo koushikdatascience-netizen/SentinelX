@@ -92,8 +92,16 @@ def sample_plan():
 def report_markdown(payload):
     plan=payload.get("plan") or {}
     lines=["# SentinelX website report","",f'Provenance: {payload["provenance"]}',
-           "Claims and recommendations require owner review. No business impact has been measured.","",plan.get("summary","Report incomplete"),
-           "","## What works"]
+           "Claims and recommendations require owner review. No business impact has been measured.","",plan.get("summary","Report incomplete")]
+    research=payload.get("research")
+    if research and research.get("validated"):
+        lines.extend(["","## Research handoff",f'Research provenance: {research["provenance"]}',
+            "Source quote matching is not independent verification of business claims."])
+        for finding in research["data"]["findings"]:
+            lines.extend([finding["observation"],f'> {finding["quote"]} (source {finding["source_id"]})',
+                "Planning constraint: "+finding["planning_constraint"]])
+        lines.extend(["Research unknown: "+item for item in research["data"]["unknowns"]])
+    lines.extend(["","## What works"])
     for item in plan.get("strengths",[]):
         lines.extend(["", "### "+item["title"],item["why_keep"],f'> {item["quote"]} (source {item["source_id"]})'])
     lines.extend(["","## What to change and why"])

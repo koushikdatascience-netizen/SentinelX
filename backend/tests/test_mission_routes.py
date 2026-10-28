@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.main import app
 from app import mission_routes,meta_client
 from app.mission import sample_source,sample_plan
+from app.mission_research import sample_research
 from app.workspace_store import SessionLocal,LandingLead
 
 
@@ -100,6 +101,70 @@ def test_sample_guest_cannot_fetch_live_web(authenticated_client,monkeypatch):
     # Demo users without a valid demo-session record are rejected by authentication.
     assert authenticated_client.post("/api/v1/missions",json=body).status_code in (401,403)
     assert calls==[]
+
+
+@pytest.mark.parametrize("large_context",[False,True])
+def test_live_research_handoff_uses_distinct_validated_model_roles(authenticated_client,monkeypatch,large_context):
+    live_transport(monkeypatch)
+    research=sample_research()
+    if large_context:
+        finding={**research["findings"][0],"observation":"Observation "+"x"*238,"planning_constraint":"Constraint "+"x"*239}
+        research={"findings":[finding.copy() for _ in range(3)],"unknowns":["x"*250 for _ in range(5)]}
+        source=sample_source();source["text"]+=" More supplied context."*600
+        source.pop("id",None);source.pop("role",None)
+        monkeypatch.setattr(mission_routes,"collect_page",lambda url:{**source,"url":url})
+    replies=iter([research,sample_plan()]);calls=[]
+    def send(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(200,json={"id":"fixture","object":"chat.completion","created":1,"model":"muse-spark-1.3",
+            "choices":[{"index":0,"message":{"role":"assistant","content":json.dumps(next(replies))},"finish_reason":"stop"}],
+            "usage":{"prompt_tokens":20,"completion_tokens":50,"total_tokens":70}})
+    def factory(**kwargs):
+        assert kwargs["max_retries"]==0
+        return OpenAI(**kwargs,http_client=httpx.Client(transport=httpx.MockTransport(send)))
+    monkeypatch.setattr(meta_client,"OpenAI",factory)
+    body=inputs(authenticated_client)
+    body.update(generation_mode="live",consent_public_fetch=True,research_handoff=True)
+    if large_context:body["competitors"]=["https://example.org/","https://example.net/"]
+    result=authenticated_client.post("/api/v1/missions",json=body)
+    assert result.status_code==201,result.text
+    saved=result.json()
+    assert len(calls)==2 and len(saved["trace"])==6
+    assert "evidence researcher" in calls[0]["messages"][0]["content"]
+    assert calls[0]["max_completion_tokens"]==2000 and calls[1]["max_completion_tokens"]==4000
+    handoff=json.loads(calls[1]["messages"][1]["content"])["validated_research"]
+    assert len(calls[1]["messages"][1]["content"])<=16000
+    assert handoff==saved["research"] and handoff["validated"] is True
+    assert handoff["provenance"]=="live_meta" and handoff["data"]==research
+    assert authenticated_client.post("/api/v1/missions",json=body).json()==saved
+    assert len(calls)==2
+
+
+@pytest.mark.parametrize("failure",["citation","budget","quota"])
+def test_failed_research_handoff_never_calls_planner(authenticated_client,monkeypatch,failure):
+    research=sample_research()
+    if failure=="citation":research["findings"][0]["quote"]="This statement is absent from the source."
+    calls=live_transport(monkeypatch,research)
+    if failure=="budget":monkeypatch.setenv("META_RUN_BUDGET_CENTS","5")
+    if failure=="quota":monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","1")
+    body=inputs(authenticated_client)
+    body.update(generation_mode="live",consent_public_fetch=True,research_handoff=True)
+    response=authenticated_client.post("/api/v1/missions",json=body)
+    assert response.status_code==(429 if failure=="quota" else 502),response.text
+    assert len(calls)==1
+    saved=authenticated_client.get(f'/api/v1/missions/{body["request_id"]}',params={"workspace_id":body["workspace_id"]}).json()
+    assert saved["status"]=="failed" and saved["plan"] is None
+    assert saved["research"]["validated"] is (failure!="citation")
+    assert saved["trace"][-1]["status"]=="failed"
+
+
+def test_sample_research_handoff_is_explicit_fixture_without_network(authenticated_client,monkeypatch):
+    monkeypatch.setattr(mission_routes,"collect_page",lambda url:pytest.fail("Sample research fetched a website"))
+    monkeypatch.setattr(meta_client,"OpenAI",lambda **kwargs:pytest.fail("Sample research called model transport"))
+    body=inputs(authenticated_client);body["research_handoff"]=True
+    result=authenticated_client.post("/api/v1/missions",json=body)
+    assert result.status_code==201,result.text
+    assert result.json()["research"]=={"provenance":"sample","model":None,"validated":True,"data":sample_research()}
 
 
 @pytest.mark.parametrize("second_valid,budget,expected_calls,expected_status",[(True,50,2,201),(False,50,2,502),(True,5,1,502)])
