@@ -1,5 +1,15 @@
 import {test,expect,Page} from "@playwright/test";
 
+test("owner entry uses real product messaging without sample generator CTAs",async({page})=>{
+ await page.goto("/");
+ await expect(page.getByRole("heading",{name:"From business evidence to verified action."})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Sign in",exact:false})).toHaveCount(1);
+ await expect(page.getByRole("button",{name:/try.*demo|sample workspace/i})).toHaveCount(0);
+ await expect(page.getByText("01 Business audit")).toHaveCount(0);
+});
+
+
 test("research, owner review, private data and evidence handoff stay connected",async({page})=>{
  await accountAndWorkspace(page);
  await page.getByRole("button",{name:"Research & data",exact:true}).click();
