@@ -13,7 +13,7 @@ The **Research & data** workspace adds bounded multi-page website discovery, dur
 1. **Brief:** The owner supplies their description, goal, optional website URL, product imagery and preferred language (English, Bengali or Hindi).
 2. **Image measurements:** Pillow reads real pixels (resolution, brightness, contrast, texture proxy, color palette) and produces a documented technical-readiness heuristic. Optional Meta image analysis requires explicit live authorization.
 3. **Business audit:** Produce a 7-day campaign with positioning hypotheses and evidence/assumption references. Demo mode uses samples; live mode uses structured Muse Spark responses.
-4. **Creative concepts:** Generate 1–3 variants. Demo mode creates local labeled gradient examples; live mode uses Muse Image and scores brief alignment using image input to Muse Spark.
+4. **Creative concepts:** Generate 1–3 variants. Demo mode creates local labeled gradient examples; live mode uses Muse Image and scores brief alignment using image input to Muse Spark. Campaign posts include an image prompt and a timed Reels/Shorts shooting plan; the plan is not a rendered video.
 5. **Landing page:** Generate and edit a validated, autoescaped page from three script-free mobile templates. Optionally embed a selected campaign creative, preview safely, obtain explicit approval and publish a read-only page with consented lead capture.
 6. **Approval and export:** View proposed/approved/rejected artifacts, record reviewer/time/note, explicitly reopen decisions, and export only approved posts, images, landing HTML and evidence in a ZIP.
 

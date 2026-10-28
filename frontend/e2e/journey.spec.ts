@@ -146,7 +146,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.getByRole("button",{name:"Edit day 1 post",exact:true}).click();
  await page.keyboard.press("Escape");
  await expect(edit).not.toBeVisible();
- await page.getByRole("button",{name:/Create or view visuals/}).first().click();
+ await page.getByRole("button",{name:/Generate this image or view saved visuals/}).first().click();
  await page.getByRole("button",{name:"Generate visuals",exact:true}).click();
  await expect(page.locator(".visual-card")).toHaveCount(1);
  const days=page.getByLabel("Choose campaign day");

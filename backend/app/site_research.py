@@ -74,11 +74,19 @@ def _schema_types(value):
 
 def analyze_page(raw,role):
     html=raw["html"];parser=DiscoveryHTML();parser.feed(html);parsed=inspect_html(html)
-    page={key:value for key,value in raw.items() if key!="html"}
+    page={key:value for key,value in raw.items() if key not in ("html","body")}
     page.update(parsed);page.update(role=role,origin="retrieved_public_page",description=parser.description,robots=parser.robots,
         canonical=parser.canonical,headings=parser.headings[:100],structured_data=parser.schema[:10],structured_claims=parser.claims)
     page["id"]="page-"+hashlib.sha256(page["url"].encode()).hexdigest()[:16]
     page["links"]=list(dict.fromkeys(filter(None,(canonical_url(link,page["url"]) for link in parser.links))))[:100]
+    host=urlsplit(page["url"]).hostname
+    media=[]
+    for asset in page.get("media_inventory",[]):
+        url=canonical_url(asset.get("url",""),page["url"])
+        media.append({**asset,"url":url or asset.get("url",""),
+            "role":"probable_logo_or_brand_art" if asset.get("kind") in ("brand_image","site_icon") or re.search(r"logo|brand|mark",(asset.get("url","")+" "+asset.get("alt","")).lower()) else "page_image",
+            "visual_review_available":bool(url and urlsplit(url).hostname==host and asset.get("kind") not in ("video","iframe","source"))})
+    page["media_inventory"]=media
     page["contacts"]={"phones":list(dict.fromkeys(link[4:] for link in parser.links if link.lower().startswith("tel:")))[:10],
         "emails":list(dict.fromkeys(link[7:].split("?",1)[0] for link in parser.links if link.lower().startswith("mailto:")))[:10]}
     page["profiles"]=[]
@@ -148,7 +156,7 @@ def crawl(state,checkpoint,cancelled,pause=time.sleep):
                 if delay>30:raise ValueError("Requested crawl rate exceeds this bounded job's time window")
                 policies[host]={"parser":rp,"delay":delay}
                 state.setdefault("coverage",[]).append({"host":host,"robots_status":robots["status"],"collected_at":robots["collected_at"]})
-                maps=rp.site_maps() or ["https://"+host+"/sitemap.xml"]
+                maps=[] if role=="comparison" else rp.site_maps() or ["https://"+host+"/sitemap.xml"]
                 for candidate in maps[:1]:
                     candidate=canonical_url(candidate)
                     if candidate and urlsplit(candidate).hostname==host and rp.can_fetch(AGENT,candidate):

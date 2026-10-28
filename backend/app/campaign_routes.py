@@ -30,6 +30,7 @@ class EditItem(BaseModel):
     caption: str | None=Field(default=None,min_length=10,max_length=1500)
     cta: str | None=Field(default=None,min_length=5,max_length=180)
     creative_brief: str | None=Field(default=None,min_length=10,max_length=600)
+    image_prompt: str | None=Field(default=None,min_length=15,max_length=1200)
 
 def serialize(c:CampaignProject,db:Session)->dict:
     rows=db.scalars(select(CampaignItem).where(CampaignItem.campaign_id==c.id).order_by(CampaignItem.day)).all()
@@ -122,6 +123,8 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
               "When a mission plan is supplied, tailor this campaign to its specific proposed improvement and success checks. "
               "Create an audit and exactly 7 distinct daily social posts using days 1 through 7, the requested language and platforms. "
               "Write natively in bn/hi when selected. Keep captions under 450 characters and briefs under 250 characters. "
+              "For EVERY post also provide a useful image_prompt and a short vertical-video shooting plan (10–60 seconds) with a hook, 3–6 timed scenes, on-screen text, optional voiceover, ending and practical production note. "
+              "Use owner-approved real product/workshop footage; do not invent logos, products, people, certifications or customer results. This is text guidance, never a rendered video. "
               "Use concrete copy tailored to this business and goal. Cite E1 only for supplied descriptions. Return the specified JSON.",
               json.dumps(context,ensure_ascii=False),CampaignGeneration.model_json_schema())
             generated=CampaignGeneration.model_validate(reply["data"])

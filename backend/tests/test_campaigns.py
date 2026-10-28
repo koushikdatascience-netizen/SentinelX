@@ -18,14 +18,18 @@ def test_demo_campaign_seven_days_isolation_and_edits(authenticated_client):
     assert body["provenance"]=="sample"
     assert len(body["items"])==7
     assert all(x["state"]=="proposed" for x in body["items"])
+    assert all(len(x["image_prompt"])>=15 and len(x["video_guidance"]["scenes"])>=3 for x in body["items"])
+    assert "not a generated video" in body["items"][0]["video_guidance"]["production_note"]
     cid=body["id"];iid=body["items"][0]["id"]
     changed=c.patch(f"/api/v1/campaigns/{cid}/items/{iid}",params={"workspace_id":wid},
-                    json={"caption":"An improved and more useful furniture campaign sample caption."})
+                    json={"caption":"An improved and more useful furniture campaign sample caption.",
+                          "image_prompt":"A real furniture component photographed in a clean workshop, with natural light."})
     assert changed.status_code==200,changed.text
     assert changed.json()["provenance"]=="user_supplied"
     got=c.get(f"/api/v1/campaigns/{cid}",params={"workspace_id":wid})
     assert got.status_code==200
     assert got.json()["items"][0]["provenance"]=="user_supplied"
+    assert got.json()["items"][0]["image_prompt"].startswith("A real furniture")
     assert c.get("/api/v1/campaigns",params={"workspace_id":wid}).json()[0]["id"]==cid
     assert c.get(f"/api/v1/campaigns/{cid}",params={"workspace_id":"invalid"}).status_code==404
 
