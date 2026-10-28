@@ -195,3 +195,17 @@ from app.engine_context import router as engine_context_router
 app.include_router(engine_context_router)
 from app.engine_delivery import router as engine_delivery_router
 app.include_router(engine_delivery_router)
+
+from app.business_routes import router as business_router
+app.include_router(business_router)
+
+@app.on_event("startup")
+def initialize_business_research():
+    from app.business_research import start_worker
+    if os.getenv("ENABLE_BUSINESS_RESEARCH_WORKER","true").lower()=="true":
+        app.state.business_research_stop=start_worker()
+
+@app.on_event("shutdown")
+def stop_business_research():
+    stop=getattr(app.state,"business_research_stop",None)
+    if stop:stop.set()

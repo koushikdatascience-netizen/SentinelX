@@ -5,6 +5,11 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.workspace_store import init_db
 
+@pytest.fixture(autouse=True)
+def disable_unrequested_research_worker(monkeypatch):
+    # Background collection is exercised explicitly with mocked transport in tests.
+    monkeypatch.setenv("ENABLE_BUSINESS_RESEARCH_WORKER","false")
+
 @pytest.fixture
 def authenticated_client():
     os.environ.setdefault("JWT_SECRET","test-secret-for-backend-suite-at-least-32-characters")
