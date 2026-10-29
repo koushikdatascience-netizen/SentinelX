@@ -136,7 +136,8 @@ def export_campaign(campaign_id:str,workspace_id:str,format:str="zip",
             readme.append(f"Day {item.day}: {item.platform}, state=approved, provenance={item.provenance}")
             data=(f"Day {item.day} | {item.platform}\nProvenance: {item.provenance}\n"
                 f"Caption: {payload['caption']}\nHashtags: {' '.join(payload['hashtags'])}\n"
-                f"CTA: {payload['cta']}\nCreative brief: {payload['creative_brief']}\n"
+                f"CTA: {payload['cta']}\nImage guidance: {payload['creative_brief']}\n"
+                f"Image prompt: {payload.get('image_prompt','')}\nVideo script: {payload.get('video_script') or 'Not a video format'}\n"
                 f"Evidence IDs: {', '.join(payload['evidence_ids'])}\n"
                 f"Unsupported claim flags: {payload.get('unsupported_claims',[])}\n")
             z.writestr(f"posts/day-{item.day:02d}.txt",data)

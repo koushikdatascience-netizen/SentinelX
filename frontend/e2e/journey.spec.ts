@@ -194,6 +194,8 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.getByLabel("Business name",{exact:true}).fill("Fixture Woodworks");
  await page.getByLabel("What do you offer?").fill("We produce custom furniture and wooden parts for local customers who need quotations.");
  await page.getByLabel("What should this campaign achieve?").fill("Improve qualified requests for custom woodworking quotations.");
+ const platforms=page.getByRole("group",{name:"Where will you share it?"});
+ for(const platform of ["LinkedIn","X (Twitter)","Google Business Profile","YouTube","Blogger"])await expect(platforms.getByLabel(platform,{exact:true})).toBeVisible();
  await page.getByText("Generation options",{exact:true}).click();
  await page.getByLabel("Use sample data (no credits)").check();
  await page.getByRole("button",{name:"Create sample campaign",exact:true}).click();
@@ -202,7 +204,11 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.getByRole("button",{name:"Edit day 1 post",exact:true}).click();
  const edit=page.getByRole("dialog",{name:"Edit day 1 post"});
  await expect(edit).toBeVisible();
+ await expect(edit.getByLabel("Image prompt")).toBeVisible();
+ await expect(edit.getByLabel(/Reel \/ video script/)).toBeVisible();
  await edit.getByRole("textbox",{name:"Caption",exact:true}).fill("A saved edit to the sample campaign caption, ready for owner review.");
+ await edit.getByLabel(/Hashtags/).fill("#Woodcraft\n#CustomFurniture");
+ await edit.getByRole("textbox",{name:"Image prompt",exact:true}).fill("Use only the owner-approved wooden furniture photo in a clear workshop setting.");
  await edit.getByRole("button",{name:"Save post",exact:true}).click();
  await expect(edit).not.toBeVisible();
  await expect(page.getByText("A saved edit to the sample campaign caption, ready for owner review.",{exact:true})).toBeVisible();
