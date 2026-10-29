@@ -112,3 +112,68 @@ def test_browser_can_preflight_authenticated_edits():
         "Access-Control-Request-Headers":"authorization,content-type"})
     assert response.status_code==200
     assert "PATCH" in response.headers["access-control-allow-methods"]
+
+
+@pytest.mark.parametrize("days",[7,10,30])
+def test_saved_profile_campaign_duration_tone_and_requirements_persist_without_reentry(authenticated_client,days):
+    from uuid import uuid4
+    from tests.test_business_onboarding import profile
+    saved=profile(authenticated_client);wid=saved["workspace_id"]
+    body={"workspace_id":wid,"request_id":str(uuid4()),"goal":"Generate qualified inquiries","duration_days":days,"tone":"friendly","requirements":"Focus on trade customers and complete custom-part inquiries.","generation_mode":"sample","platforms":["instagram","linkedin"]}
+    first=authenticated_client.post("/api/v1/campaigns",json=body)
+    assert first.status_code==201,first.text
+    assert [item["day"] for item in first.json()["items"]]==list(range(1,days+1))
+    assert first.json()["duration_days"]==days and first.json()["tone"]=="friendly"
+    assert saved["details"]["name"] in first.json()["business_description"]
+    assert authenticated_client.post("/api/v1/campaigns",json=body).json()["id"]==first.json()["id"]
+    loaded=authenticated_client.get(f'/api/v1/campaigns/{first.json()["id"]}',params={"workspace_id":wid}).json()
+    assert loaded["requirements"]==body["requirements"]
+    assert authenticated_client.post("/api/v1/campaigns",json={**body,"tone":"bold"}).status_code==409
+
+
+@pytest.mark.parametrize("days,expected_calls",[(7,1),(10,2),(30,5)])
+def test_live_campaign_batches_have_exact_days_and_single_campaign_allowance(authenticated_client,monkeypatch,days,expected_calls):
+    from uuid import uuid4
+    from app import campaign_routes as routes
+    from app.campaign import sample_plan
+    from tests.test_business_onboarding import profile
+    from tests.test_business_visuals import enable
+    enable(monkeypatch);monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","1")
+    wid=profile(authenticated_client)["workspace_id"];calls=[]
+    def text(self,system,user,schema):
+        context=__import__("json").loads(user);calls.append(context)
+        audit,plan=sample_plan("Owner supplied",context["goal"],"en",context["platforms"],days)
+        wanted={item["day"] for item in context["schedule"]};batch=[item for item in plan["items"] if item["day"] in wanted]
+        return {"provenance":"live_meta","data":{"audit":audit,"plan":{"items":batch}} if min(wanted)==1 else {"items":batch}}
+    monkeypatch.setattr(routes.MetaClient,"text",text)
+    body={"workspace_id":wid,"request_id":str(uuid4()),"goal":"Generate qualified inquiries","duration_days":days,"requirements":"Focus on complete bulk order inquiries.","generation_mode":"live","platforms":["instagram","facebook"]}
+    response=authenticated_client.post("/api/v1/campaigns",json=body)
+    assert response.status_code==201,response.text
+    assert len(response.json()["items"])==days and len(calls)==expected_calls
+    assert all(len(call["schedule"])<=7 for call in calls)
+    assert authenticated_client.post("/api/v1/campaigns",json=body).json()["id"]==response.json()["id"]
+    assert len(calls)==expected_calls
+
+
+def test_partial_long_campaign_survives_failed_batch_without_automatic_paid_replay(authenticated_client,monkeypatch):
+    from uuid import uuid4
+    import json
+    from app import campaign_routes as routes
+    from app.campaign import sample_plan
+    from tests.test_business_onboarding import profile
+    from tests.test_business_visuals import enable
+    enable(monkeypatch);monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","2")
+    wid=profile(authenticated_client)["workspace_id"];calls=[]
+    def text(self,system,user,schema):
+        calls.append(1)
+        if len(calls)>1:raise ValueError("Meta budget reached; no external call made")
+        audit,plan=sample_plan("Owner supplied","Qualified inquiries","en",["instagram"])
+        return {"provenance":"live_meta","data":{"audit":audit,"plan":plan}}
+    monkeypatch.setattr(routes.MetaClient,"text",text)
+    request_id=str(uuid4());body={"workspace_id":wid,"request_id":request_id,"goal":"Generate qualified inquiries","duration_days":30,"requirements":"Focus on complete trade inquiries.","generation_mode":"live","platforms":["instagram"]}
+    response=authenticated_client.post("/api/v1/campaigns",json=body)
+    assert response.status_code==429 and "7 validated days" in response.json()["detail"]
+    run=authenticated_client.get(f"/api/v1/workspaces/{wid}/runs/{request_id}").json()
+    assert run["status"]=="failed" and len(run["result"]["completed_items"])==7
+    assert authenticated_client.post("/api/v1/campaigns",json=body).status_code==409
+    assert calls==[1,1]

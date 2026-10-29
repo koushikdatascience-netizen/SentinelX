@@ -1,4 +1,4 @@
-"""Bounded seven-day campaign contracts and offline, explicitly sample fixtures."""
+"""Bounded campaign contracts and offline, explicitly sample fixtures."""
 import re
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -21,7 +21,7 @@ class CampaignAudit(Strict):
     positioning_angles: list[str]=Field(min_length=3,max_length=3)
 
 class DayPlan(Strict):
-    day: int=Field(ge=1,le=7)
+    day: int=Field(ge=1,le=30)
     platform: Platform
     post_type: str=Field(min_length=3,max_length=70)
     caption: str=Field(min_length=10,max_length=1500)
@@ -50,6 +50,18 @@ class CampaignGeneration(Strict):
     audit: CampaignAudit
     plan: SevenDayPlan
 
+
+class CampaignBatch(Strict):
+    items:list[DayPlan]=Field(min_length=1,max_length=7)
+
+
+def batch_schema(start,end):
+    if not 1<=start<=end<=30 or end-start>=7:raise ValueError("Invalid campaign batch")
+    schema=CampaignBatch.model_json_schema()
+    schema["properties"]["items"].update(minItems=end-start+1,maxItems=end-start+1)
+    schema["$defs"]["DayPlan"]["properties"]["day"]["enum"]=list(range(start,end+1))
+    return schema
+
 # Returns a review flag rather than silently deleting claims.
 UNSUPPORTED=re.compile(r"\b(?:\d+(?:\.\d+)?\s*%\s*(?:increase|growth|discount|better)|"
                        r"(?:revenue|sales|profit|earnings)\s*(?:grew|rose|up|by|of)\s*\d+|"
@@ -57,7 +69,8 @@ UNSUPPORTED=re.compile(r"\b(?:\d+(?:\.\d+)?\s*%\s*(?:increase|growth|discount|be
 def unsupported_claims(text:str)->list[str]:
     return list(dict.fromkeys(m.group(0) for m in UNSUPPORTED.finditer(text)))
 
-def sample_plan(description:str,goal:str,language:Language,platforms:list[Platform])->tuple[dict,dict]:
+def sample_plan(description:str,goal:str,language:Language,platforms:list[Platform],duration_days:int=7)->tuple[dict,dict]:
+    if duration_days not in (7,10,30):raise ValueError("Choose a 7, 10 or 30 day campaign")
     # User input is NOT established truth. These are clearly SAMPLE marketing drafts.
     summaries={
         "en":("Example positioning based on unverified owner input",
@@ -86,5 +99,5 @@ def sample_plan(description:str,goal:str,language:Language,platforms:list[Platfo
             "creative_brief":title+f" — sample visual concept for day {d}.",
             "image_prompt":f"Sample only: create an illustrative visual for day {d} using owner-approved products and colors; confirm details before use.",
             "video_script":None,
-            "evidence_ids":[]} for d in range(1,8)]
+            "evidence_ids":[]} for d in range(1,duration_days+1)]
     return audit,{"items":items}
