@@ -68,15 +68,78 @@ def test_generated_image_retains_live_provenance_on_private_asset(authenticated_
     assert response.status_code==201 and response.json()["data"]["asset"]["provenance"]=="live_meta"
 
 
-def test_quota_failure_stops_before_model_request(authenticated_client,monkeypatch):
+def review_asset(client,workspace):
+    out=io.BytesIO();Image.new("RGB",(80,60),"blue").save(out,format="PNG")
+    response=client.post(f"/api/v1/workspaces/{workspace}/business-profile/assets",data={"kind":"image","consent":"true"},files={"file":("social-post.png",out.getvalue(),"image/png")})
+    assert response.status_code==201
+    return response.json()
+
+
+def review_result():
+    return {"provenance":"live_meta","model":"offline-vision","data":{"summary":"The selected product image has room for improvement.","strengths":["The subject is visible."],"improvements":["Use a less distracting background."],"post_guidance":"Leave clear space for a short caption near the subject.","regeneration_prompt":"An original product composition with a clean background and clear lighting.","limitations":["No sales performance was measured."]}}
+
+
+def test_image_review_is_consented_budget_scoped_persistent_and_links_new_concept(authenticated_client,monkeypatch):
+    enabled(monkeypatch);calls=[]
+    workspace=profile(authenticated_client)["workspace_id"];asset=review_asset(authenticated_client,workspace)
+    def vision(self,body,mime,prompt,schema):
+        calls.append(self.run_id);assert self.workspace_id==workspace and self.owner_id and mime=="image/jpeg"
+        with Image.open(io.BytesIO(body)) as im:assert im.size==(80,60)
+        return review_result()
+    monkeypatch.setattr(workbench.MetaClient,"vision",vision)
+    monkeypatch.setattr(workbench,"claim_attempt",lambda *a:pytest.fail("Image review must not consume campaign attempts"))
+    body=payload(workspace,"image_review",asset_id=asset["id"],consent=True)
+    first=authenticated_client.post("/api/v1/workbench",json=body)
+    assert first.status_code==201,first.text
+    assert authenticated_client.post("/api/v1/workbench",json=body).status_code==201 and calls==[body["request_id"]]
+    assert first.json()["input_sha256"]==asset["sha256"]
+    saved=authenticated_client.get("/api/v1/workbench",params={"workspace_id":workspace}).json()[0]
+    assert saved["data"]["regeneration_prompt"]==review_result()["data"]["regeneration_prompt"]
+    monkeypatch.setattr(workbench,"claim_attempt",lambda *a:None)
+    out=io.BytesIO();Image.new("RGB",(80,60),"red").save(out,format="PNG")
+    monkeypatch.setattr(workbench.MetaClient,"image",lambda *a,**k:{"provenance":"live_meta","model":"offline-image","data":{"b64_json":base64.b64encode(out.getvalue()).decode(),"format":"png"}})
+    generated=authenticated_client.post("/api/v1/workbench",json=payload(workspace,"image",prompt=saved["data"]["regeneration_prompt"],source_review_id=saved["id"]))
+    assert generated.status_code==201
+    assert generated.json()["source_asset_id"]==asset["id"] and generated.json()["source_review_id"]==saved["id"]
+    assert "not a pixel-preserving edit" in generated.json()["limitation"]
+
+
+def test_image_review_rejects_missing_consent_foreign_asset_and_corruption_before_inference(authenticated_client,monkeypatch):
+    from app.business_store import BrandAsset
     enabled(monkeypatch)
-    from fastapi import HTTPException
-    def denied(*args):raise HTTPException(429,"Campaign generation attempt limit reached")
-    monkeypatch.setattr(workbench,"claim_attempt",denied)
-    monkeypatch.setattr(workbench.MetaClient,"text",lambda *a,**k:pytest.fail("Quota must block the model request"))
+    monkeypatch.setattr(workbench.MetaClient,"vision",lambda *a:pytest.fail("Must stop before paid request"))
+    workspace=profile(authenticated_client)["workspace_id"];asset=review_asset(authenticated_client,workspace)
+    body=payload(workspace,"image_review",asset_id=asset["id"])
+    assert authenticated_client.post("/api/v1/workbench",json=body).status_code==422
+    other=profile(authenticated_client)["workspace_id"]
+    assert authenticated_client.post("/api/v1/workbench",json={**body,"workspace_id":other,"consent":True}).status_code==404
+    with SessionLocal() as db:db.get(BrandAsset,asset["id"]).sha256="0"*64;db.commit()
+    assert authenticated_client.post("/api/v1/workbench",json={**body,"consent":True}).status_code==422
+    assert authenticated_client.post("/api/v1/workbench",json=payload(other,"image",source_review_id=str(uuid4()))).status_code==404
+
+
+@pytest.mark.parametrize("invalid",[False,True])
+def test_failed_or_malformed_image_review_never_replays(authenticated_client,monkeypatch,invalid):
+    enabled(monkeypatch);workspace=profile(authenticated_client)["workspace_id"];asset=review_asset(authenticated_client,workspace);calls=[]
+    def failed(*args,**kwargs):
+        calls.append(1)
+        if invalid:return {"provenance":"live_meta","data":{"summary":"Missing fields"}}
+        raise ValueError("provider failed")
+    monkeypatch.setattr(workbench.MetaClient,"vision",failed)
+    body=payload(workspace,"image_review",asset_id=asset["id"],consent=True)
+    assert authenticated_client.post("/api/v1/workbench",json=body).status_code==502
+    assert authenticated_client.post("/api/v1/workbench",json=body).status_code==409
+    assert calls==[1]
+
+
+def test_spending_limit_stops_before_http_request(authenticated_client,monkeypatch):
+    from tests.test_meta_client import transport
+    enabled(monkeypatch)
+    for name,value in {"MODEL_API_KEY":"offline-test","INFERENCE_PROVIDER":"meta","SENTINELX_MODE":"live","ALLOW_PAID_INFERENCE":"true","ENABLE_LIVE_MULTIMODAL":"true","META_RUN_BUDGET_CENTS":"0"}.items():monkeypatch.setenv(name,value)
+    calls=transport(monkeypatch)
     workspace=profile(authenticated_client)["workspace_id"]
     response=authenticated_client.post("/api/v1/workbench",json=payload(workspace))
-    assert response.status_code==429 and "limit reached" in response.json()["detail"]
+    assert response.status_code==429 and "spending limit" in response.json()["detail"] and calls==[]
 
 
 def test_competitor_research_does_not_consume_campaign_generation_quota(authenticated_client,monkeypatch):
@@ -94,10 +157,11 @@ def test_competitor_research_does_not_consume_campaign_generation_quota(authenti
     assert response.json()["data"]["citations"]
 
 
-def test_tools_do_not_fall_back_to_samples_when_paid_flags_off(authenticated_client,monkeypatch):
+@pytest.mark.parametrize("tool",["post","image_review"])
+def test_tools_do_not_fall_back_to_samples_when_paid_flags_off(authenticated_client,monkeypatch,tool):
     monkeypatch.setenv("INFERENCE_PROVIDER","demo")
     workspace=profile(authenticated_client)["workspace_id"]
-    assert authenticated_client.post("/api/v1/workbench",json=payload(workspace)).status_code==503
+    assert authenticated_client.post("/api/v1/workbench",json=payload(workspace,tool)).status_code==503
 
 
 def test_workspace_isolation_for_tools_and_exports(authenticated_client,monkeypatch):

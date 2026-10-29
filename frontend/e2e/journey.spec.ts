@@ -72,6 +72,7 @@ test("business insights show actionable priorities, evidence, gaps and an export
  await accountAndWorkspace(page);
  const finding={source_id:"P1",quote:"Send your drawing for a quote.",observation:"Clarify what to send with an inquiry.",why:"A drawing alone may omit quantities and timing.",next_step:"Add quantity and required date beside the quote link.",priority:"high",area:"contact_journey",verification:"Check that the inquiry opens with drawing, quantity and date fields."};
  const report={pages:[],remaining_urls:[],activity:[],limitations:[],coverage:{pages_collected:1,screenshots_saved:0},search:null,visual_review:null,ai_status:"ready",insight_sources:[{id:"P1",url:"https://example.org/contact",title:"Contact page",text:finding.quote,origin:"retrieved_public_page"}],insights:{provenance:"live_meta",data:{summary:"Make trade inquiries easier to qualify.",strengths:[{...finding,observation:"Preserve the drawing request.",priority:"low"}],improvements:[finding],unknowns:["No conversion baseline supplied."]}}};
+ Object.assign(report.insights.data,{competitor_comparisons:[{name:"Candidate Workshop",source_id:"W1",quote:"Bulk custom parts in Kalyani.",url:"https://example.org/competitor",relevance:"Matching offering and stated area.",comparison:"Compare order requirements and product clarity.",suggested_response:"Explain the information required for a quotation."}],keyword_opportunities:[{phrase:"custom wooden parts Kalyani",intent:"local",suggested_use:"Test a local product information page.",evidence:"hypothesis",source_id:"",quote:""}]});
  let generations=0;
  await page.route("**/business-profile/research",async route=>{if(route.request().method()==="GET")await route.fulfill({json:[{id:"fixture-insights",state:"completed",created_at:"2026-10-30T10:00:00Z",input_profile:{name:"Browser workshop"},report}]});else{generations++;await route.abort()}});
  await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
@@ -81,6 +82,12 @@ test("business insights show actionable priorities, evidence, gaps and an export
  await expect(page.getByText(finding.verification,{exact:false})).toBeVisible();
  await page.getByText("View supporting evidence · P1").click();
  await expect(page.getByRole("link",{name:"Contact page"})).toHaveAttribute("href","https://example.org/contact");
+ await page.getByRole("button",{name:"Market & keywords",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Candidate Workshop",exact:true})).toBeVisible();
+ await expect(page.getByText("custom wooden parts Kalyani",{exact:true})).toBeVisible();
+ await page.screenshot({path:"test-results/business-market-insights.png",fullPage:true});
+ await page.getByRole("button",{name:"Social coverage",exact:true}).click();
+ await expect(page.getByText("Restricted social pages are not directly scraped",{exact:false})).toBeVisible();
  await page.getByRole("button",{name:"Gaps & verification",exact:true}).click();
  await expect(page.getByText("No conversion baseline supplied.",{exact:true})).toBeVisible();
  const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Download report",exact:true}).click();
@@ -92,6 +99,112 @@ test("business insights show actionable priorities, evidence, gaps and an export
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:"test-results/business-insights-mobile.png",fullPage:true});
  expect(generations).toBe(0);
+});
+
+test("brand image review prepares an editable linked generation brief only after explicit consent",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByText("Add a logo, images or business documents",{exact:false}).click();
+ await page.getByLabel("Business documents & images",{exact:true}).setInputFiles({name:"social-post.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
+ await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
+ await page.getByRole("button",{name:"Save business details",exact:true}).click();
+ await expect(page.getByRole("status")).toContainText("Business details saved");
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{live_enabled:true}}));
+ const calls:Record<string,unknown>[]=[];
+ const rows:unknown[]=[];
+ await page.route("**/api/v1/workbench?*",route=>route.fulfill({json:rows}));
+ await page.route("**/api/v1/workbench",async route=>{
+  const body=route.request().postDataJSON();calls.push(body);
+  const result=body.tool==="image_review"?{id:body.request_id,tool:"image_review",status:"completed",provenance:"live_meta",model:"mock-vision",source_asset_id:body.asset_id,data:{summary:"The subject is visible with room for visual improvement.",strengths:["Clear subject."],improvements:["Improve background separation."],post_guidance:"Keep the product visible in a mobile crop.",regeneration_prompt:"An original product composition with clear lighting and a simple background.",limitations:["No sales uplift measured."]}}:{id:body.request_id,tool:"image",status:"completed",provenance:"live_meta",model:"mock-image",data:{prompt:body.prompt},limitation:"New concept; not a pixel-preserving edit."};
+  rows.unshift(result);await route.fulfill({status:201,json:result});
+ });
+ await page.getByRole("tab",{name:/Brand assets/}).click();
+ await page.getByRole("button",{name:"Review image",exact:true}).click();
+ let dialog=page.getByRole("dialog",{name:"Review & improve image",exact:true});
+ await expect(dialog.getByRole("button",{name:"Generate",exact:true})).toBeDisabled();
+ await dialog.getByLabel("I consent to sending this selected image to Meta for visual review.",{exact:true}).check();
+ await dialog.getByRole("button",{name:"Generate",exact:true}).click();
+ await expect(dialog.getByText("Improve background separation.",{exact:true})).toBeVisible();
+ await page.screenshot({path:"test-results/brand-image-review.png"});
+ expect(calls).toHaveLength(1);expect(calls[0].consent).toBe(true);
+ await dialog.getByRole("button",{name:"Prepare improved visual",exact:true}).click();
+ dialog=page.getByRole("dialog",{name:"Generate an improved concept",exact:true});
+ await expect(dialog.getByRole("textbox",{name:"Your prompt",exact:true})).toHaveValue(/original product composition/);
+ expect(calls).toHaveLength(1);
+ await dialog.getByRole("textbox",{name:"Your prompt",exact:true}).fill("An improved original product concept with a cleaner background and natural light.");
+ await dialog.getByRole("button",{name:"Generate",exact:true}).click();
+ await expect(dialog.getByText("New concept; not a pixel-preserving edit.",{exact:true})).toBeVisible();
+ expect(calls).toHaveLength(2);expect(calls[1].source_review_id).toBe(calls[0].request_id);
+});
+
+test("saved screenshot visual insights require consent, show design changes and prepare a linked brief",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByText("Add a logo, images or business documents",{exact:false}).click();
+ await page.getByLabel("Business logo",{exact:true}).setInputFiles({name:"brand.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
+ await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
+ const upload=page.waitForResponse(r=>r.url().endsWith("/business-profile/assets")&&r.request().method()==="POST");
+ await page.getByRole("button",{name:"Save business details",exact:true}).click();const asset=await (await upload).json();
+ const report={pages:[],remaining_urls:[],activity:[],limitations:[],coverage:{pages_collected:0,screenshots_saved:0},search:null,visual_review:null as unknown,visual_status:"not_requested",ai_status:"ready",insights:{provenance:"live_meta",data:{summary:"Saved text findings.",strengths:[],improvements:[],unknowns:["Layout not yet reviewed."],competitor_comparisons:[{name:"Candidate Workshop",url:"https://candidate.example/"}]}}};
+ const original={id:"saved-visual-source",state:"partial",created_at:"2026-10-30T10:00:00Z",input_profile:{name:"Browser workshop",industry:"Arts & crafts",socials:[]},report};
+ let jobs=[original];const requests:Record<string,unknown>[]=[];let recollections=0;
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{live_enabled:true}}));
+ await page.route("**/business-profile/research",async route=>{if(route.request().method()==="GET")await route.fulfill({json:jobs});else{recollections++;await route.abort()}});
+ await page.route("**/research/*/visual-insights",async route=>{
+  const body=route.request().postDataJSON();requests.push(body);
+  const result={...original,id:"saved-visual-result",state:"completed",report:{...report,visual_status:"ready",visual_review:{provenance:"live_meta",model:"mock-vision",data:{summary:"Clarify the visible product hierarchy and improve the mobile presentation.",findings:[{image_index:1,area:"logo",priority:"medium",observation:"The visible brand mark needs more breathing room.",suggested_improvement:"Add clear space around the logo and keep it readable at phone size.",why:"Clear separation makes the brand easier to recognize.",verification:"Check the draft logo at desktop and phone sizes.",regeneration_prompt:"Create an original brand presentation concept with ample clear space and a legible mark."}]},panels:[{image_index:1,asset_id:asset.id,role:"business",kind:"logo",source_url:""}]}}};
+  jobs=[result];await route.fulfill({status:202,json:result});
+ });
+ await page.reload();await page.getByRole("tab",{name:"Visual design",exact:true}).click();
+ await page.getByRole("button",{name:"Choose visual review",exact:true}).click();
+ const consentDialog=page.getByRole("dialog",{name:"Request visual design insights",exact:true});
+ await expect(consentDialog.getByRole("option",{name:/Candidate Workshop/})).toHaveCount(1);
+ await expect(consentDialog.getByRole("button",{name:"Generate visual report · 1 AI request",exact:true})).toBeDisabled();
+ await consentDialog.getByRole("checkbox").check();
+ await consentDialog.getByRole("button",{name:"Generate visual report · 1 AI request",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Visual design & image insights",exact:true})).toBeVisible();
+ await expect(page.locator(".visual-insight-copy")).toContainText("Clear separation makes the brand easier to recognize.");
+ expect(requests).toHaveLength(1);expect(requests[0].consent).toBe(true);expect(requests[0].competitor_url).toBe("");expect(recollections).toBe(0);
+ const download=page.waitForEvent("download");await page.getByRole("button",{name:"Download visual report",exact:true}).click();
+ expect((await download).suggestedFilename()).toBe("sentinelx-visual-improvement-report.md");
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/visual-design-report-mobile.png",fullPage:true});
+ await page.getByRole("button",{name:"Prepare editable brief",exact:true}).click();
+ await expect(page.getByRole("dialog",{name:"Generate an improved concept",exact:true}).getByRole("textbox",{name:"Your prompt",exact:true})).toHaveValue(/original brand presentation/);
+ expect(requests).toHaveLength(1);expect(recollections).toBe(0);
+});
+
+test("social-only businesses request a consented platform report and prepare content without extra inference",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("button",{name:"Add social page",exact:true}).click();
+ await page.getByLabel("Platform 1",{exact:true}).selectOption("instagram");await page.getByLabel("Page link 1",{exact:true}).fill("https://instagram.com/workshop");
+ await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
+ await page.getByRole("button",{name:"Save business details",exact:true}).click();await expect(page.getByRole("status")).toContainText("Business details saved");
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{live_enabled:true}}));
+ let jobs:unknown[]=[];const calls:Record<string,unknown>[]=[];
+ await page.route("**/business-profile/research",route=>route.fulfill({json:jobs}));
+ await page.route("**/research/*/social-insights",async route=>{
+  const body=route.request().postDataJSON();calls.push(body);
+  const item={id:"social-report",state:"completed",created_at:"2026-10-30T10:00:00Z",input_profile:{name:"Browser workshop",socials:[]},report:{pages:[],remaining_urls:[],activity:[],limitations:[],coverage:{pages_collected:0,screenshots_saved:0},insights:null,visual_review:null,social_research:{status:"ready",attempts:[{platform:"instagram",url:"https://instagram.com/workshop",status:"completed"}],sources:[{id:"S1.W1",profile_url:"https://instagram.com/workshop",url:"https://instagram.com/workshop",text:"Custom parts made to order.",origin:"search_pointer"}],report:{provenance:"live_meta",data:{platforms:[{platform:"instagram",url:"https://instagram.com/workshop",coverage:"indexed_profile_evidence",summary:"Clarify the quote journey for trade customers on Instagram.",findings:[{source_id:"S1.W1",quote:"Custom parts made to order.",observation:"The indexed profile identifies the custom offering.",change:"Test a more specific inquiry invitation.",why:"A concrete next step may help buyers send requirements.",verification:"Compare qualified inquiries with a recorded baseline."}],competitor_examples:[],experiments:[{format:"Reel",topic:"Show a complete workshop inquiry",hook:"What should you send for a quote?",call_to_action:"Send your design and quantity.",measure:"Count complete inquiries; growth remains unmeasured."}],unknowns:["Full feeds and private analytics were not accessed."]}]}}}}};
+  jobs=[item];await route.fulfill({status:202,json:item});
+ });
+ await page.reload();await page.getByRole("tab",{name:"Social insights",exact:true}).click();
+ await page.getByRole("button",{name:"Research social profiles",exact:true}).click();
+ const dialog=page.getByRole("dialog",{name:"Research social platforms",exact:true});
+ await expect(dialog.getByRole("button",{name:"Start platform research",exact:true})).toBeDisabled();
+ await dialog.getByLabel("I consent to public research and Meta processing",{exact:false}).check();
+ await dialog.getByRole("button",{name:"Start platform research",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Instagram improvement report",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Show a complete workshop inquiry",exact:true})).toBeVisible();
+ expect(calls).toHaveLength(1);expect(calls[0].urls).toEqual(["https://instagram.com/workshop"]);
+ await page.screenshot({path:"test-results/social-platform-insights.png",fullPage:true});
+ await page.getByRole("button",{name:"Prepare content draft",exact:true}).click();
+ const draft=page.getByRole("dialog",{name:"Create a platform content draft",exact:true});
+ await expect(draft.getByRole("combobox",{name:"Platform",exact:true})).toHaveValue("instagram");
+ await expect(draft.getByRole("textbox",{name:"Your prompt",exact:true})).toHaveValue(/Show a complete workshop inquiry/);
+ expect(calls).toHaveLength(1);
 });
 
 test("owner evidence, recorded review and downloadable audit",async({page})=>{

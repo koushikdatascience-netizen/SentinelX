@@ -1,10 +1,11 @@
 """Owner-scoped evidence-first campaigns. No publishing or unverified crawling."""
 import json
 import os
+import hashlib
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import select, update
+from sqlalchemy import select, update,func
 from sqlalchemy.orm import Session
 from app.auth import current_user
 from app.workspace_store import User, CampaignProject, CampaignItem, ImageAssessment, CampaignQuota, session
@@ -64,6 +65,27 @@ def claim_attempt(db:Session,workspace_id:str):
         raise HTTPException(429,"Campaign generation attempt limit reached")
     db.commit()
 
+
+def claim_campaign_attempt(db:Session,workspace_id:str):
+    """Campaign-only allowance, independent of the historical shared tool counter.
+
+    Bootstrap from actual saved live campaigns. Uncertain older request costs
+    remain covered by the unchanged Meta reservations; never reset those.
+    """
+    from app.budget import ApiBudget
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+    maximum=max(0,int(os.getenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","0")))
+    if maximum<1:raise HTTPException(403,"Campaign attempt allowance is disabled. This is an app setting, not your Meta credit balance.")
+    key="cq:"+hashlib.sha256(workspace_id.encode()).hexdigest()[:32]
+    previous=db.scalar(select(func.count()).select_from(CampaignProject).where(CampaignProject.workspace_id==workspace_id,CampaignProject.provenance=="live_meta"))
+    insert=pg_insert if db.bind.dialect.name=="postgresql" else sqlite_insert
+    db.execute(insert(ApiBudget).values(provider=key,reserved_cents=previous).on_conflict_do_nothing(index_elements=["provider"]))
+    changed=db.execute(update(ApiBudget).where(ApiBudget.provider==key,ApiBudget.reserved_cents<maximum).values(reserved_cents=ApiBudget.reserved_cents+1))
+    if changed.rowcount!=1:
+        db.rollback();raise HTTPException(429,"Campaign attempt allowance reached. This is an application quota, not your Meta credit balance. Existing campaigns remain available.")
+    db.commit()
+
 def generation_is_live(user:User,mode:str="auto")->bool:
     if mode=="sample":return False
     if user.is_demo:
@@ -111,7 +133,7 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
         evidence.extend({"id":s["id"],"type":s["origin"],"url":s["url"],"text":s["text"][:1000],
                          "collected_at":s["collected_at"],"sha256":s["sha256"]} for s in mission["sources"])
     if live:
-        claim_attempt(db,body.workspace_id)
+        claim_campaign_attempt(db,body.workspace_id)
         model_run=create_model_run(db,body.workspace_id,str(body.website or "user-supplied"),body.goal)
         client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=model_run.id,max_tokens=6000)
         context={"description":body.business_description,"goal":body.goal,"audience":body.audience,
@@ -135,6 +157,8 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
             plan=generated.plan.model_dump()
         except Exception as exc:
             finish_model_run(db,model_run,"failed","live_meta","campaign_generation_failed")
+            if isinstance(exc,ValueError) and str(exc).startswith("Meta budget reached"):
+                raise HTTPException(429,"The configured AI spending limit has been reached; no external call was made. This is an app/workspace/run cap, not your provider credit balance.") from None
             detail=str(exc) if isinstance(exc,MetaError) else "Campaign output failed validation; no automatic retry"
             raise HTTPException(502,detail) from None
         finish_model_run(db,model_run,"inferred","live_meta")

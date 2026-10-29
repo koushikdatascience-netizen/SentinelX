@@ -153,6 +153,53 @@ def test_structured_improvement_has_priority_and_verification():
         research.BrandFinding.model_validate({**finding,"priority":"guaranteed_profit"})
 
 
+def test_search_evidence_is_used_with_exact_urls_and_no_fabricated_keyword_verification():
+    search={"provenance":"live_meta","data":{"results":[{"url":"https://example.org/parts","title":"Nearby Parts Workshop","snippet":"Custom bulk wooden parts in Kalyani."},{"url":"http://invalid.test","title":"Skipped"}]}}
+    sources=research.insight_sources({"name":"Owner"},[],searches=[search,search])
+    assert len(sources)==2 and sources[1]["origin"]=="search_pointer"
+    finding={"source_id":"O1","quote":"Owner","observation":"A useful observation.","why":"A reasonable explanation.","next_step":"A specific proposed change."}
+    finding["quote"]='"name": "Owner"'
+    competitor={"name":"Nearby Parts Workshop","source_id":"W1","quote":"Custom bulk wooden parts in Kalyani.","url":"https://example.org/parts","relevance":"A matching offering in the same stated area.","comparison":"Compare the clarity of custom order requirements.","suggested_response":"Explain custom order requirements on the product page.","business_source_id":"O1","business_quote":'"name": "Owner"'}
+    data={"strengths":[finding],"improvements":[],"unknowns":["Candidate identity needs review."],"competitor_comparisons":[competitor],"keyword_opportunities":[{"phrase":"custom wooden parts Kalyani","intent":"local","suggested_use":"Test a dedicated local product page.","evidence":"hypothesis"}]}
+    assert research.validate_insights(data,sources)["competitor_comparisons"]
+    with pytest.raises(ValueError,match="URL"):
+        research.validate_insights({**data,"competitor_comparisons":[{**competitor,"url":"https://fabricated.test/"}]},sources)
+    with pytest.raises(ValueError,match="business citation"):
+        research.validate_insights({**data,"competitor_comparisons":[{**competitor,"business_quote":"Invented owner offering"}]},sources)
+    with pytest.raises(ValueError,match="citation"):
+        research.validate_insights({**data,"keyword_opportunities":[{**data["keyword_opportunities"][0],"evidence":"source_supported","source_id":"W1","quote":"A fabricated trend"}]},sources)
+    with pytest.raises(ValueError,match="hypotheses"):
+        research.validate_insights({**data,"keyword_opportunities":[{**data["keyword_opportunities"][0],"source_id":"W1"}]},sources)
+    annotation={"provenance":"live_meta","data":{"summary":"Source-backed provider sentence.","citations":[{"url":"https://example.org/candidate","start_index":0,"end_index":len("Source-backed provider sentence.")}],"results":[]}}
+    annotated=research.insight_sources({"name":"Owner"},[],searches=[annotation])
+    assert annotated[1]["origin"]=="search_annotation" and annotated[1]["text"]==annotation["data"]["summary"]
+
+
+@pytest.mark.parametrize("expanded",[False,True])
+def test_expanded_searches_are_explicit_persisted_and_never_replayed(authenticated_client,monkeypatch,expanded):
+    workspace,job_id=enqueue(authenticated_client,socials=[{"platform":"instagram","url":"https://instagram.com/example"}])
+    with SessionLocal() as db:
+        job=db.get(BrandResearchJob,job_id);details=json.loads(job.input_json);details["expanded_research"]=expanded
+        job.input_json=json.dumps(details);db.commit()
+    monkeypatch.setenv("MODEL_API_KEY","offline-test-key");monkeypatch.setattr(research.MetaClient,"_enabled",lambda *a:True)
+    calls=[];submitted=[]
+    def search(self,query):
+        calls.append(query)
+        return {"provenance":"live_meta","data":{"results":[{"url":f"https://example.org/{len(calls)}","title":"Matching workshop","snippet":"Custom wooden workshop parts."}]}}
+    monkeypatch.setattr(research.MetaClient,"search",search)
+    def text(self,system,user,schema):
+        submitted.append(json.loads(user)["sources"])
+        return {"provenance":"live_meta","data":{"strengths":[{"source_id":"W1","quote":"Custom wooden workshop parts.","observation":"A matching offering was indexed.","why":"The search result contains relevant product language.","next_step":"Review the candidate source before comparing offers."}],"improvements":[],"unknowns":["Source page not retrieved."]}}
+    monkeypatch.setattr(research.MetaClient,"text",text)
+    research.execute_job(job_id);research.execute_job(job_id)
+    assert len(calls)==(3 if expanded else 1) and len(submitted)==1
+    assert "instagram.com/example" in calls[0]
+    report=authenticated_client.get(f"/api/v1/workspaces/{workspace}/business-profile/research").json()[0]["report"]
+    assert len(report["market_searches"])==(2 if expanded else 0)
+    assert report["ai_status"]=="ready"
+    assert len([s for s in submitted[0] if s["origin"]=="search_pointer"])==len(calls)
+
+
 def test_failed_saved_report_can_be_explicitly_retried_with_idempotency(authenticated_client,monkeypatch):
     workspace,job_id=enqueue(authenticated_client)
     research.execute_job(job_id)  # Offline evidence run; no inference.

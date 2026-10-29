@@ -1,5 +1,6 @@
 """Owner-only onboarding, editable business identity, research and private assets."""
 import json
+import hashlib
 import re
 from datetime import timedelta
 from typing import Literal
@@ -92,10 +93,24 @@ class ResearchChoice(BaseModel):
     use_ai:bool=True
     start_research:bool=False
     continue_job_id:str|None=None
+    expanded_research:bool=False
 
 
 class InsightsRequest(BaseModel):
     request_id:UUID
+
+
+class VisualInsightsRequest(BaseModel):
+    request_id:UUID
+    consent:bool=False
+    competitor_url:str=Field(default="",max_length=2000)
+
+
+class SocialInsightsRequest(BaseModel):
+    request_id:UUID
+    consent:bool=False
+    urls:list[str]=Field(min_length=1,max_length=3)
+    context:str=Field(default="",max_length=1500)
 
 
 def profile_info(row):
@@ -157,7 +172,7 @@ def enqueue(db,user,workspace_id,body):
     if active:raise HTTPException(409,"Research is already queued or running; view its progress")
     count=db.scalar(select(func.count()).select_from(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.created_at>utcnow()-timedelta(hours=1)))
     if count>=4:raise HTTPException(429,"Research limit: four runs per workspace per hour")
-    inputs={"profile":json.loads(profile.details_json),"use_ai":body.use_ai}
+    inputs={"profile":json.loads(profile.details_json),"use_ai":body.use_ai,"expanded_research":body.expanded_research}
     if body.continue_job_id:
         previous=db.scalar(select(BrandResearchJob).where(BrandResearchJob.id==body.continue_job_id,BrandResearchJob.workspace_id==workspace_id))
         if not previous:raise HTTPException(404,"Previous research not found")
@@ -210,7 +225,7 @@ def generate_saved_insights(workspace_id:str,job_id:str,body:InsightsRequest,use
     if not sources:
         old_input=json.loads(source_job.input_json);source_profile=old_input.get("profile",json.loads(profile.details_json))
         from app.business_research import insight_sources
-        sources=insight_sources(source_profile,source_report.get("pages",[]))
+        sources=insight_sources(source_profile,source_report.get("pages",[]),searches=[source_report.get("search"),*source_report.get("market_searches",[])])
     if not sources:raise HTTPException(422,"No saved business details or collected page evidence are available")
     active=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,
         BrandResearchJob.state.in_(["queued","running"])))
@@ -230,6 +245,88 @@ def generate_saved_insights(workspace_id:str,job_id:str,body:InsightsRequest,use
     source_report["insight_generation_job_id"]=job.id
     job.report_json=json.dumps(source_report)
     source_job.report_json=json.dumps(source_report)
+    db.commit();db.refresh(job);return job_info(job)
+
+
+@router.post("/workspaces/{workspace_id}/business-profile/research/{job_id}/visual-insights",status_code=202)
+def generate_visual_insights(workspace_id:str,job_id:str,body:VisualInsightsRequest,user:User=Depends(current_user),db:Session=Depends(session)):
+    db.scalar(select(Workspace).where(Workspace.id==workspace_id).with_for_update())
+    profile=profile_owned(db,user,workspace_id)
+    if user.is_demo:raise HTTPException(403,"Owner account required")
+    if not body.consent or not profile or not profile.consent_at:raise HTTPException(422,"Consent to send saved visual evidence to Meta is required")
+    generation_is_live(user,"live")
+    source=db.scalar(select(BrandResearchJob).where(BrandResearchJob.id==job_id,BrandResearchJob.workspace_id==workspace_id))
+    if not source:raise HTTPException(404,"Research run not found")
+    report=json.loads(source.report_json)
+    if body.competitor_url:
+        candidates=((report.get("insights") or {}).get("data") or {}).get("competitor_comparisons",[])
+        if not any(item.get("url")==body.competitor_url for item in candidates):raise HTTPException(422,"Choose a source-backed candidate from this report")
+        if restricted(body.competitor_url):raise HTTPException(422,"This platform does not allow direct capture; use an authorized uploaded image instead")
+        try:clean_url(body.competitor_url)
+        except ValueError:raise HTTPException(422,"Candidate must be a public HTTPS URL") from None
+    from app.business_visuals import select_assets
+    if not select_assets(db,workspace_id,report,bool(body.competitor_url)):raise HTTPException(422,"No saved business logo or screenshots are available; collect pages or upload a logo first")
+    existing=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.request_id==str(body.request_id)))
+    if existing:
+        old_input=json.loads(existing.input_json)
+        if old_input.get("visual_only_job_id")!=source.id or old_input.get("competitor_url","")!=body.competitor_url:raise HTTPException(409,"Request ID belongs to different inputs")
+        return job_info(existing)
+    if report.get("visual_review") and report["visual_review"].get("comparison_url","")==body.competitor_url:return job_info(source)
+    key=hashlib.sha256(body.competitor_url.encode()).hexdigest()
+    previous_id=report.get("visual_generation_jobs",{}).get(key)
+    if previous_id:
+        previous=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.id==previous_id))
+        if previous and (previous.state in {"queued","running"} or json.loads(previous.report_json).get("visual_status")!="failed"):return job_info(previous)
+    active=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.state.in_(["queued","running"])))
+    if active:raise HTTPException(409,"Another research task is running; wait for it to finish")
+    count=db.scalar(select(func.count()).select_from(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.created_at>utcnow()-timedelta(hours=1)))
+    if count>=4:raise HTTPException(429,"Research limit: four runs per workspace per hour")
+    snapshot=json.loads(source.input_json)["profile"]
+    # Keep the source report intact; new visual output belongs to its own run.
+    new_report={**report,"visual_status":"queued","visual_error":"","visual_review":None}
+    job=BrandResearchJob(workspace_id=workspace_id,request_id=str(body.request_id),state="queued",
+        input_json=json.dumps({"profile":snapshot,"use_ai":True,"visual_only_job_id":source.id,"competitor_url":body.competitor_url}),report_json=json.dumps(new_report))
+    db.add(job);db.flush()
+    db.add(WorkflowRun(id=job.id,workspace_id=workspace_id,website=snapshot.get("website") or "owner-supplied-business",objective="Visual business improvement report",status="pending",
+        result_json=json.dumps({"operation":"business_visual_insights","source_job_id":source.id})))
+    report.setdefault("visual_generation_jobs",{})[key]=job.id;source.report_json=json.dumps(report)
+    db.commit();db.refresh(job);return job_info(job)
+
+
+@router.post("/workspaces/{workspace_id}/business-profile/research/{job_id}/social-insights",status_code=202)
+def generate_social_insights(workspace_id:str,job_id:str,body:SocialInsightsRequest,user:User=Depends(current_user),db:Session=Depends(session)):
+    db.scalar(select(Workspace).where(Workspace.id==workspace_id).with_for_update())
+    profile=profile_owned(db,user,workspace_id)
+    if user.is_demo:raise HTTPException(403,"Owner account required")
+    if not body.consent or not profile or not profile.consent_at:raise HTTPException(422,"Consent for public social research and Meta processing is required")
+    generation_is_live(user,"live")
+    source=db.scalar(select(BrandResearchJob).where(BrandResearchJob.id==job_id,BrandResearchJob.workspace_id==workspace_id))
+    if not source and job_id!="profile":raise HTTPException(404,"Research run not found")
+    source_id=source.id if source else "profile"
+    snapshot=json.loads(profile.details_json);by_url={item["url"]:item for item in snapshot.get("socials",[])}
+    if len(set(body.urls))!=len(body.urls) or any(url not in by_url for url in body.urls):raise HTTPException(422,"Choose up to three distinct saved social links")
+    signature=hashlib.sha256(json.dumps({"urls":sorted(body.urls),"context":body.context,"profile":snapshot},sort_keys=True).encode()).hexdigest()
+    existing=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.request_id==str(body.request_id)))
+    if existing:
+        old=json.loads(existing.input_json)
+        if old.get("social_signature")!=signature or old.get("social_only_job_id")!=source_id:raise HTTPException(409,"Request ID belongs to different inputs")
+        return job_info(existing)
+    report=json.loads(source.report_json) if source else empty_report();prior_id=report.get("social_generation_jobs",{}).get(signature)
+    if prior_id:
+        prior=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.id==prior_id))
+        if prior and (prior.state in {"queued","running"} or (json.loads(prior.report_json).get("social_research") or {}).get("status")=="ready"):return job_info(prior)
+    active=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.state.in_(["queued","running"])))
+    if active:raise HTTPException(409,"Another research task is running; wait for it to finish")
+    count=db.scalar(select(func.count()).select_from(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,BrandResearchJob.created_at>utcnow()-timedelta(hours=1)))
+    if count>=4:raise HTTPException(429,"Research limit: four runs per workspace per hour")
+    selected=[by_url[url] for url in body.urls]
+    new_report={**report,"social_research":{"status":"queued","attempts":[],"sources":[]}}
+    job=BrandResearchJob(workspace_id=workspace_id,request_id=str(body.request_id),state="queued",
+        input_json=json.dumps({"profile":snapshot,"use_ai":True,"social_only_job_id":source_id,"selected_socials":selected,"social_context":body.context,"social_signature":signature}),report_json=json.dumps(new_report))
+    db.add(job);db.flush()
+    db.add(WorkflowRun(id=job.id,workspace_id=workspace_id,website="owner-social-research",objective="Platform-specific social research",status="pending",result_json=json.dumps({"operation":"business_social_insights","source_job_id":source_id})))
+    report.setdefault("social_generation_jobs",{})[signature]=job.id
+    if source:source.report_json=json.dumps(report)
     db.commit();db.refresh(job);return job_info(job)
 
 
