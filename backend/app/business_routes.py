@@ -204,13 +204,13 @@ def generate_saved_insights(workspace_id:str,job_id:str,body:InsightsRequest,use
     prior_id=source_report.get("insight_generation_job_id")
     if prior_id:
         prior=db.scalar(select(BrandResearchJob).where(BrandResearchJob.id==prior_id,BrandResearchJob.workspace_id==workspace_id))
-        if prior:return job_info(prior)
+        if prior and (prior.state in {"queued","running"} or json.loads(prior.report_json).get("ai_status")!="failed"):
+            return job_info(prior)
     sources=source_report.get("insight_sources") or []
     if not sources:
         old_input=json.loads(source_job.input_json);source_profile=old_input.get("profile",json.loads(profile.details_json))
-        sources=[{"id":"O1","text":json.dumps(source_profile,ensure_ascii=False)[:3000],"origin":"user_supplied"}]
-        sources.extend({"id":page["id"],"text":page.get("text","")[:1600],"url":page.get("url"),"origin":"retrieved_public_page"}
-            for page in source_report.get("pages",[])[:5] if page.get("text"))
+        from app.business_research import insight_sources
+        sources=insight_sources(source_profile,source_report.get("pages",[]))
     if not sources:raise HTTPException(422,"No saved business details or collected page evidence are available")
     active=db.scalar(select(BrandResearchJob).where(BrandResearchJob.workspace_id==workspace_id,
         BrandResearchJob.state.in_(["queued","running"])))
