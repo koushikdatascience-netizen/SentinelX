@@ -72,10 +72,12 @@ def _list(db:Session,cid:str,iid:str):
 def generate(campaign_id:str,item_id:str,workspace_id:str,body:RequestVariants,
              user:User=Depends(current_user),db:Session=Depends(session)):
     campaign,item=scope(db,workspace_id,campaign_id,item_id,user)
-    brief=json.loads(item.item_json).get("creative_brief","")
-    prompt=("Product campaign creative, no logos or invented endorsements. "
-            f"Business: {campaign.business_description[:400]}. "
-            f"Visual brief: {brief[:550]}. Mood: {body.brand_mood}.")
+    content=json.loads(item.item_json)
+    brief=content.get("creative_brief","")
+    image_prompt=content.get("image_prompt","")
+    prompt=("Create a product campaign visual from the owner-reviewed image direction. Do not invent product features, readable copy, logos, or endorsements. "
+            f"Business context: {campaign.business_description[:250]}. "
+            f"Image prompt: {image_prompt[:650]}. Visual guidance: {brief[:350]}. Mood: {body.brand_mood}.")
     prompt=prompt[:1500]
     from app.campaign_routes import generation_is_live
     live=generation_is_live(user,body.generation_mode)

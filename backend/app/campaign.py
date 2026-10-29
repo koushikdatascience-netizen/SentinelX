@@ -3,7 +3,7 @@ import re
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-Platform=Literal["instagram","facebook","whatsapp"]
+Platform=Literal["instagram","facebook","whatsapp","linkedin","x","google_business_profile","youtube","blogger"]
 Language=Literal["en","bn","hi"]
 
 class Strict(BaseModel):
@@ -25,10 +25,18 @@ class DayPlan(Strict):
     platform: Platform
     post_type: str=Field(min_length=3,max_length=70)
     caption: str=Field(min_length=10,max_length=1500)
-    hashtags: list[str]=Field(max_length=12)
+    hashtags: list[str]=Field(min_length=1,max_length=12)
     cta: str=Field(min_length=5,max_length=180)
     creative_brief: str=Field(min_length=10,max_length=600)
+    image_prompt: str=Field(min_length=15,max_length=1000)
+    video_script: str | None=Field(default=None,max_length=1800)
     evidence_ids: list[str]=Field(max_length=5)
+
+    @model_validator(mode="after")
+    def video_posts_include_a_script(self):
+        if re.search(r"\b(reel|short|video)\b",self.post_type,re.IGNORECASE) and not (self.video_script or "").strip():
+            raise ValueError("Video and reel posts require a script or shot-by-shot plan")
+        return self
 
 class SevenDayPlan(Strict):
     items: list[DayPlan]=Field(min_length=7,max_length=7)
@@ -76,5 +84,7 @@ def sample_plan(description:str,goal:str,language:Language,platforms:list[Platfo
             "post_type":"sample educational post",
             "caption":caption+f" — {d}" ,"hashtags":["#SentinelXSample"],"cta":cta,
             "creative_brief":title+f" — sample visual concept for day {d}.",
+            "image_prompt":f"Sample only: create an illustrative visual for day {d} using owner-approved products and colors; confirm details before use.",
+            "video_script":None,
             "evidence_ids":[]} for d in range(1,8)]
     return audit,{"items":items}

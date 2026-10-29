@@ -200,6 +200,8 @@ from app.business_routes import router as business_router
 app.include_router(business_router)
 from app.workbench import router as workbench_router
 app.include_router(workbench_router)
+from app.prompt_routes import router as prompt_router
+app.include_router(prompt_router)
 
 @app.on_event("startup")
 def initialize_business_research():

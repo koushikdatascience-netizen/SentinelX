@@ -68,6 +68,32 @@ test("business onboarding skips collection, saves editable details and uploads, 
  await expect(page.getByText("Only owner-supplied information is available.",{exact:false})).toBeVisible();
 });
 
+test("business insights show actionable priorities, evidence, gaps and an export without new generation",async({page})=>{
+ await accountAndWorkspace(page);
+ const finding={source_id:"P1",quote:"Send your drawing for a quote.",observation:"Clarify what to send with an inquiry.",why:"A drawing alone may omit quantities and timing.",next_step:"Add quantity and required date beside the quote link.",priority:"high",area:"contact_journey",verification:"Check that the inquiry opens with drawing, quantity and date fields."};
+ const report={pages:[],remaining_urls:[],activity:[],limitations:[],coverage:{pages_collected:1,screenshots_saved:0},search:null,visual_review:null,ai_status:"ready",insight_sources:[{id:"P1",url:"https://example.org/contact",title:"Contact page",text:finding.quote,origin:"retrieved_public_page"}],insights:{provenance:"live_meta",data:{summary:"Make trade inquiries easier to qualify.",strengths:[{...finding,observation:"Preserve the drawing request.",priority:"low"}],improvements:[finding],unknowns:["No conversion baseline supplied."]}}};
+ let generations=0;
+ await page.route("**/business-profile/research",async route=>{if(route.request().method()==="GET")await route.fulfill({json:[{id:"fixture-insights",state:"completed",created_at:"2026-10-30T10:00:00Z",input_profile:{name:"Browser workshop"},report}]});else{generations++;await route.abort()}});
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("tab",{name:"Insights",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Your business improvement report"})).toBeVisible();
+ await expect(page.getByText("high priority · AI suggested")).toBeVisible();
+ await expect(page.getByText(finding.verification,{exact:false})).toBeVisible();
+ await page.getByText("View supporting evidence · P1").click();
+ await expect(page.getByRole("link",{name:"Contact page"})).toHaveAttribute("href","https://example.org/contact");
+ await page.getByRole("button",{name:"Gaps & verification",exact:true}).click();
+ await expect(page.getByText("No conversion baseline supplied.",{exact:true})).toBeVisible();
+ const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Download report",exact:true}).click();
+ const download=await pending;const stream=await download.createReadStream();const chunks=[];for await(const chunk of stream!)chunks.push(chunk);
+ const text=Buffer.concat(chunks).toString();expect(text).toContain(finding.verification);expect(text).toContain("No edits were published");
+ await page.reload();await page.getByRole("tab",{name:"Insights",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Your business improvement report"})).toBeVisible();
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/business-insights-mobile.png",fullPage:true});
+ expect(generations).toBe(0);
+});
+
 test("owner evidence, recorded review and downloadable audit",async({page})=>{
  await accountAndWorkspace(page);
  await page.getByRole("button",{name:"Generate evidence-backed audit"}).click();
@@ -144,6 +170,9 @@ test("dashboard document parser and image editor run locally in dedicated modals
  await expect(research.getByLabel("Use my saved business details",{exact:false})).toBeChecked();
  await research.getByLabel("Location",{exact:true}).fill("Kalyani");
  await research.getByLabel("Your prompt",{exact:true}).fill("Find comparable local wooden parts workshops.");
+ await expect(research.getByRole("checkbox",{name:"Send this recording to Meta for transcription"})).toBeDisabled();
+ await expect(research.getByRole("button",{name:"Record voice prompt"})).toBeDisabled();
+ await expect(research.getByText("Voice dictation needs live Meta inference enabled.",{exact:false})).toBeVisible();
  await expect(research.getByRole("button",{name:"Start research",exact:true})).toBeDisabled();
  await expect(research.getByText("Live AI is not configured.",{exact:false})).toBeVisible();
 });
@@ -194,6 +223,10 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.getByLabel("Business name",{exact:true}).fill("Fixture Woodworks");
  await page.getByLabel("What do you offer?").fill("We produce custom furniture and wooden parts for local customers who need quotations.");
  await page.getByLabel("What should this campaign achieve?").fill("Improve qualified requests for custom woodworking quotations.");
+ const voiceConsents=page.getByRole("checkbox",{name:"Send this recording to Meta for transcription"});
+ await expect(voiceConsents).toHaveCount(2);await expect(voiceConsents.nth(0)).toBeDisabled();await expect(voiceConsents.nth(1)).toBeDisabled();
+ const platforms=page.getByRole("group",{name:"Where will you share it?"});
+ for(const platform of ["LinkedIn","X (Twitter)","Google Business Profile","YouTube","Blogger"])await expect(platforms.getByLabel(platform,{exact:true})).toBeVisible();
  await page.getByText("Generation options",{exact:true}).click();
  await page.getByLabel("Use sample data (no credits)").check();
  await page.getByRole("button",{name:"Create sample campaign",exact:true}).click();
@@ -202,7 +235,11 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.getByRole("button",{name:"Edit day 1 post",exact:true}).click();
  const edit=page.getByRole("dialog",{name:"Edit day 1 post"});
  await expect(edit).toBeVisible();
+ await expect(edit.getByLabel("Image prompt")).toBeVisible();
+ await expect(edit.getByLabel(/Reel \/ video script/)).toBeVisible();
  await edit.getByRole("textbox",{name:"Caption",exact:true}).fill("A saved edit to the sample campaign caption, ready for owner review.");
+ await edit.getByLabel(/Hashtags/).fill("#Woodcraft\n#CustomFurniture");
+ await edit.getByRole("textbox",{name:"Image prompt",exact:true}).fill("Use only the owner-approved wooden furniture photo in a clear workshop setting.");
  await edit.getByRole("button",{name:"Save post",exact:true}).click();
  await expect(edit).not.toBeVisible();
  await expect(page.getByText("A saved edit to the sample campaign caption, ready for owner review.",{exact:true})).toBeVisible();
