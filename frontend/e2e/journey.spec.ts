@@ -344,18 +344,43 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.getByLabel("Use sample data (no credits)").check();
  await page.getByRole("button",{name:"Create sample campaign",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Campaign calendar",exact:true})).toBeVisible();
- await expect(page.locator(".post-card")).toHaveCount(7);
+ const sheet=page.locator(".campaign-sheet");
+ await expect(sheet.locator("tbody tr")).toHaveCount(7);
+ await expect(sheet.locator("thead th")).toHaveText(["Day / status","Platform","Format","Caption","Hashtags","Call to action","Image guidance","Image prompt","Reel / video script","Actions"]);
+ async function expectAlignedColumns(){
+  const aligned=await sheet.evaluate(table=>{
+   const headers=Array.from(table.querySelectorAll("thead th"));
+   const rows=Array.from(table.querySelectorAll("tbody tr"));
+   return rows.every(row=>getComputedStyle(row).display==="table-row"&&row.children.length===headers.length&&Array.from(row.children).every((cell,index)=>{
+    const heading=headers[index].getBoundingClientRect();const bounds=cell.getBoundingClientRect();
+    return getComputedStyle(cell).display==="table-cell"&&Math.abs(bounds.left-heading.left)<2&&Math.abs(bounds.width-heading.width)<2;
+   }));
+  });
+  expect(aligned).toBe(true);
+ }
+ await expectAlignedColumns();
+ await page.screenshot({path:"test-results/campaign-sheet-columns-desktop.png",fullPage:true});
+ await page.setViewportSize({width:390,height:844});await expectAlignedColumns();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const scrollable=await page.locator(".campaign-table-scroll").evaluate(element=>{element.scrollLeft=element.scrollWidth;return element.scrollLeft>0});
+ expect(scrollable).toBe(true);
+ await page.locator(".campaign-table-scroll").evaluate(element=>{element.scrollLeft=0});
+ await page.setViewportSize({width:1280,height:900});
  await page.getByRole("button",{name:"Edit day 1 post",exact:true}).click();
  const edit=page.getByRole("dialog",{name:"Edit day 1 post"});
  await expect(edit).toBeVisible();
  await expect(edit.getByLabel("Image prompt")).toBeVisible();
  await expect(edit.getByLabel(/Reel \/ video script/)).toBeVisible();
  await edit.getByRole("textbox",{name:"Caption",exact:true}).fill("A saved edit to the sample campaign caption, ready for owner review.");
- await edit.getByLabel(/Hashtags/).fill("#Woodcraft\n#CustomFurniture");
+ await edit.getByLabel(/Hashtags/).fill("#Woodcraft\n#CustomFurniture #Design, #Joinery");
  await edit.getByRole("textbox",{name:"Image prompt",exact:true}).fill("Use only the owner-approved wooden furniture photo in a clear workshop setting.");
  await edit.getByRole("button",{name:"Save post",exact:true}).click();
  await expect(edit).not.toBeVisible();
  await expect(page.getByText("A saved edit to the sample campaign caption, ready for owner review.",{exact:true})).toBeVisible();
+ const firstRow=sheet.locator("tbody tr").first();
+ await expect(firstRow.locator("td").nth(3)).toHaveText("A saved edit to the sample campaign caption, ready for owner review.");
+ await expect(firstRow.locator("td").nth(4)).toHaveText("#Woodcraft #CustomFurniture #Design #Joinery");
+ await expect(firstRow.locator("td").nth(7)).toHaveText("Use only the owner-approved wooden furniture photo in a clear workshop setting.");
  await page.getByRole("button",{name:"Edit day 1 post",exact:true}).click();
  await page.keyboard.press("Escape");
  await expect(edit).not.toBeVisible();
@@ -412,7 +437,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.screenshot({path:"test-results/dashboard-mobile.png",fullPage:true});
  await navigation.getByRole("button",{name:"Campaigns",exact:true}).click();
- await expect(page.locator(".post-card")).toHaveCount(7);
+ await expect(page.locator(".campaign-sheet tbody tr")).toHaveCount(7);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.screenshot({path:"test-results/campaign-mobile.png",fullPage:true});
 });
