@@ -1,4 +1,5 @@
 "use client";
+import AIText from "./AIText";
 import {useEffect,useRef,useState} from "react";
 import {SourceBadge} from "./ProductUI";
 const BASE=process.env.NEXT_PUBLIC_API_URL??"";
@@ -51,6 +52,6 @@ export default function BusinessContext({token,workspace,mode,onGoal,onSelect}:{
   <button type="button" className="secondary" disabled={busy||recording||!consent||(!file&&notes.trim().length<10)} onClick={save}>{busy?"Understanding your business…":kind==="voice"?"Transcribe voice goal":"Save business context"}</button>
   <p className="field-help">Each live file review or transcription uses one budgeted request. WAV: up to 60 seconds; images/PDF/MP4: up to 5 MB. PDF/MP4 and voice are account-verified only after a successful live request. No segmentation or generated video is claimed.</p>
   {voice&&<div><label>Review the voice goal<textarea aria-label="Reviewed voice goal" maxLength={600} rows={3} value={voice} onChange={event=>setVoice(event.target.value)}/></label><button type="button" className="primary" disabled={voice.length<10} onClick={()=>onGoal(voice)}>Use reviewed voice goal</button><p className="field-help">This only fills the goal. You still choose when to start the mission.</p></div>}
-  {rows.map(item=><article className="finding" key={item.id}><label className="checkbox-label"><input type="checkbox" disabled={item.status!=="completed"} checked={selected.includes(item.id)} onChange={()=>choose(item.id)}/>Use {item.filename} in this mission</label><SourceBadge value={item.provenance}/><details><summary>Inspect saved context</summary><p className="field-help">{item.limitation}</p><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{item.text}</pre></details></article>)}
+  {rows.map(item=><article className="finding" key={item.id}><label className="checkbox-label"><input type="checkbox" disabled={item.status!=="completed"} checked={selected.includes(item.id)} onChange={()=>choose(item.id)}/>Use {item.filename} in this mission</label><SourceBadge value={item.provenance}/><details><summary>Inspect saved context</summary><p className="field-help">{item.limitation}</p><AIText text={item.text}/></details></article>)}
  </details>;
 }

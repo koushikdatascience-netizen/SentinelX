@@ -41,3 +41,21 @@ def test_no_search_or_empty_transcript_is_not_treated_as_success(live,monkeypatc
     calls=transport(monkeypatch,payload)
     with pytest.raises(MetaError):MetaClient(**live).search("Find public evidence")
     assert len(calls)==1
+
+
+@pytest.mark.parametrize("purpose",["competitors","keywords"])
+def test_search_instructions_match_the_requested_research_purpose(live,monkeypatch,purpose):
+    calls=transport(monkeypatch,grounded())
+    MetaClient(**live).search("Relevant workshop research",purpose=purpose)
+    body=json.loads(calls[0].content)
+    if purpose=="keywords":
+        assert "keyword clusters" in body["instructions"] and "three source-linked candidates" not in body["instructions"]
+        assert "dated evidence" in body["instructions"] and "Do not invent search volume" in body["instructions"]
+    else:assert "match offerings and location" in body["instructions"]
+    assert body["max_tool_calls"]==1 and body["tools"][0]["type"]=="web_search"
+
+
+def test_search_budget_exhaustion_is_preserved_before_http(live,monkeypatch):
+    monkeypatch.setattr(meta_client,"reserve_meta",lambda *args:(_ for _ in ()).throw(ValueError("Meta budget reached for this run")))
+    monkeypatch.setattr(meta_client,"OpenAI",lambda **kwargs:pytest.fail("No HTTP client after denied reservation"))
+    with pytest.raises(ValueError,match="Meta budget reached"):MetaClient(**live).search("Find source-backed workshop keywords",purpose="keywords")
