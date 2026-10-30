@@ -528,3 +528,18 @@ test("business mission entry points are removed from the workspace",async({page}
  await expect(page).toHaveURL(/#dashboard$/);
  await expect(page.getByRole("heading",{name:"Your business workspace",exact:true})).toBeVisible();
 });
+
+
+test("failed social synthesis exposes saved evidence and distinguishes completed searches from a report",async({page})=>{
+ await accountAndWorkspace(page);
+ const job={id:"failed-social-report",state:"partial",created_at:"2026-10-30T10:00:00Z",input_profile:{name:"Browser workshop",socials:[]},report:{pages:[],remaining_urls:[],activity:[],limitations:[],coverage:{pages_collected:0,screenshots_saved:0},insights:null,visual_review:null,social_research:{status:"failed",stage:"validation",error:"A social finding could not be matched to the correct saved source or account.",attempts:[{platform:"instagram",url:"https://instagram.com/workshop",status:"completed"}],sources:[{id:"S1.W1",url:"https://instagram.com/workshop",text:"Custom wooden parts in Kalyani.",origin:"search_pointer"}]}}};
+ await page.route("**/business-profile/research",route=>route.fulfill({json:[job]}));
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.reload();await page.getByRole("tab",{name:"Social insights",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Social research needs attention",exact:true})).toBeVisible();
+ await expect(page.getByText("Report stage: validation",{exact:true})).toBeVisible();
+ await page.getByText("View saved social evidence (1)",{exact:true}).click();
+ await expect(page.getByText("Custom wooden parts in Kalyani.",{exact:true})).toBeVisible();
+ await expect(page.getByRole("link",{name:"Open source",exact:true})).toHaveAttribute("href","https://instagram.com/workshop");
+ await expect(page.getByRole("heading",{name:"Instagram improvement report",exact:true})).toHaveCount(0);
+});
