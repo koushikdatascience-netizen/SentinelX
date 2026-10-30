@@ -4,7 +4,7 @@ type Finding={source_id:string;quote:string;observation:string;change:string;why
 type Example={name:string;source_id:string;quote:string;url:string;lesson:string};
 type Experiment={format:string;topic:string;hook:string;call_to_action:string;measure:string};
 export type PlatformInsights={url:string;platform:string;coverage:string;summary:string;findings:Finding[];competitor_examples:Example[];experiments:Experiment[];unknowns:string[]};
-export type SocialResearch={status:string;error?:string;attempts:{url:string;platform:string;status:string;error?:string}[];sources:{id:string;text:string;url?:string;origin?:string}[];report?:{provenance:string;data:{platforms:PlatformInsights[]}}};
+export type SocialResearch={status:string;error?:string;stage?:string;reuse_saved_searches?:boolean;attempts:{url:string;platform:string;status:string;error?:string}[];sources:{id:string;text:string;url?:string;origin?:string}[];report?:{provenance:string;data:{platforms:PlatformInsights[]}}};
 const names:Record<string,string>={instagram:"Instagram",facebook:"Facebook",youtube:"YouTube",linkedin:"LinkedIn",x:"X / Twitter",google_business:"Google Business Profile",tiktok:"TikTok",pinterest:"Pinterest",whatsapp:"WhatsApp",other:"Other platform"};
 
 export default function BusinessSocialReport({items,onImages,onDraft}:{items:{platform:PlatformInsights;sources:SocialResearch["sources"]}[];onImages:()=>void;onDraft:(platform:string,prompt:string)=>void}){

@@ -128,6 +128,8 @@ def insight_sources(profile,pages,documents=(),searches=()):
 
 
 def insight_failure(exc):
+    from app.business_socials import SocialReportError
+    if isinstance(exc,SocialReportError):return str(exc)
     # Never expose arbitrary exception details (which can contain provider payloads).
     if isinstance(exc,ValueError) and str(exc).startswith("Meta budget reached"):
         return "The configured AI budget is exhausted. No external request was made. Review the workspace/app budget before requesting insights again. Saved evidence is unchanged."

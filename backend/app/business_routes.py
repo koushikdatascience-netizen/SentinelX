@@ -321,6 +321,13 @@ def generate_social_insights(workspace_id:str,job_id:str,body:SocialInsightsRequ
     if count>=4:raise HTTPException(429,"Research limit: four runs per workspace per hour")
     selected=[by_url[url] for url in body.urls]
     new_report={**report,"social_research":{"status":"queued","attempts":[],"sources":[]}}
+    saved_social=report.get("social_research",{})
+    old_inputs=json.loads(source.input_json) if source else {}
+    if (old_inputs.get("social_signature")==signature and saved_social.get("status")=="failed"
+        and saved_social.get("sources") and len(saved_social.get("attempts",[]))==len(selected)
+        and all(attempt.get("status")=="completed" for attempt in saved_social["attempts"])):
+        new_report["social_research"]={**saved_social,"status":"queued","stage":"synthesis","error":"","reuse_saved_searches":True}
+
     job=BrandResearchJob(workspace_id=workspace_id,request_id=str(body.request_id),state="queued",
         input_json=json.dumps({"profile":snapshot,"use_ai":True,"social_only_job_id":source_id,"selected_socials":selected,"social_context":body.context,"social_signature":signature}),report_json=json.dumps(new_report))
     db.add(job);db.flush()
