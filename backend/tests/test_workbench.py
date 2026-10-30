@@ -208,3 +208,60 @@ def test_scanned_pdf_pages_are_flagged_and_ranges_validated():
     assert result["pages"][0]["needs_ocr"] and result["next_page"]==2
     with pytest.raises(ValueError):workbench.extract_document(out.getvalue(),"scan.pdf",3,1)
     with pytest.raises(ValueError):workbench.extract_document(b"binary","file.exe",1,1)
+
+
+@pytest.mark.parametrize("encoding",["utf-8-sig","utf-16","utf-16-be"])
+def test_document_text_encodings(encoding):
+    text="Workshop order notes: quantities and delivery dates."
+    content=text.encode(encoding)
+    if encoding=="utf-16-be":content=b"\xfe\xff"+content
+    assert workbench.extract_document(content,"notes.txt",1,1)["pages"][0]["text"]==text
+
+
+def test_document_encoding_and_pdf_errors_are_safe(monkeypatch):
+    import pypdf
+    with pytest.raises(workbench.DocumentError,match="Text encoding is unsupported"):
+        workbench.extract_document(b"private-business-content\xff","notes.txt",1,1)
+    def invalid(*args):raise ValueError("private-document-content")
+    monkeypatch.setattr(pypdf,"PdfReader",invalid)
+    with pytest.raises(workbench.DocumentError,match="could not be opened") as failure:
+        workbench.extract_document(b"%PDF-private-business-content","notes.pdf",1,1)
+    assert "private-" not in str(failure.value)
+    with pytest.raises(workbench.DocumentError,match="starting page"):
+        workbench.extract_document(b"notes","notes.txt",0,1)
+
+
+def test_document_failed_request_is_saved_and_new_explicit_request_can_succeed(authenticated_client,monkeypatch):
+    workspace=profile(authenticated_client)["workspace_id"]
+    monkeypatch.setattr(workbench.MetaClient,"text",lambda *args:pytest.fail("Local documents must not use inference"))
+    body={"workspace_id":workspace,"request_id":str(uuid4()),"consent":"true"}
+    invalid=authenticated_client.post("/api/v1/workbench/documents",data=body,files={"file":("notes.pdf",b"not a PDF","application/pdf")})
+    assert invalid.status_code==422 and invalid.json()["detail"]=="Invalid PDF"
+    assert authenticated_client.post("/api/v1/workbench/documents",data=body,files={"file":("notes.pdf",b"not a PDF","application/pdf")}).status_code==409
+    fixed={**body,"request_id":str(uuid4())}
+    response=authenticated_client.post("/api/v1/workbench/documents",data=fixed,files={"file":("notes.txt",b"Useful business document notes.","text/plain")})
+    assert response.status_code==201,response.text
+    assert authenticated_client.post("/api/v1/workbench/documents",data=fixed,files={"file":("notes.txt",b"Useful business document notes.","text/plain")}).json()["id"]==response.json()["id"]
+    assert authenticated_client.post("/api/v1/workbench/documents",data=fixed,files={"file":("notes.pdf",b"Useful business document notes.","application/pdf")}).status_code==409
+    rows=authenticated_client.get("/api/v1/workbench",params={"workspace_id":workspace}).json()
+    assert any(row["status"]=="failed" and row["error"]=="Invalid PDF" for row in rows)
+    assert any(row["id"]==response.json()["id"] and row["data"]["pages"][0]["text"]=="Useful business document notes." for row in rows)
+
+
+def test_pdf_text_layer_is_extracted_persisted_and_exported(authenticated_client):
+    from pypdf import PdfWriter
+    from pypdf.generic import DictionaryObject,NameObject,DecodedStreamObject
+    writer=PdfWriter();page=writer.add_blank_page(width=300,height=300)
+    font=DictionaryObject({NameObject("/Type"):NameObject("/Font"),NameObject("/Subtype"):NameObject("/Type1"),NameObject("/BaseFont"):NameObject("/Helvetica")})
+    page[NameObject("/Resources")]=DictionaryObject({NameObject("/Font"):DictionaryObject({NameObject("/F1"):writer._add_object(font)})})
+    stream=DecodedStreamObject();stream.set_data(b"BT /F1 12 Tf 20 200 Td (Workshop quotation requirements) Tj ET")
+    page[NameObject("/Contents")]=writer._add_object(stream)
+    out=io.BytesIO();writer.write(out)
+    workspace=profile(authenticated_client)["workspace_id"]
+    response=authenticated_client.post("/api/v1/workbench/documents",data={"workspace_id":workspace,"request_id":str(uuid4()),"consent":"true"},files={"file":("quotation.pdf",out.getvalue(),"application/pdf")})
+    assert response.status_code==201,response.text
+    data=response.json()["data"]
+    assert data["total_pages"]==1 and "Workshop quotation requirements" in data["pages"][0]["text"]
+    assert not data["pages"][0]["needs_ocr"]
+    exported=authenticated_client.get(f'/api/v1/workbench/{response.json()["id"]}/export',params={"workspace_id":workspace,"format":"txt"})
+    assert exported.status_code==200 and "Workshop quotation requirements" in exported.text

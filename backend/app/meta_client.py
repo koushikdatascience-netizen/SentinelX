@@ -258,10 +258,14 @@ class MetaClient:
                     input=[{"type":"message","role":"user","content":[{"type":"input_text","text":prompt},block]}])
                 text=(response.output_text or "").strip()
                 if response.status!="completed" or not text:raise MetaError("Empty or incomplete media review; no automatic retry")
-                return {"provenance":"live_meta","model":model,"data":text[:20000],
+                if len(text)>80000:raise MetaError("Media output exceeded the safe text limit; no automatic retry")
+                return {"provenance":"live_meta","model":model,"data":text,
                         "usage":{"input_tokens":getattr(response.usage,"input_tokens",None),
                                  "output_tokens":getattr(response.usage,"output_tokens",None)}}
         except MetaError:raise
+        except ValueError as exc:
+            if str(exc).startswith("Meta budget reached"):raise
+            raise MetaError("Meta media validation failed; no automatic retry. Usage may have been consumed.") from None
         except Exception:raise MetaError("Meta media review failed; no automatic retry. Usage may have been consumed.") from None
 
     def segment(self, image_bytes, mime):

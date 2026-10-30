@@ -194,50 +194,75 @@ def generate(body:ToolRequest,user:User=Depends(current_user),db:Session=Depends
     return serialize(row)
 
 
+class DocumentError(ValueError):
+    """Only fixed, public-safe document validation messages."""
+
+
 def extract_document(payload,filename,start_page,page_limit):
-    if not 0<len(payload)<=20_000_000:raise ValueError("Use a document up to 20 MB")
+    if not 1<=start_page or not 1<=page_limit<=25:raise DocumentError("Choose a starting page of at least 1 and a batch of 1 to 25 pages")
+    if not 0<len(payload)<=20_000_000:raise DocumentError("Use a document up to 20 MB")
     if filename.lower().endswith(".pdf"):
         from pypdf import PdfReader
-        if not payload.startswith(b"%PDF-"):raise ValueError("Invalid PDF")
-        reader=PdfReader(io.BytesIO(payload))
-        if reader.is_encrypted:raise ValueError("Encrypted PDFs are unsupported")
+        if not payload.startswith(b"%PDF-"):raise DocumentError("Invalid PDF")
+        try:reader=PdfReader(io.BytesIO(payload))
+        except Exception:raise DocumentError("This PDF could not be opened. Export a new unencrypted PDF and try again.") from None
+        if reader.is_encrypted:raise DocumentError("Encrypted PDFs are unsupported")
         total=len(reader.pages)
-        if total>2000:raise ValueError("PDF exceeds 2000 pages; split the document first")
-        if not 1<=start_page<=total:raise ValueError("Starting page is outside this PDF")
+        if total>2000:raise DocumentError("PDF exceeds 2000 pages; split the document first")
+        if not 1<=start_page<=total:raise DocumentError("Starting page is outside this PDF")
         pages=[]
         for index in range(start_page-1,min(total,start_page-1+page_limit)):
-            text=(reader.pages[index].extract_text() or "")
-            pages.append({"page":index+1,"text":text[:20000],"truncated":len(text)>20000,"needs_ocr":not text.strip()})
+            try:text=(reader.pages[index].extract_text() or "")
+            except Exception:raise DocumentError(f"Text extraction stopped at PDF page {index+1}. Try that page separately or export a new PDF.") from None
+            pages.append({"page":index+1,"text":text[:20000],"truncated":len(text)>20000,"needs_ocr":not text.strip(),"extraction_method":"text_layer","provenance":"user_supplied"})
         return {"pages":pages,"total_pages":total,"next_page":pages[-1]["page"]+1 if pages[-1]["page"]<total else None,
-            "limitation":"Text-layer extraction only. Scanned pages are flagged for OCR; this tool does not claim OCR or perfect table/layout reconstruction. Up to 25 pages per explicit batch, 20000 characters per page."}
-    if not filename.lower().endswith((".txt",".csv",".md")):raise ValueError("Use PDF, TXT, CSV or Markdown")
-    text=payload.decode("utf-8-sig")
-    if "\x00" in text:raise ValueError("Invalid text document")
+            "limitation":"Text-layer extraction only for this result. Scanned pages need an explicitly consented Meta PDF request. Verify extracted text against the original; table/layout reconstruction is not guaranteed."}
+    if not filename.lower().endswith((".txt",".csv",".md")):raise DocumentError("Use PDF, TXT, CSV or Markdown")
+    try:text=payload.decode("utf-16" if payload.startswith((b"\xff\xfe",b"\xfe\xff")) else "utf-8-sig")
+    except UnicodeError:raise DocumentError("Text encoding is unsupported. Save as UTF-8 or UTF-16 with a byte-order mark, then upload again.") from None
+    if "\x00" in text:raise DocumentError("Invalid text document")
     chunks=[text[index:index+20000] for index in range(0,len(text),20000)] or [""]
-    if start_page>len(chunks):raise ValueError("Chunk index outside document")
+    if start_page>len(chunks):raise DocumentError("Chunk index outside document")
     end=min(len(chunks),start_page-1+page_limit)
     return {"pages":[{"page":index+1,"text":chunks[index],"truncated":False,"needs_ocr":False} for index in range(start_page-1,end)],
         "total_pages":len(chunks),"next_page":end+1 if end<len(chunks) else None,"limitation":"Text split into 20000-character chunks. Chunks are not physical document pages."}
 
 
 @router.post("/documents",status_code=201)
-def parse_document(workspace_id:str=Form(...),request_id:UUID=Form(...),consent:bool=Form(False),start_page:int=Form(1,ge=1),page_limit:int=Form(25,ge=1,le=25),
+def parse_document(workspace_id:str=Form(...),request_id:UUID=Form(...),consent:bool=Form(False),start_page:int=Form(1,ge=1),page_limit:int=Form(25,ge=1,le=25),use_meta:bool=Form(False),meta_consent:bool=Form(False),
     file:UploadFile=File(...),user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,workspace_id)
     if not consent:raise HTTPException(422,"Consent to process and save this business document is required")
+    if use_meta and not meta_consent:raise HTTPException(422,"Explicit consent to send scanned PDF pages to Meta is required")
     payload=file.file.read(20_000_001)
-    signature=hashlib.sha256(payload+f":{start_page}:{page_limit}".encode()).hexdigest()
+    signature=hashlib.sha256(payload+f":{start_page}:{page_limit}:{use_meta}:{(file.filename or chr(32)).lower()}".encode()).hexdigest()
     row,reused=begin(db,user,workspace_id,request_id,"documents",signature)
     if reused:return serialize(row)
     result=json.loads(row.result_json)
     try:
-        data=extract_document(payload,file.filename or "document",start_page,page_limit)
+        data=extract_document(payload,file.filename or "document",start_page,min(page_limit,5) if use_meta else page_limit)
         result.update(data=data,filename=(file.filename or "document")[:180],sha256=hashlib.sha256(payload).hexdigest(),provenance="user_supplied",model=None)
+        row.result_json=json.dumps(result);db.commit()
+        if use_meta and any(page["needs_ocr"] for page in data["pages"]):
+            generation_is_live(user,"live")
+            from app.document_meta import extract_scans
+            response=extract_scans(payload,data,user.id,workspace_id,row.id)
+            result.update(provenance="live_meta",model=response["model"],usage=response.get("usage"))
         row.status="completed"
     except Exception as exc:
-        row.status="failed";result["error"]=str(exc) if isinstance(exc,(ValueError,UnicodeError)) else "Document extraction failed; try a smaller unencrypted PDF."
+        from app.meta_client import MetaError
+        from app.document_meta import ScanInputError
+        db.rollback();row.status="failed"
+        if isinstance(exc,HTTPException):failure_status=exc.status_code;result["error"]=exc.detail
+        elif isinstance(exc,ValueError) and str(exc).startswith("Meta budget reached"):
+            failure_status=429;result["error"]="The configured Meta spending limit was reached. No automatic retry. Local extraction is saved; this is not your provider credit balance."
+        elif isinstance(exc,MetaError):
+            failure_status=502;result["error"]="Meta PDF extraction failed or returned an invalid/incomplete page mapping. Local extraction is saved; no automatic retry. Usage may have been consumed. Try a smaller page batch."
+        else:
+            failure_status=422;result["error"]=str(exc) if isinstance(exc,(DocumentError,ScanInputError)) else "Document extraction failed. Try a smaller unencrypted PDF, or export the document as UTF-8 text."
+
     row.result_json=json.dumps(result);db.commit()
-    if row.status=="failed":raise HTTPException(422,result["error"])
+    if row.status=="failed":raise HTTPException(failure_status,result["error"])
     return serialize(row)
 
 

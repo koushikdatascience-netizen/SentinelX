@@ -265,6 +265,7 @@ test("dashboard document parser and image editor run locally in dedicated modals
  await expect(parser).toBeVisible();
  await parser.getByLabel("Business document",{exact:true}).setInputFiles({name:"business.txt",mimeType:"text/plain",buffer:Buffer.from("Workshop services include custom components and owner-reviewed quotations.")});
  await parser.getByLabel("I am authorized to process this file",{exact:false}).check();
+ await parser.getByLabel("I consent to sending the selected scanned PDF pages to Meta",{exact:false}).check();
  await parser.getByRole("button",{name:"Extract document batch"}).click();
  await expect(parser.getByText("Workshop services include custom components",{exact:false})).toBeVisible();
  const exported=page.waitForEvent("download");await parser.getByRole("button",{name:"Download Markdown"}).click();
@@ -542,4 +543,53 @@ test("failed social synthesis exposes saved evidence and distinguishes completed
  await expect(page.getByText("Custom wooden parts in Kalyani.",{exact:true})).toBeVisible();
  await expect(page.getByRole("link",{name:"Open source",exact:true})).toHaveAttribute("href","https://instagram.com/workshop");
  await expect(page.getByRole("heading",{name:"Instagram improvement report",exact:true})).toHaveCount(0);
+});
+
+
+test("document parser explains non-JSON upload rejection and retries the same file explicitly",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.locator(".tool-card").filter({hasText:"Document parser"}).click();
+ const parser=page.getByRole("dialog",{name:"Document parser & converter"});
+ await parser.getByLabel("Business document",{exact:true}).setInputFiles({name:"notes.txt",mimeType:"text/plain",buffer:Buffer.from("Useful business document notes.")});
+ await parser.getByLabel("I am authorized to process this file",{exact:false}).check();
+ await parser.getByLabel("I consent to sending the selected scanned PDF pages to Meta",{exact:false}).check();
+ await expect(parser.getByLabel("Use Meta AI to read scanned PDF pages",{exact:false})).toBeChecked();
+ const ids:string[]=[];let attempts=0;
+ await page.route("**/api/v1/workbench/documents",async route=>{
+  const body=route.request().postDataBuffer()!.toString();
+  ids.push(body.match(/name="request_id"\r\n\r\n([^\r]+)/)![1]);
+  attempts++;
+  if(attempts===1)return route.fulfill({status:413,contentType:"text/html",body:"<h1>Request Entity Too Large</h1>"});
+  return route.continue();
+ });
+ await parser.getByRole("button",{name:"Extract document batch",exact:true}).click();
+ await expect(parser.getByRole("alert")).toContainText("upload was rejected because it is too large");
+ await expect(parser.getByRole("alert")).not.toContainText("JSON");
+ await parser.getByRole("button",{name:"Extract document batch",exact:true}).click();
+ await expect(parser.getByText("Useful business document notes.",{exact:true})).toBeVisible();
+ expect(ids).toHaveLength(2);expect(ids[0]).not.toBe(ids[1]);
+});
+
+
+test("scanned document results distinguish OCR text from unreadable pages",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.locator(".tool-card").filter({hasText:"Document parser"}).click();
+ const parser=page.getByRole("dialog",{name:"Document parser & converter"});
+ await parser.getByLabel("Business document",{exact:true}).setInputFiles({name:"scan.pdf",mimeType:"application/pdf",buffer:Buffer.from("synthetic PDF upload fixture; endpoint stubbed")});
+ await parser.getByLabel("I am authorized to process this file",{exact:false}).check();
+ await parser.getByLabel("I consent to sending the selected scanned PDF pages to Meta",{exact:false}).check();
+ await page.route("**/api/v1/workbench/documents",async route=>{
+  const body=route.request().postDataBuffer()!.toString();
+  expect(body).toContain('name="use_meta"\r\n\r\ntrue');
+  await route.fulfill({status:201,json:{id:"ocr-result",tool:"documents",status:"completed",provenance:"user_supplied",data:{total_pages:2,next_page:null,pages:[{page:1,text:"Workshop order notes transcribed for review.",needs_ocr:false,truncated:false,extraction_method:"meta_pdf"},{page:2,text:"",needs_ocr:true,truncated:false,ocr_error:"Meta could not read this page; try a clearer scan."}]}}});
+ });
+ await parser.getByRole("button",{name:"Extract document batch",exact:true}).click();
+ await expect(parser.getByText(/1 of 2 pages \/ chunks contain text/)).toBeVisible();
+ await parser.getByText("Page / chunk 1",{exact:false}).click();
+ await expect(parser.getByText("Workshop order notes transcribed for review.",{exact:true})).toBeVisible();
+ await expect(parser.getByText("Page / chunk 1",{exact:false})).toContainText("Meta AI transcription (verify against original)");
+ await parser.getByText("Page / chunk 2",{exact:false}).click();
+ await expect(parser.getByText("Enable Meta PDF reading with consent",{exact:false})).toBeVisible();
 });
