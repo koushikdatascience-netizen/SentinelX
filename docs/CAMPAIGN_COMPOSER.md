@@ -36,3 +36,10 @@ Offline validation covers duration/batch mapping, input persistence, duplicate
 campaign and recording IDs, saved partial output, permission denial, synthetic
 browser recording/WAV upload and editable transcript insertion. These checks mock
 provider HTTP and do not establish a fresh live-account transcription result.
+
+Opening a saved sample campaign never selects sample mode for a new campaign.
+The owner composer defaults to live on each entry; only an explicit sample
+selection or a guest session may request fixtures. Saved sample calendars show
+a prominent explanation and a link to create a business-specific AI campaign.
+Visual/landing operations on saved sample campaigns retain sample provenance.
+Live failures remain errors and never substitute fixtures.

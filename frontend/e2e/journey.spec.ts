@@ -459,7 +459,24 @@ test("campaign duration and tone create complete 10 and 30 day sheets using the 
   await expect(page.locator(".campaign-sheet tbody tr")).toHaveCount(days);
   await expect(page.locator(".campaign-sheet tbody tr").last().locator("td").first()).toContainText(`Day ${days}`);
  }
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"live",is_guest:false,live_enabled:true,message:"Mock live test"}}));
  await page.reload();await expect(page.locator(".campaign-sheet tbody tr")).toHaveCount(30);
+ await expect(page.getByRole("status").filter({hasText:"generic sample fixtures"})).toBeVisible();
+ await page.getByRole("button",{name:"Create a business-specific AI campaign",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Generate campaign",exact:true})).toBeVisible();
+ await page.getByText("Generation options",{exact:true}).click();
+ await expect(page.getByLabel("Use sample data (no credits)")).not.toBeChecked();
+ await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill("Show our custom woodwork for trade customers, using the saved business profile.");
+ let generationMode="";
+ await page.route("**/api/v1/campaigns",async route=>{
+  if(route.request().method()!=="POST")return route.continue();
+  generationMode=route.request().postDataJSON().generation_mode;
+  await route.fulfill({status:503,json:{detail:"Live Meta unavailable. No sample was substituted."}});
+ });
+ await page.getByRole("button",{name:"Generate campaign",exact:true}).click();
+ await expect(page.getByText("Live Meta unavailable. No sample was substituted.",{exact:true})).toBeVisible();
+ expect(generationMode).toBe("live");
+ await expect(page.getByRole("heading",{name:"Create a campaign",exact:true})).toBeVisible();
 });
 
 test("campaign mic requests permission directly and inserts an editable Meta transcript without submitting",async({page})=>{
