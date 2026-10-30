@@ -593,3 +593,85 @@ test("scanned document results distinguish OCR text from unreadable pages",async
  await parser.getByText("Page / chunk 2",{exact:false}).click();
  await expect(parser.getByText("Enable Meta PDF reading with consent",{exact:false})).toBeVisible();
 });
+
+
+test("competitor and keyword tools submit distinct briefs and reopen source-linked results without another search",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{live_enabled:true}}));
+ const rows:Record<string,unknown>[]=[];const calls:Record<string,unknown>[]=[];
+ await page.route("**/api/v1/workbench**",async route=>{
+  if(route.request().method()==="GET")return route.fulfill({json:rows});
+  const body=route.request().postDataJSON();calls.push(body);
+  const row={id:body.request_id,tool:body.tool,prompt:body.prompt,status:"completed",provenance:"live_meta",model:"offline-test",data:{summary:`Saved ${body.tool} research for trade wood components.`,citations:[{url:"https://example.org/research",title:"Research source"}],limitation:"Public source pointers; popularity and proximity remain unverified."}};
+  rows.push(row);await route.fulfill({status:201,json:row});
+ });
+ const nav=page.getByRole("navigation",{name:"Main navigation"});
+ await nav.getByRole("button",{name:"Dashboard",exact:true}).click();
+ for(const item of [{tool:"competitors",title:"Competitor research",card:"Competitor research"},{tool:"keywords",title:"SEO keyword researcher",card:"SEO keywords & hashtags"}]){
+  await page.locator(".tool-card").filter({hasText:item.card}).click();
+  const dialog=page.getByRole("dialog",{name:item.title,exact:true});
+  await dialog.getByRole("textbox",{name:"Your prompt",exact:true}).fill(`Research ${item.tool} for trade wood components; exclude retail furniture shops.`);
+  await dialog.getByRole("textbox",{name:"Location",exact:true}).fill("Kalyani");
+  await dialog.getByRole("button",{name:"Start research",exact:true}).click();
+  await expect(dialog.getByText(`Saved ${item.tool} research for trade wood components.`,{exact:true})).toBeVisible();
+  await expect(dialog.getByRole("link",{name:"Research source",exact:true})).toHaveAttribute("href","https://example.org/research");
+  expect(calls.at(-1)?.tool).toBe(item.tool);expect(calls.at(-1)?.location).toBe("Kalyani");expect(calls.at(-1)?.use_business).toBe(true);
+  await dialog.getByRole("button",{name:"Close dialog",exact:true}).click();
+  await page.locator(".tool-card").filter({hasText:item.card}).click();
+  const reopened=page.getByRole("dialog",{name:item.title,exact:true});
+  await reopened.getByRole("combobox",{name:"Saved tool results",exact:true}).selectOption(String(calls.at(-1)?.request_id));
+  await expect(reopened.getByText(`Saved ${item.tool} research for trade wood components.`,{exact:true})).toBeVisible();
+  await reopened.getByRole("button",{name:"Close dialog",exact:true}).click();
+ }
+ expect(calls).toHaveLength(2);
+});
+
+
+test("AI research results render readable sections tables emphasis and safe links on desktop and phone",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{live_enabled:true}}));
+ let generated=0;
+ const summary="## Opportunities worth reviewing\n\nPrioritize **qualified trade inquiries**, using the evidence below.\n\n- Explain the minimum order clearly.\n- Invite a drawing and quantity.\n\n### Search intent\n\n| Phrase | Intent |\n| --- | --- |\n| Custom wooden parts | Trade inquiry |\n\n> These are ideas to test, not measured growth.\n\n[Evidence link](https://example.org/evidence)\n\n[Unsafe link](javascript:alert%281%29)\n\n<script>window.aiInjected=true</script>\n\n![Remote image](https://example.org/tracking.png)";
+ await page.route("**/api/v1/workbench",route=>{
+  generated++;
+  return route.fulfill({status:201,json:{id:"formatted-report",tool:"keywords",status:"completed",provenance:"live_meta",model:"offline-test",data:{summary,citations:[{title:"Public research source",url:"https://example.org/evidence"}],limitation:"Keyword volume is unmeasured."}}});
+ });
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.locator(".tool-card").filter({hasText:"SEO keywords & hashtags"}).click();
+ const dialog=page.getByRole("dialog",{name:"SEO keyword researcher",exact:true});
+ await dialog.getByRole("textbox",{name:"Your prompt",exact:true}).fill("Find trade inquiry keyword opportunities for custom wooden components.");
+ await dialog.getByRole("button",{name:"Start research",exact:true}).click();
+ await expect(dialog.getByRole("heading",{name:"Opportunities worth reviewing",exact:true})).toBeVisible();
+ await expect(dialog.locator(".ai-prose strong")).toHaveText("qualified trade inquiries");
+ await expect(dialog.getByRole("table")).toBeVisible();
+ await expect(dialog.getByRole("columnheader",{name:"Intent",exact:true})).toBeVisible();
+ await expect(dialog.getByRole("link",{name:"Public research source",exact:true})).toHaveAttribute("href","https://example.org/evidence");
+ await expect(dialog.getByRole("link",{name:"Unsafe link",exact:true})).toHaveCount(0);
+ await expect(dialog.getByRole("img",{name:"Remote image",exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>Boolean((window as unknown as Record<string,unknown>).aiInjected))).toBe(false);
+ await page.screenshot({path:"test-results/ai-research-polished-desktop.png",fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ expect(await dialog.evaluate(element=>element.scrollWidth<=element.clientWidth+1)).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await dialog.locator(".workbench-output").scrollIntoViewIfNeeded();
+ await page.screenshot({path:"test-results/ai-research-polished-mobile.png",fullPage:true});
+ expect(generated).toBe(1);
+});
+
+
+test("post drafts visually separate captions hashtags scenes prompts and calls to action",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{live_enabled:true}}));
+ await page.route("**/api/v1/workbench",route=>route.fulfill({status:201,json:{id:"formatted-post",tool:"post",status:"completed",provenance:"live_meta",model:"offline-test",data:{title:"Make your next trade inquiry count",caption:"Have a **custom wooden component** in mind?\nSend a drawing, quantity and preferred date so we can discuss your requirements.",hashtags:["#Woodworking","#TradeComponents","#CustomWoodwork"],image_prompt:"Show an owner-approved component in a clean workshop setting, with space for a short headline.",video_scenes:["Open with the product detail and a clear design reference.","Show the drawing, quantity and required date, then invite an inquiry."],call_to_action:"Send your drawing and quantity for review.",assumptions:["Owner must confirm product availability."]}}}));
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.locator(".tool-card").filter({hasText:"Post generator"}).click();
+ const dialog=page.getByRole("dialog",{name:"Post generator",exact:true});
+ await dialog.getByRole("textbox",{name:"Your prompt",exact:true}).fill("Explain the details trade customers should send with an inquiry.");
+ await dialog.getByRole("button",{name:"Generate",exact:true}).click();
+ await expect(dialog.locator(".ai-caption-card strong")).toHaveText("custom wooden component");
+ await expect(dialog.locator(".ai-hashtag-list span")).toHaveText(["#Woodworking","#TradeComponents","#CustomWoodwork"]);
+ await expect(dialog.locator(".ai-scene-list li")).toHaveCount(2);
+ await expect(dialog.locator(".ai-cta-card")).toContainText("Send your drawing and quantity");
+ await expect(dialog.locator(".ai-brief-card")).toContainText("owner-approved component");
+ await page.screenshot({path:"test-results/ai-post-polished-desktop.png",fullPage:true});
+});

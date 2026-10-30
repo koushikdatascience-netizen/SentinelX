@@ -40,7 +40,8 @@ def test_post_is_persistent_idempotent_and_includes_visual_briefs(authenticated_
 @pytest.mark.parametrize("tool",["competitors","keywords"])
 def test_research_is_one_cited_search_without_invented_rankings(authenticated_client,monkeypatch,tool):
     enabled(monkeypatch);calls=[]
-    def search(self,query):
+    def search(self,query,**options):
+        assert options["purpose"]==tool
         calls.append(query);return {"provenance":"live_meta","model":"offline-test","data":{"summary":"A source-linked candidate.","citations":[{"title":"Source","url":"https://example.org"}],"searched":True}}
     monkeypatch.setattr(workbench.MetaClient,"search",search)
     workspace=profile(authenticated_client)["workspace_id"]
@@ -148,7 +149,7 @@ def test_competitor_research_does_not_consume_campaign_generation_quota(authenti
     def denied(*args):raise HTTPException(429,"Campaign generation attempt limit reached")
     calls=[]
     monkeypatch.setattr(workbench,"claim_attempt",denied)
-    monkeypatch.setattr(workbench.MetaClient,"search",lambda self,query:(calls.append(query) or {
+    monkeypatch.setattr(workbench.MetaClient,"search",lambda self,query,**options:(calls.append(query) or {
         "provenance":"live_meta","model":"offline-test","data":{"summary":"Candidate evidence.",
         "citations":[{"title":"Source","url":"https://example.org"}],"searched":True}}))
     workspace=profile(authenticated_client)["workspace_id"]
@@ -265,3 +266,34 @@ def test_pdf_text_layer_is_extracted_persisted_and_exported(authenticated_client
     assert not data["pages"][0]["needs_ocr"]
     exported=authenticated_client.get(f'/api/v1/workbench/{response.json()["id"]}/export',params={"workspace_id":workspace,"format":"txt"})
     assert exported.status_code==200 and "Workshop quotation requirements" in exported.text
+
+
+@pytest.mark.parametrize("tool",["competitors","keywords"])
+def test_research_preserves_complete_request_and_saved_context_without_cutting_json(authenticated_client,monkeypatch,tool):
+    import json
+    enabled(monkeypatch);calls=[]
+    def search(self,query,**options):
+        parsed=json.loads(query);calls.append(parsed)
+        assert len(query)<=4000 and parsed["request"].endswith("NEVER INCLUDE RETAIL FURNITURE SHOPS")
+        assert parsed["business"]["name"] and parsed["industry"] and parsed["research_date"]
+        assert options["purpose"]==tool
+        return {"provenance":"live_meta","model":"offline-test","data":{"summary":"Source-backed research notes.","citations":[{"title":"Source","url":"https://example.org"}],"searched":True}}
+    monkeypatch.setattr(workbench.MetaClient,"search",search)
+    workspace=profile(authenticated_client)["workspace_id"]
+    prompt="Find businesses and phrases for trade components. "*25+"NEVER INCLUDE RETAIL FURNITURE SHOPS"
+    body=payload(workspace,tool,prompt=prompt)
+    first=authenticated_client.post("/api/v1/workbench",json=body)
+    assert first.status_code==201,first.text
+    assert authenticated_client.post("/api/v1/workbench",json=body).json()["id"]==first.json()["id"]
+    assert len(calls)==1
+
+
+@pytest.mark.parametrize("tool",["competitors","keywords"])
+def test_research_budget_failure_is_429_and_persisted_without_retry(authenticated_client,monkeypatch,tool):
+    enabled(monkeypatch);calls=[]
+    def search(self,*args,**kwargs):calls.append(1);raise ValueError("Meta budget reached for this workspace")
+    monkeypatch.setattr(workbench.MetaClient,"search",search)
+    workspace=profile(authenticated_client)["workspace_id"];body=payload(workspace,tool)
+    first=authenticated_client.post("/api/v1/workbench",json=body)
+    assert first.status_code==429 and "spending limit" in first.json()["detail"]
+    assert authenticated_client.post("/api/v1/workbench",json=body).status_code==409 and calls==[1]

@@ -140,12 +140,12 @@ def generate(body:ToolRequest,user:User=Depends(current_user),db:Session=Depends
         # The historical shared campaign counter must not disable unrelated tools.
         client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=row.id,max_tokens=2600)
         if body.tool in ("competitors","keywords"):
-            intent=("Find nearby candidate competitors and comparable businesses. Prioritize matching offerings and location. "
-                "Give source-linked evidence for relevance and concrete comparison points. Do not invent ratings, rankings, revenue or verified proximity." if body.tool=="competitors" else
-                "Research relevant SEO keyword phrases, customer search intent and social hashtag ideas from current public sources. "
-                "Distinguish source-supported observations from keyword hypotheses. Never invent search volume, difficulty scores, trending status, top-rated status or hashtag popularity.")
-            query=intent+" Owner request: "+body.prompt[:650]+" Industry: "+body.industry+" Location: "+body.location+" Supplied business context: "+json.dumps(context,ensure_ascii=False)[:700]
-            response=client.search(query[:2000])
+            from datetime import datetime,timezone
+            context_limits={"name":100,"industry":100,"industry_other":100,"description":400,"website":200,"address":160}
+            query=json.dumps({"request":body.prompt,"industry":(body.industry or context.get("industry_other") or context.get("industry",""))[:100],
+                "location":(body.location or context.get("address",""))[:160],"business":{key:value[:context_limits[key]] for key,value in context.items()},
+                "research_date":datetime.now(timezone.utc).date().isoformat()},ensure_ascii=False)
+            response=client.search(query,purpose=body.tool)
             result.update(response)
             result["limitation"]="Search results are candidate evidence and ideas, not a verified ranking, exhaustive competitor survey or measured keyword-volume report."
         elif body.tool=="image_review":
