@@ -287,6 +287,9 @@ class MetaClient:
             return {"provenance":"live_meta","model":"muse-voice-transcribe-1.0",
                 "data":{"transcript":transcript.strip(),"audio_duration_ms":data.get("audioDurationMs",duration)}}
         except MetaError:raise
+        except ValueError as error:
+            if str(error).startswith("Meta budget reached"):raise
+            raise MetaError("Meta transcription validation failed; no automatic retry. Usage may have been consumed.") from None
         except Exception:raise MetaError("Meta transcription failed; no automatic retry. Usage may have been consumed.") from None
 
     def search(self,query):

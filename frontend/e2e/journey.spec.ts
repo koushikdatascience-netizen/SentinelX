@@ -283,7 +283,7 @@ test("dashboard document parser and image editor run locally in dedicated modals
  await expect(research.getByLabel("Use my saved business details",{exact:false})).toBeChecked();
  await research.getByLabel("Location",{exact:true}).fill("Kalyani");
  await research.getByLabel("Your prompt",{exact:true}).fill("Find comparable local wooden parts workshops.");
- await expect(research.getByRole("checkbox",{name:"Send this recording to Meta for transcription"})).toBeDisabled();
+ await expect(research.getByRole("checkbox",{name:"Send this recording to Meta for transcription"})).toHaveCount(0);
  await expect(research.getByRole("button",{name:"Record voice prompt"})).toBeDisabled();
  await expect(research.getByText("Voice dictation needs live Meta inference enabled.",{exact:false})).toBeVisible();
  await expect(research.getByRole("button",{name:"Start research",exact:true})).toBeDisabled();
@@ -333,11 +333,12 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
  await expect(page.getByRole("heading",{name:"Create a campaign"})).toBeVisible();
- await page.getByLabel("Business name",{exact:true}).fill("Fixture Woodworks");
- await page.getByLabel("What do you offer?").fill("We produce custom furniture and wooden parts for local customers who need quotations.");
- await page.getByLabel("What should this campaign achieve?").fill("Improve qualified requests for custom woodworking quotations.");
- const voiceConsents=page.getByRole("checkbox",{name:"Send this recording to Meta for transcription"});
- await expect(voiceConsents).toHaveCount(2);await expect(voiceConsents.nth(0)).toBeDisabled();await expect(voiceConsents.nth(1)).toBeDisabled();
+ await expect(page.getByLabel("What do you offer?")).toHaveCount(0);
+ await expect(page.getByLabel("Business name",{exact:true})).toHaveCount(0);
+ await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill("Focus on custom woodworking quotations, showing the design and quantity needed for a complete inquiry.");
+ await page.getByRole("combobox",{name:"Campaign goal",exact:true}).selectOption("Generate qualified inquiries");
+ await expect(page.getByRole("checkbox",{name:"Send this recording to Meta for transcription"})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Record voice prompt",exact:true})).toBeDisabled();
  const platforms=page.getByRole("group",{name:"Where will you share it?"});
  for(const platform of ["LinkedIn","X (Twitter)","Google Business Profile","YouTube","Blogger"])await expect(platforms.getByLabel(platform,{exact:true})).toBeVisible();
  await page.getByText("Generation options",{exact:true}).click();
@@ -440,6 +441,63 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await expect(page.locator(".campaign-sheet tbody tr")).toHaveCount(7);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.screenshot({path:"test-results/campaign-mobile.png",fullPage:true});
+});
+
+test("campaign duration and tone create complete 10 and 30 day sheets using the saved profile",async({page})=>{
+ await accountAndWorkspace(page);
+ const navigation=page.getByRole("navigation",{name:"Main navigation"});
+ for(const days of [10,30]){
+  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
+  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
+  await expect(page.getByLabel("What do you offer?")).toHaveCount(0);
+  await page.getByRole("combobox",{name:"Campaign duration",exact:true}).selectOption(String(days));
+  await page.getByRole("combobox",{name:"Campaign tone",exact:true}).selectOption("friendly");
+  await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill(`Create a ${days} day campaign explaining custom trade inquiries and the design information needed.`);
+  await page.getByText("Generation options",{exact:true}).click();await page.getByLabel("Use sample data (no credits)").check();
+  await page.getByRole("button",{name:"Create sample campaign",exact:true}).click();
+  await expect(page.getByText(`${days}-day content plan`,{exact:true})).toBeVisible();
+  await expect(page.locator(".campaign-sheet tbody tr")).toHaveCount(days);
+  await expect(page.locator(".campaign-sheet tbody tr").last().locator("td").first()).toContainText(`Day ${days}`);
+ }
+ await page.reload();await expect(page.locator(".campaign-sheet tbody tr")).toHaveCount(30);
+});
+
+test("campaign mic requests permission directly and inserts an editable Meta transcript without submitting",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"live",live_enabled:true,is_guest:false,message:"Mock live test"}}));
+ await page.addInitScript(()=>{
+  navigator.mediaDevices.getUserMedia=async()=>{const context=new AudioContext();const oscillator=context.createOscillator();const destination=context.createMediaStreamDestination();oscillator.connect(destination);oscillator.start();return destination.stream};
+ });
+ await page.reload();
+ const calls:Buffer[]=[];let campaigns=0;
+ page.on("request",request=>{if(request.method()==="POST"&&request.url().endsWith("/api/v1/campaigns"))campaigns++});
+ await page.route("**/api/v1/prompts/transcribe",async route=>{calls.push(route.request().postDataBuffer()!);await route.fulfill({json:{provenance:"live_meta",model:"mock-voice",transcript:"Show the custom inquiry process with product examples."}})});
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
+ await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill("Focus on trade buyers.");
+ await expect(page.getByRole("checkbox",{name:/Send this recording/})).toHaveCount(0);
+ await page.getByRole("button",{name:"Record voice prompt",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Stop and transcribe voice prompt",exact:true})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Generate campaign",exact:true})).toBeDisabled();
+ // Synthetic audio must have enough duration to satisfy the real WAV intake bound.
+ await page.waitForTimeout(900);
+ await page.getByRole("button",{name:"Stop and transcribe voice prompt",exact:true}).click();
+ await expect(page.getByRole("textbox",{name:"Campaign requirements",exact:true})).toHaveValue("Focus on trade buyers. Show the custom inquiry process with product examples.");
+ expect(calls).toHaveLength(1);expect(calls[0].includes(Buffer.from("RIFF"))).toBe(true);expect(calls[0].includes(Buffer.from('name="request_id"'))).toBe(true);expect(campaigns).toBe(0);
+ await page.screenshot({path:"test-results/campaign-requirements-mic.png",fullPage:true});
+});
+
+test("campaign mic permission denial preserves typed requirements and makes no transcription request",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"live",live_enabled:true,is_guest:false,message:"Mock live test"}}));
+ await page.addInitScript(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException("Denied","NotAllowedError")}});
+ await page.reload();let calls=0;page.on("request",r=>{if(r.url().endsWith("/api/v1/prompts/transcribe"))calls++});
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
+ await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill("Keep my typed campaign requirements.");
+ await page.getByRole("button",{name:"Record voice prompt",exact:true}).click();
+ await expect(page.locator(".prompt-voice").getByRole("alert")).toContainText("Microphone access was denied");
+ await expect(page.getByRole("textbox",{name:"Campaign requirements",exact:true})).toHaveValue("Keep my typed campaign requirements.");expect(calls).toBe(0);
 });
 
 test("business mission entry points are removed from the workspace",async({page})=>{

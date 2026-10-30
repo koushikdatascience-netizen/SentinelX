@@ -99,3 +99,20 @@ def test_failed_prompt_transcription_returns_no_sample_and_records_failure(authe
         row = db.query(WorkflowRun).filter(WorkflowRun.workspace_id == workspace).one()
         assert row.status == "failed"
         assert "transcript" not in json.loads(row.result_json)
+
+
+def test_recording_request_id_prevents_duplicate_paid_transcription(authenticated_client,monkeypatch):
+    from uuid import uuid4
+    configure_live(monkeypatch);workspace=authenticated_client.post("/api/v1/workspaces",json={"name":"Voice idempotency"}).json()["id"];calls=[]
+    monkeypatch.setattr(MetaClient,"transcribe",lambda *a:(calls.append(1) or {"provenance":"live_meta","model":"mock-voice","data":{"transcript":"Focus on complete trade inquiries."}}))
+    body={"workspace_id":workspace,"request_id":str(uuid4()),"consent":"true"}
+    def send():return authenticated_client.post("/api/v1/prompts/transcribe",data=body,files={"file":("prompt.wav",sample_wav(),"audio/wav")})
+    assert send().status_code==200 and send().status_code==409 and calls==[1]
+
+
+def test_voice_budget_failure_explains_no_audio_was_sent(authenticated_client,monkeypatch):
+    from tests.test_meta_client import transport
+    configure_live(monkeypatch);monkeypatch.setenv("META_RUN_BUDGET_CENTS","0")
+    workspace=authenticated_client.post("/api/v1/workspaces",json={"name":"Voice budget"}).json()["id"];calls=transport(monkeypatch)
+    response=post_voice(authenticated_client,workspace)
+    assert response.status_code==429 and "No audio was sent to Meta" in response.json()["detail"] and calls==[]
