@@ -317,7 +317,7 @@ test("mocked provider draft is validated, rendered and exported",async({page})=>
  await page.getByRole("button",{name:"Generate evidence-based draft"}).click();
  await expect(page.getByRole("heading",{name:"Offline fixture draft"})).toBeVisible();
  await page.getByRole("button",{name:"Settings",exact:true}).click();
- await page.getByRole("button",{name:"Sign out",exact:true}).last().click();
+ await page.locator(".sidebar-account").getByRole("button",{name:"Sign out",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Welcome back"})).toBeVisible();
 });
 
