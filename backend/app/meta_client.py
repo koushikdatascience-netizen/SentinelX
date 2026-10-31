@@ -225,6 +225,9 @@ class MetaClient:
                         "data":{"b64_json":encoded, "image_b64":encoded, "format":output_format}}
         except MetaError:
             raise
+        except ValueError as exc:
+            if str(exc).startswith(("Meta budget", "Owned workspace", "Meta calls require")):raise
+            raise MetaError("Meta image validation failed. No retry made; usage may have been consumed.") from None
         except Exception:
             raise MetaError("Meta image request failed. No retry made; usage may have been consumed.") from None
 
@@ -298,13 +301,15 @@ class MetaClient:
 
     def search(self,query,purpose="market"):
         from app.engine_inputs import grounded_response
-        if purpose not in ("market","competitors","keywords","social"):raise ValueError("Unsupported search purpose")
+        if purpose not in ("market","competitors","keywords","social","web"):raise ValueError("Unsupported search purpose")
         self._prompt(query,4000)
         if not self._live():
             return {"provenance":"sample","model":"muse-spark-1.3","data":{"summary":"Sample market-research fixture; no web search performed.",
                 "citations":[],"results":[],"searched":False,"limitation":"Authored fixture, not discovered competitor evidence."}}
         if os.getenv("META_MODEL","muse-spark-1.3")!="muse-spark-1.3":raise NotSupported("UNVERIFIED search model")
         output_instructions=(
+            "Answer the requested question using relevant public sources. Cite sources and distinguish facts from uncertainty. Keep the answer under 250 words. "
+            if purpose=="web" else
             "Find the exact supplied owner profile and publicly indexed posts first, then at most two comparable accounts on the SAME platform. "
             "Use the exact profile URL, account handle, business name and location to disambiguate. The owner is the primary research target. "
             "Prefer site-restricted queries for that platform. Do not substitute unrelated directories or other platforms for profile evidence. "

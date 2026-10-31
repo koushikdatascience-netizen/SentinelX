@@ -121,6 +121,10 @@ def runtime(user:User=Depends(current_user)):
 
 @router.post("",status_code=201)
 def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depends(session)):
+    return create_campaign(body,user,db)
+
+
+def create_campaign(body,user,db,budget_run_id=None):
     owned(db,user,body.workspace_id)
     profile=db.get(BusinessProfile,body.workspace_id)
     if body.business_description is None:
@@ -184,7 +188,7 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
     known={e["id"] for e in evidence if e["id"]!="URL1"}
     if live:
         if model_run is None:model_run=create_model_run(db,body.workspace_id,str(body.website or "user-supplied"),body.goal)
-        client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=model_run.id,max_tokens=6000)
+        client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=budget_run_id or model_run.id,max_tokens=6000)
         context={"description":body.business_description,"goal":body.goal,"audience":body.audience,
                  "language":body.language,"platforms":body.platforms,"images":image_data,
                  "duration_days":body.duration_days,"tone":body.tone,"requirements":body.requirements,

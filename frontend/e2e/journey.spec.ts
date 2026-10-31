@@ -13,7 +13,7 @@ test("owner entry offers account access without demo entry points",async({page})
 
 async function openTool(page:Page,title:string){
  const card=page.locator(".tool-card").filter({hasText:title});
- if(!await card.isVisible())await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
+ if(!await card.isVisible()){await page.getByRole("button",{name:"Browse business tools",exact:true}).click();await page.getByRole("button",{name:"Open full tools",exact:false}).click();}
  await card.click();
 }
 
@@ -24,8 +24,8 @@ async function accountAndWorkspace(page:Page) {
  await page.getByLabel("Email address").fill(email);
  await page.getByLabel("Password",{exact:true}).fill("StrongPassword123");
  await page.getByRole("button",{name:"Create account",exact:false}).click();
- await expect(page.getByRole("heading",{name:"Let’s get to know your business"})).toBeVisible();
- await expect(page.getByRole("heading",{name:"Your business workspace"})).toHaveCount(0);
+ await expect(page.getByRole("heading",{name:"Let’s get to know your business"})).toBeVisible({timeout:15000});
+ await expect(page.getByRole("heading",{name:"What can I help you with?"})).toHaveCount(0);
  await page.getByLabel("Business name",{exact:true}).fill("Browser workshop");
  await page.getByLabel("Industry",{exact:true}).selectOption("Arts & crafts");
  await page.getByRole("button",{name:"Save & continue"}).click();
@@ -235,7 +235,7 @@ test("owner evidence, recorded review and downloadable audit",async({page})=>{
  expect(text).toContain("approved (no external execution)");
 });
 
-test("single business consent wraps on mobile and research progress opens in a modal",async({page})=>{
+test("single business consent wraps on mobile and research stays off the chat canvas",async({page})=>{
  await accountAndWorkspace(page);
  const nav=page.getByRole("navigation",{name:"Main navigation"});
  await nav.getByRole("button",{name:"Business & research",exact:true}).click();
@@ -253,15 +253,11 @@ test("single business consent wraps on mobile and research progress opens in a m
  await expect(page.getByRole("status")).toContainText("Business details saved");
  await page.getByRole("tab",{name:"Activity",exact:true}).click();
  await page.getByRole("button",{name:"Start new research",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Collection activity",exact:true})).toBeVisible();
  await nav.getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.getByRole("button",{name:"View research progress"}).click();
- const progress=page.getByRole("dialog",{name:"Website research"});
- await expect(progress).toBeVisible();
- await expect(progress.getByRole("heading",{name:/Reviewing your key pages|Research complete|Research saved with gaps/})).toBeVisible();
- await expect(progress.getByText(/pages · .*previews saved/)).toBeVisible();
- await page.screenshot({path:"test-results/research-progress-modal.png"});
- await progress.getByRole("button",{name:"Close",exact:true}).click();
- await expect(progress).not.toBeVisible();
+ await expect(page.getByRole("region",{name:"Business assistant"})).toBeVisible();
+ await expect(page.locator(".business-summary")).toHaveCount(0);
+
 });
 
 test("dashboard document parser and image editor run locally in dedicated modals",async({page})=>{
@@ -337,8 +333,9 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await accountAndWorkspace(page);
  const navigation=page.getByRole("navigation",{name:"Main navigation"});
  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Your business workspace"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"What can I help you with?"})).toBeVisible();
   await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
+  await page.getByRole("button",{name:"Open full tools",exact:false}).click();
   await expect(page.locator(".tool-card")).toHaveCount(10);
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
  await openTool(page,"Create campaign");
@@ -444,7 +441,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await expect(page.locator(".photo-result").getByText("fixture-product.png",{exact:true})).toBeVisible();
  await page.getByRole("dialog",{name:"Photo review",exact:true}).getByRole("button",{name:"Close dialog",exact:true}).click();
  await page.setViewportSize({width:390,height:844});
- await expect(page.getByRole("heading",{name:"Your business workspace"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"What can I help you with?"})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.screenshot({path:"test-results/dashboard-mobile.png",fullPage:true});
  await navigation.getByRole("button",{name:"Campaigns",exact:true}).click();
@@ -540,7 +537,7 @@ test("business mission entry points are removed from the workspace",async({page}
  await expect(page.getByRole("button",{name:"Analyze website",exact:true})).toHaveCount(0);
  await page.evaluate(()=>{window.location.hash="mission"});
  await expect(page).toHaveURL(/#dashboard$/);
- await expect(page.getByRole("heading",{name:"Your business workspace",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"What can I help you with?",exact:true})).toBeVisible();
 });
 
 
@@ -764,17 +761,18 @@ test("business chat keeps the dashboard clean opens tools from plus and restores
   const row={id:body.request_id,thread_id:body.thread_id,message:body.message,status:"completed",provenance:"live_meta",answer:"## Prioritize inquiry quality\nUse your saved business context to ask for **design, quantity and required date**.",citations:[{source_id:"B1",quote:"Browser workshop"}],sources:[{id:"B1",filename:"Business profile",origin:"user_supplied"}],analysis:null};saved.push(row);return route.fulfill({status:201,json:row});
  });
  await page.reload();await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
- await expect(page.getByRole("heading",{name:"What should we work on?",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"What can I help you with?",exact:true})).toBeVisible();
  await expect(page.locator(".tool-card")).toHaveCount(0);
- await page.locator(".chat-context-options summary").click();
+ await page.getByRole("button",{name:"Context",exact:true}).click();
  await page.getByRole("group",{name:"Advisor focus areas"}).getByRole("button",{name:"marketing",exact:true}).click();
  const question=page.getByRole("textbox",{name:"Message your business assistant",exact:true});
  await question.fill("How can we improve the quality of trade inquiries?");
  await page.getByRole("button",{name:"Send business message",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Prioritize inquiry quality",exact:true})).toBeVisible();
- expect(requests).toHaveLength(1);expect(requests[0].focus).toEqual(["strategy","marketing"]);expect(requests[0].use_knowledge).toBe(true);
+ expect(requests).toHaveLength(1);expect(requests[0].focus).toEqual(["marketing"]);expect(requests[0].use_knowledge).toBe(false);expect(requests[0].tools).toEqual([]);
  await page.reload();await expect(page.getByRole("heading",{name:"Prioritize inquiry quality",exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
+ await page.getByRole("button",{name:"Open full tools",exact:false}).click();
  const picker=page.getByRole("dialog",{name:"Business tools",exact:true});await expect(picker.locator(".tool-card")).toHaveCount(10);
  await picker.locator(".tool-card").filter({hasText:"Post generator"}).click();
  const post=page.getByRole("dialog",{name:"Post generator",exact:true});
@@ -811,4 +809,59 @@ test("knowledge uploads profile sales locally and calculate real chart values wi
  await page.screenshot({path:"test-results/knowledge-data-analysis.png",fullPage:true});
  await page.reload();await page.getByRole("tab",{name:"Knowledge base",exact:true}).click();
  await expect(page.getByRole("heading",{name:"sales-2025.csv",exact:true})).toBeVisible();
+});
+
+test("chat-only dashboard selects multiple real tool intents without running on selection",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"live",live_enabled:true,is_guest:false}}));
+ const calls:Record<string,unknown>[]=[];const saved:Record<string,unknown>[]=[];
+ await page.route("**/api/v1/business-chat**",async route=>{
+  const url=new URL(route.request().url());
+  if(route.request().method()==="GET")return route.fulfill({json:url.pathname.endsWith("/threads")?[]:saved});
+  const body=route.request().postDataJSON();calls.push(body);
+  const row={id:body.request_id,status:"completed",provenance:"live_meta",message:body.message,answer:"## Your research and visual are ready\nReview the source and generated concept before using them.",tool_results:[{tool:"web_search",status:"completed",provenance:"live_meta",data:{summary:"A public source relevant to this request.",results:[{url:"https://example.org/research",title:"Public workshop guide",snippet:"Source evidence for owner review."}]}},{tool:"image",status:"completed",provenance:"live_meta",data:{asset_id:"mock-chat-image",note:"Original generated concept; nothing published."}}]};saved.push(row);await route.fulfill({status:201,json:row});
+ });
+ await page.route("**/business-profile/assets/mock-chat-image",route=>route.fulfill({contentType:"image/png",body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")}));
+ await page.reload();await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"What can I help you with?",exact:true})).toBeVisible();
+ await expect(page.locator(".business-summary,.dashboard-saved-work,.product-page-head")).toHaveCount(0);
+ await page.screenshot({path:"test-results/chat-only-empty-desktop.png",fullPage:true});
+ await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
+ const picker=page.getByRole("group",{name:"Select chat tools",exact:true});
+ await picker.getByRole("button",{name:/^Web search/}).click();await picker.getByRole("button",{name:/^Image generator/}).click();
+ expect(calls).toHaveLength(0);await picker.getByRole("button",{name:"Done · 2 selected",exact:true}).click();
+ await expect(page.getByRole("group",{name:"Select chat tools",exact:true})).toHaveCount(0);
+ await page.getByRole("button",{name:"Remove Image generator",exact:true}).click();
+ await page.getByRole("button",{name:"Browse business tools",exact:true}).click();await picker.getByRole("button",{name:/^Image generator/}).click();
+ await page.keyboard.press("Escape");expect(calls).toHaveLength(0);
+ await page.getByRole("textbox",{name:"Message your business assistant",exact:true}).fill("Research a product presentation and generate an original image concept.");
+ await page.getByRole("textbox",{name:"Message your business assistant",exact:true}).press("Enter");
+ await expect(page.getByRole("heading",{name:"Your research and visual are ready",exact:true})).toBeVisible();
+ expect(calls).toHaveLength(1);expect(calls[0].tools).toEqual(["web_search","image"]);expect(calls[0].tool_consent).toBe(true);
+ await expect(page.getByLabel("Selected tools",{exact:true})).toHaveCount(0);
+ await expect(page.getByRole("img",{name:"Generated original concept",exact:true})).toBeVisible();
+ await page.getByText("Web sources (1)",{exact:true}).click();await expect(page.getByRole("link",{name:"Public workshop guide",exact:true})).toHaveAttribute("href","https://example.org/research");
+ await page.reload();await expect(page.getByRole("img",{name:"Generated original concept",exact:true})).toBeVisible();expect(calls).toHaveLength(1);
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/chat-only-tools-mobile.png",fullPage:true});
+});
+
+test("chat campaign result opens the exact saved draft rather than a previously loaded campaign",async({page})=>{
+ await accountAndWorkspace(page);
+ const token=await page.evaluate(()=>sessionStorage.getItem("sentinelx-token"));const wid=await page.getByLabel("Active workspace").inputValue();
+ async function draft(goal:string){const response=await page.request.post("http://127.0.0.1:18081/api/v1/campaigns",{headers:{Authorization:"Bearer "+token},data:{workspace_id:wid,goal,requirements:goal,generation_mode:"sample"}});expect(response.status()).toBe(201);return response.json()}
+ const old=await draft("Explain the existing trade product offering");
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"live",live_enabled:true,is_guest:false}}));
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"What can I help you with?",exact:true})).toBeVisible();
+ const next=await draft("Explain a new workshop inquiry campaign");expect(next.id).not.toBe(old.id);
+ await page.route("**/api/v1/business-chat",async route=>{
+  if(route.request().method()!=="POST")return route.continue();const body=route.request().postDataJSON();
+  await route.fulfill({status:201,json:{id:body.request_id,status:"completed",provenance:"live_meta",message:body.message,answer:"The campaign draft is saved and ready for your review.",tool_results:[{tool:"campaign",status:"completed",provenance:"live_meta",data:{campaign_id:next.id,note:"Saved draft only."}}]}});
+ });
+ await page.getByRole("button",{name:"Browse business tools",exact:true}).click();await page.getByRole("group",{name:"Select chat tools",exact:true}).getByRole("button",{name:/^Create campaign/}).click();await page.getByRole("button",{name:"Done · 1 selected",exact:true}).click();
+ await page.getByRole("textbox",{name:"Message your business assistant",exact:true}).fill("Create a useful campaign for our workshop inquiries.");await page.getByRole("button",{name:"Send business message",exact:true}).click();
+ await page.getByRole("button",{name:"Open saved campaign",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Campaign calendar",exact:true})).toBeVisible();
+ await expect(page.getByRole("combobox",{name:"Campaign history",exact:true})).toHaveValue(next.id);
 });
