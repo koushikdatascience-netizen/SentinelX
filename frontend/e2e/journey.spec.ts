@@ -865,3 +865,29 @@ test("chat campaign result opens the exact saved draft rather than a previously 
  await expect(page.getByRole("heading",{name:"Campaign calendar",exact:true})).toBeVisible();
  await expect(page.getByRole("combobox",{name:"Campaign history",exact:true})).toHaveValue(next.id);
 });
+
+test("late business profile defaults never overwrite a typed research industry or location",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{live_enabled:true}}));
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve});let delivered=0;
+ await page.route("**/business-profile",async route=>{
+  if(route.request().method()!=="GET")return route.continue();
+  await gate;await route.fulfill({json:{details:{name:"Saved profile",industry:"Manufacturing",industry_other:"",address:"Old city"}}});delivered++;
+ });
+ const calls:Record<string,unknown>[]=[];
+ await page.route("**/api/v1/workbench**",async route=>{
+  if(route.request().method()==="GET")return route.fulfill({json:[]});
+  const body=route.request().postDataJSON();calls.push(body);await route.fulfill({status:201,json:{id:body.request_id,tool:body.tool,status:"completed",provenance:"live_meta",data:{summary:"Research respects the manually supplied location and industry.",citations:[]}}});
+ });
+ await openTool(page,"Competitor research");const dialog=page.getByRole("dialog",{name:"Competitor research",exact:true});
+ await dialog.getByRole("textbox",{name:"Industry",exact:true}).fill("Custom wooden components");
+ await dialog.getByRole("textbox",{name:"Location",exact:true}).fill("Kalyani");
+ release();await expect.poll(()=>delivered).toBeGreaterThan(0);
+ await expect(dialog.getByRole("textbox",{name:"Industry",exact:true})).toHaveValue("Custom wooden components");
+ await expect(dialog.getByRole("textbox",{name:"Location",exact:true})).toHaveValue("Kalyani");
+ await dialog.getByRole("textbox",{name:"Your prompt",exact:true}).fill("Find trade component manufacturers around the selected city.");
+ await dialog.getByRole("button",{name:"Start research",exact:true}).click();
+ await expect(dialog.getByText("Research respects the manually supplied location and industry.",{exact:true})).toBeVisible();
+ expect(calls).toHaveLength(1);expect(calls[0].location).toBe("Kalyani");expect(calls[0].industry).toBe("Custom wooden components");
+});
