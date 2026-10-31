@@ -100,7 +100,7 @@ def test_incomplete_final_review_and_running_batch_do_not_execute(authenticated_
     assert authenticated_client.post(base+f"/visual-batches/{first['id']}/next",params={"workspace_id":wid}).status_code==409
 
 
-def test_live_bulk_uses_one_image_per_step_with_shared_run_budget(authenticated_client,monkeypatch):
+def test_live_bulk_processes_all_images_despite_legacy_run_limit(authenticated_client,monkeypatch):
     wid,plan=campaign(authenticated_client);enable(monkeypatch)
     monkeypatch.setenv("META_RUN_BUDGET_CENTS","5");monkeypatch.setenv("META_WORKSPACE_BUDGET_CENTS","50")
     calls=[]
@@ -112,10 +112,13 @@ def test_live_bulk_uses_one_image_per_step_with_shared_run_budget(authenticated_
     first=authenticated_client.post(base+"/visual-batches",params={"workspace_id":wid},json={"request_id":str(uuid4()),"generation_mode":"live","select_drafts":True}).json()
     path=base+f"/visual-batches/{first['id']}/next"
     assert authenticated_client.post(path,params={"workspace_id":wid}).json()["status"]=="pending"
-    second=authenticated_client.post(path,params={"workspace_id":wid}).json()
-    assert second["status"]=="failed" and len(second["completed"])==1 and len(calls)==1
-    assert authenticated_client.post(path,params={"workspace_id":wid}).json()["status"]=="failed" and len(calls)==1
-    assert len(authenticated_client.get(base+"/creative-status",params={"workspace_id":wid}).json())==1
+    current=authenticated_client.post(path,params={"workspace_id":wid}).json()
+    assert current["status"] in {"pending","completed"} and len(calls)==2
+    for _ in range(10):
+        if current["status"]=="completed":break
+        current=authenticated_client.post(path,params={"workspace_id":wid}).json()
+    assert current["status"]=="completed" and len(calls)==len(current["completed"])
+    assert len(authenticated_client.get(base+"/creative-status",params={"workspace_id":wid}).json())==len(calls)
 
 
 def test_editable_image_prompt_uses_real_client_field_and_idempotent_paid_request(authenticated_client,monkeypatch):
