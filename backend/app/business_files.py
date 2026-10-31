@@ -14,6 +14,7 @@ from app.workspace_store import Workspace
 MAX_FILE=8_000_000
 MAX_STORAGE=80_000_000
 DOCUMENTS={".pdf":"application/pdf",".txt":"text/plain",".csv":"text/csv",
+           ".md":"text/markdown",
            ".docx":"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
            ".xlsx":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
 
@@ -39,9 +40,9 @@ def validate_upload(payload,filename,kind):
     suffix=PurePath(name).suffix.lower()
     mime=DOCUMENTS.get(suffix)
     if not mime:raise ValueError("Use PNG, JPEG, WebP, PDF, TXT, CSV, DOCX or XLSX; executable and macro files are not accepted")
-    text=""
-    if suffix in (".txt",".csv"):
-        text=payload.decode("utf-8-sig")
+    text="";extra={}
+    if suffix in (".txt",".csv",".md"):
+        text=payload.decode("utf-16" if payload.startswith((b"\xff\xfe",b"\xfe\xff")) else "utf-8-sig")
         if "\x00" in text:raise ValueError("Invalid text file")
     elif suffix==".pdf":
         if not payload.startswith(b"%PDF-"):raise ValueError("Invalid PDF")
@@ -49,7 +50,9 @@ def validate_upload(payload,filename,kind):
         try:
             reader=PdfReader(io.BytesIO(payload))
             if reader.is_encrypted:raise ValueError("Encrypted PDFs are not supported")
-            text="\n".join((page.extract_text() or "")[:4000] for page in reader.pages[:20])
+            extracted=[(page.extract_text() or "")[:4000] for page in reader.pages[:20]]
+            text="\n".join(extracted)
+            extra.update(page_texts={str(i+1):value for i,value in enumerate(extracted)},total_pages=len(reader.pages),pages_extracted=len(extracted),scanned_pages=[i+1 for i,value in enumerate(extracted) if not value.strip()])
         except Exception as exc:raise ValueError("PDF could not be read; upload an unencrypted business document") from exc
     else:
         try:
@@ -64,7 +67,10 @@ def validate_upload(payload,filename,kind):
                     target=next((item.filename for item in entries if item.filename.startswith("xl/worksheets/") and item.filename.endswith(".xml")),"")
                 text=" ".join(ElementTree.fromstring(archive.read(target)).itertext())
         except (KeyError,zipfile.BadZipFile,ElementTree.ParseError) as exc:raise ValueError("Invalid Office document") from exc
-    return name,mime,{"text_excerpt":text[:8000],"limitation":"Owner-supplied content; not independently verified. Text extraction is bounded; image-only documents may have no extracted text."}
+    if suffix in (".csv",".xlsx"):
+        from app.business_data import profile
+        extra["dataset_profile"]=profile(payload,name)
+    return name,mime,{**extra,"knowledge_text":text[:50000],"text_excerpt":text[:8000],"limitation":"Owner-supplied content; not independently verified. Text extraction is bounded; image-only documents may have no extracted text."}
 
 
 def store_asset(db,workspace_id,kind,filename,mime,payload,*,source_url="",job_id=None,metadata=None,supplied_hash=None):

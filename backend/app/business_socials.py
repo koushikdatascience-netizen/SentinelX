@@ -75,6 +75,16 @@ def same_profile(url,target):
     return bool(path or identity) and host(source)==host(profile) and (source.path.rstrip("/")==path or source.path.startswith(path+"/")) and all(query.get(key)==value for key,value in identity.items())
 
 
+def same_platform(url,target):
+    """Limit candidate evidence to the selected platform, never arbitrary directories."""
+    groups=({"facebook.com","m.facebook.com","web.facebook.com"},{"instagram.com"},
+            {"youtube.com","m.youtube.com","youtu.be"},{"linkedin.com"},{"x.com","twitter.com"},
+            {"google.com","maps.google.com","maps.app.goo.gl","g.page"},{"tiktok.com"},{"pinterest.com"})
+    host=lambda value:(urlsplit(value).hostname or "").lower().removeprefix("www.")
+    left,right=host(url),host(target)
+    return bool(left and right) and (left==right or any(left in group and right in group for group in groups))
+
+
 def validate_report(data,selected,sources):
     result=SocialReport.model_validate(data).model_dump()
     expected={item["url"]:item["platform"] for item in selected};seen=set();by_id={s["id"]:s for s in sources}
@@ -86,7 +96,7 @@ def validate_report(data,selected,sources):
             source=by_id.get(finding["source_id"]);quote=normalize_quote(finding["quote"])
             if not source or source.get("profile_url")!=url or not quote.strip() or quote not in normalize_quote(source["text"]):raise ValueError("Social evidence citation does not match its platform")
             if "url" in finding:
-                if finding["url"]!=source.get("url") or same_profile(finding["url"],url):raise ValueError("Candidate example URL does not match separate source evidence")
+                if finding["url"]!=source.get("url") or same_profile(finding["url"],url) or not same_platform(finding["url"],url):raise ValueError("Candidate example URL does not match separate source evidence")
             elif not same_profile(source.get("url",""),url):raise ValueError("Profile finding is not backed by that profile's indexed content")
         owns=any(same_profile(s.get("url",""),url) for s in sources if s.get("profile_url")==url)
         if platform["coverage"]=="indexed_profile_evidence" and not owns:raise ValueError("Indexed profile coverage was not established")
@@ -101,7 +111,10 @@ def execute(db,user,job,report,consent_current,save):
     reuse=previous.get("reuse_saved_searches",False)
     sources=previous.get("sources",[]) if reuse else []
     attempts=previous.get("attempts",[]) if reuse else []
-    for index,social in enumerate([] if reuse else selected,1):
+    completed={attempt["url"] for attempt in attempts if attempt.get("status")=="completed"}
+    for index,social in enumerate(selected,1):
+        if social["url"] in completed:continue
+        attempts[:]=[attempt for attempt in attempts if attempt.get("url")!=social["url"]]
         consent_current();attempt={**social,"status":"running"};attempts.append(attempt)
         report["social_research"]={"status":"running","attempts":attempts,"sources":sources,"context_provenance":"user_supplied"}
         save("Researching public "+social["platform"]+" evidence and comparable accounts; one bounded search.")
@@ -110,10 +123,15 @@ def execute(db,user,job,report,consent_current,save):
                 "Use account name/URL to disambiguate. Collect source-linked examples of positioning, content formats, inquiry CTAs and product/service presentation. "
                 "Do not infer growth, engagement rates, sales, posting frequency or visual quality from unavailable data. Do not bypass platform access restrictions. "
                 "Profile: "+json.dumps(social,ensure_ascii=False)+" Business: "+json.dumps({k:profile.get(k,"")[:180] for k in ("name","industry","address","description")},ensure_ascii=False))[:2000]
-            response=MetaClient(owner_id=user.id,workspace_id=job.workspace_id,run_id=job.id,max_tokens=1800).search(query)
+            response=MetaClient(owner_id=user.id,workspace_id=job.workspace_id,run_id=job.id,max_tokens=1800).search(query,purpose="social")
             if response.get("provenance")!="live_meta":raise ValueError("No real social search evidence")
             attempt.update(status="completed",search=response)
-            for source in insight_sources({},[],searches=[response])[1:]:
+            # Generic research retains only three hits: prioritize this account before
+            # that bound so a fourth indexed owner hit is not lost to directories.
+            data=dict(response.get("data",{}))
+            rank=lambda item:(not same_profile(item.get("url",""),social["url"]),not same_platform(item.get("url",""),social["url"]))
+            for key in ("results","citations"):data[key]=sorted(data.get(key,[]),key=rank)
+            for source in insight_sources({},[],searches=[{**response,"data":data}])[1:]:
                 source["id"]=f"S{index}."+source["id"];source["profile_url"]=social["url"];sources.append(source)
         except Exception as exc:
             db.rollback();attempt.update(status="failed",error=insight_failure(exc))
@@ -122,7 +140,10 @@ def execute(db,user,job,report,consent_current,save):
         report["social_research"].update(status="needs_evidence",error="No usable public search evidence was returned. Upload profile/post screenshots or analytics exports; no synthesis request was made.")
         return
     # Bound the model input without trimming the persisted collected evidence.
-    sources=[dict(source) for source in sources]
+    sources=[dict(source) for source in sources if same_platform(source.get("url",""),source.get("profile_url",""))]
+    if not sources:
+        report["social_research"].update(status="needs_evidence",stage="evidence",error="Searches returned no usable evidence from the selected social platforms. Unrelated web links remain saved below; they are not profile findings. Upload profile/post screenshots or an analytics export. No report synthesis request was made.")
+        return
     payload={"business":{k:profile.get(k,"")[:300] for k in ("name","industry","address","description")},"selected":selected,"owner_context":inputs.get("social_context",""),"sources":sources}
     while len(json.dumps(payload,ensure_ascii=False))>15000 and sources:sources.pop()
     if not sources:

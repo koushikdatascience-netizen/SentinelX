@@ -213,3 +213,12 @@ def initialize_business_research():
 def stop_business_research():
     stop=getattr(app.state,"business_research_stop",None)
     if stop:stop.set()
+
+from app.campaign_delivery import router as campaign_delivery_router
+app.include_router(campaign_delivery_router)
+
+from app.knowledge_routes import router as knowledge_router
+app.include_router(knowledge_router)
+
+from app.business_chat import router as business_chat_router
+app.include_router(business_chat_router)

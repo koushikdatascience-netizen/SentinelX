@@ -140,6 +140,8 @@ def test_live_campaign_batches_have_exact_days_and_single_campaign_allowance(aut
     from tests.test_business_visuals import enable
     enable(monkeypatch);monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","1")
     wid=profile(authenticated_client)["workspace_id"];calls=[]
+    from tests.test_knowledge_routes import upload
+    upload(authenticated_client,wid,"order-policy.txt",b"Bulk order inquiries require quantity and design reference.")
     def text(self,system,user,schema):
         context=__import__("json").loads(user);calls.append(context)
         audit,plan=sample_plan("Owner supplied",context["goal"],"en",context["platforms"],days)
@@ -151,6 +153,7 @@ def test_live_campaign_batches_have_exact_days_and_single_campaign_allowance(aut
     assert response.status_code==201,response.text
     assert len(response.json()["items"])==days and len(calls)==expected_calls
     assert all(len(call["schedule"])<=7 for call in calls)
+    assert any(source["id"].startswith("K") and "quantity and design reference" in source["text"] for source in calls[0]["evidence"])
     assert authenticated_client.post("/api/v1/campaigns",json=body).json()["id"]==response.json()["id"]
     assert len(calls)==expected_calls
 

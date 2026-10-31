@@ -193,7 +193,7 @@ class MetaClient:
         return self._chat([{"role":"developer", "content":system}, {"role":"user", "content":user}], json_schema)
 
     def vision(self, image_bytes, mime, prompt, json_schema=None):
-        self._prompt(prompt, 2000)
+        self._prompt(prompt, 16000)
         url = self._image_input(image_bytes, mime)
         return self._chat([{"role":"user", "content":[{"type":"text", "text":prompt},
                            {"type":"image_url", "image_url":{"url":url}}]}], json_schema)
@@ -298,13 +298,18 @@ class MetaClient:
 
     def search(self,query,purpose="market"):
         from app.engine_inputs import grounded_response
-        if purpose not in ("market","competitors","keywords"):raise ValueError("Unsupported search purpose")
+        if purpose not in ("market","competitors","keywords","social"):raise ValueError("Unsupported search purpose")
         self._prompt(query,4000)
         if not self._live():
             return {"provenance":"sample","model":"muse-spark-1.3","data":{"summary":"Sample market-research fixture; no web search performed.",
                 "citations":[],"results":[],"searched":False,"limitation":"Authored fixture, not discovered competitor evidence."}}
         if os.getenv("META_MODEL","muse-spark-1.3")!="muse-spark-1.3":raise NotSupported("UNVERIFIED search model")
         output_instructions=(
+            "Find the exact supplied owner profile and publicly indexed posts first, then at most two comparable accounts on the SAME platform. "
+            "Use the exact profile URL, account handle, business name and location to disambiguate. The owner is the primary research target. "
+            "Prefer site-restricted queries for that platform. Do not substitute unrelated directories or other platforms for profile evidence. "
+            "If the account cannot be found, state that evidence is unavailable rather than inventing profile details. Limit the answer to 250 words. "
+            if purpose=="social" else
             "Return a concise report of relevant keyword clusters, customer search intent, useful long-tail phrases and platform-appropriate hashtag ideas. "
             "Distinguish source-supported observations from proposed phrases. Cite dated evidence for any trend claim; otherwise label it an unverified hypothesis. "
             "Do not invent search volume, difficulty scores or hashtag popularity. Do not replace keywords with a list of competing companies. "
