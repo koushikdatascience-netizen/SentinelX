@@ -64,40 +64,31 @@ def load_campaign(db:Session,workspace_id:str,campaign_id:str,user:User)->Campai
     if c is None:raise HTTPException(404,"Campaign not found")
     return c
 
-def claim_attempt(db:Session,workspace_id:str):
+def claim_attempt(db: Session, workspace_id: str):
+    """Record campaign attempts without an application quota."""
     from sqlalchemy.dialects.postgresql import insert as pg_insert
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-    maximum=max(0,int(os.getenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","0")))
-    if maximum<1:raise HTTPException(403,"Live campaign generation quota not enabled")
-    insert=(pg_insert if db.bind.dialect.name=="postgresql" else sqlite_insert)
-    db.execute(insert(CampaignQuota).values(workspace_id=workspace_id,attempts=0).on_conflict_do_nothing(
-        index_elements=["workspace_id"]))
-    changed=db.execute(update(CampaignQuota).where(CampaignQuota.workspace_id==workspace_id,
-        CampaignQuota.attempts<maximum).values(attempts=CampaignQuota.attempts+1))
-    if changed.rowcount!=1:
-        db.rollback()
-        raise HTTPException(429,"Campaign generation attempt limit reached")
+    insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
+    db.execute(insert(CampaignQuota).values(workspace_id=workspace_id, attempts=0)
+               .on_conflict_do_nothing(index_elements=["workspace_id"]))
+    db.execute(update(CampaignQuota).where(CampaignQuota.workspace_id == workspace_id)
+               .values(attempts=CampaignQuota.attempts + 1))
     db.commit()
 
 
-def claim_campaign_attempt(db:Session,workspace_id:str):
-    """Campaign-only allowance, independent of the historical shared tool counter.
-
-    Bootstrap from actual saved live campaigns. Uncertain older request costs
-    remain covered by the unchanged Meta reservations; never reset those.
-    """
+def claim_campaign_attempt(db: Session, workspace_id: str):
+    """Keep scoped campaign usage records; no per-workspace allowance."""
     from app.budget import ApiBudget
     from sqlalchemy.dialects.postgresql import insert as pg_insert
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-    maximum=max(0,int(os.getenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","0")))
-    if maximum<1:raise HTTPException(403,"Campaign attempt allowance is disabled. This is an app setting, not your Meta credit balance.")
-    key="cq:"+hashlib.sha256(workspace_id.encode()).hexdigest()[:32]
-    previous=db.scalar(select(func.count()).select_from(CampaignProject).where(CampaignProject.workspace_id==workspace_id,CampaignProject.provenance=="live_meta"))
-    insert=pg_insert if db.bind.dialect.name=="postgresql" else sqlite_insert
-    db.execute(insert(ApiBudget).values(provider=key,reserved_cents=previous).on_conflict_do_nothing(index_elements=["provider"]))
-    changed=db.execute(update(ApiBudget).where(ApiBudget.provider==key,ApiBudget.reserved_cents<maximum).values(reserved_cents=ApiBudget.reserved_cents+1))
-    if changed.rowcount!=1:
-        db.rollback();raise HTTPException(429,"Campaign attempt allowance reached. This is an application quota, not your Meta credit balance. Existing campaigns remain available.")
+    key = "cq:" + hashlib.sha256(workspace_id.encode()).hexdigest()[:32]
+    previous = db.scalar(select(func.count()).select_from(CampaignProject).where(
+        CampaignProject.workspace_id == workspace_id, CampaignProject.provenance == "live_meta"))
+    insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
+    db.execute(insert(ApiBudget).values(provider=key, reserved_cents=previous)
+               .on_conflict_do_nothing(index_elements=["provider"]))
+    db.execute(update(ApiBudget).where(ApiBudget.provider == key)
+               .values(reserved_cents=ApiBudget.reserved_cents + 1))
     db.commit()
 
 def generation_is_live(user:User,mode:str="auto")->bool:
@@ -116,7 +107,7 @@ def runtime(user:User=Depends(current_user)):
     return {"mode":"sample" if user.is_demo else "live" if live else "unavailable",
             "is_guest":user.is_demo,"live_enabled":live,
             "message":"Sample guest workspace — no paid calls" if user.is_demo else
-                      "Real Meta generation enabled with workspace budgets" if live else
+                      "Real Meta generation enabled; app spending caps disabled" if live else
                       "Owner generation needs the server Meta key and live configuration"}
 
 @router.post("",status_code=201)
