@@ -106,3 +106,64 @@ def test_chat_knowledge_consent_and_prior_analysis_context(authenticated_client,
     from app.workspace_store import SessionLocal
     with SessionLocal() as db:db.get(BusinessProfile,wid).consent_at=None;db.commit()
     assert authenticated_client.post("/api/v1/business-chat",json={**followup,"request_id":str(uuid4())}).status_code==422 and len(calls)==2
+
+
+def test_unselected_general_chat_does_not_run_tools(authenticated_client,monkeypatch):
+    wid,calls=setup(authenticated_client,monkeypatch,lambda payload:{"answer":"4.","citations":[],"analysis":None})
+    result=authenticated_client.post("/api/v1/business-chat",json=request(wid,message="What is two plus two?",focus=[],tools=[],use_knowledge=False))
+    assert result.status_code==201,result.text
+    assert len(calls)==1 and not result.json().get("tool_results")
+    assert "general questions unrelated" in calls[0]["messages"][0]["content"]
+
+
+@pytest.mark.parametrize("selected",[["web_search","image"],["post","keywords","competitors"],["campaign","image"]])
+def test_selected_chat_tools_execute_once_and_share_parent_budget(authenticated_client,monkeypatch,selected):
+    import base64,hashlib
+    from app.campaign import sample_plan
+    from app.budget import ApiBudget
+    from app.workspace_store import SessionLocal
+    from tests.test_business_visuals import png
+    from tests.test_engine_inputs import grounded
+    wid=profile(authenticated_client)["workspace_id"];enable(monkeypatch);monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","3");calls=[]
+    def handle(req):
+        payload=json.loads(req.content);calls.append((req.url.path,payload))
+        if req.url.path.endswith("/responses"):return httpx.Response(200,json=grounded())
+        if req.url.path.endswith("/images/generations"):return httpx.Response(200,json={"created":1,"data":[{"b64_json":base64.b64encode(png("green")).decode()}]})
+        schema=payload["response_format"]["json_schema"]["schema"]
+        if "audit" in schema.get("properties",{}):
+            audit,plan=sample_plan("Owner-supplied workshop","Qualified inquiries","en",["instagram","facebook"]);data={"audit":audit,"plan":plan}
+        elif "caption" in schema.get("properties",{}):data={"title":"Workshop process","caption":"Ask us about custom workshop requirements.","hashtags":["#Woodwork"],"image_prompt":"An owner-approved workshop product in daylight.","video_scenes":["Show the product and invite a design inquiry."],"call_to_action":"Send your requirement.","assumptions":[]}
+        else:data={"answer":"The selected tools finished. Review the saved drafts and public sources before using them.","citations":[],"analysis":None}
+        return httpx.Response(200,json=chat(json.dumps(data)))
+    monkeypatch.setattr(meta_client,"OpenAI",lambda **kwargs:SDK(**kwargs,http_client=httpx.Client(transport=httpx.MockTransport(handle))))
+    body=request(wid,tools=selected,tool_consent=True,message="Create useful workshop content and research for trade inquiries.")
+    response=authenticated_client.post("/api/v1/business-chat",json=body)
+    assert response.status_code==201,response.text
+    assert {item["tool"] for item in response.json()["tool_results"]}==set(selected)
+    assert all(item["status"]=="completed" for item in response.json()["tool_results"])
+    assert len(calls)==len(selected)+1
+    assert authenticated_client.post("/api/v1/business-chat",json=body).status_code==201 and len(calls)==len(selected)+1
+    with SessionLocal() as db:
+        rows=db.query(ApiBudget).filter(ApiBudget.provider.like("mr:%")).all()
+        key="mr:"+hashlib.sha256((wid+":"+body["request_id"]).encode()).hexdigest()[:32]
+        assert db.get(ApiBudget,key).reserved_cents==sum(6 if path.endswith("/responses") else 5 for path,_ in calls)
+    for item in response.json()["tool_results"]:
+        if item["tool"]=="image":assert authenticated_client.get(f"/api/v1/workspaces/{wid}/business-profile/assets/{item['data']['asset_id']}").status_code==200
+        if item["tool"]=="campaign":assert authenticated_client.get(f"/api/v1/campaigns/{item['data']['campaign_id']}",params={"workspace_id":wid}).status_code==200
+
+
+def test_tool_consent_invalid_selections_and_partial_budget_stop(authenticated_client,monkeypatch):
+    from tests.test_engine_inputs import grounded
+    wid=profile(authenticated_client)["workspace_id"];enable(monkeypatch);calls=[]
+    def handle(req):calls.append(req);return httpx.Response(200,json=grounded())
+    monkeypatch.setattr(meta_client,"OpenAI",lambda **kwargs:SDK(**kwargs,http_client=httpx.Client(transport=httpx.MockTransport(handle))))
+    body=request(wid,tools=["web_search","image"])
+    assert authenticated_client.post("/api/v1/business-chat",json=body).status_code==422
+    assert authenticated_client.post("/api/v1/business-chat",json={**body,"tools":["web_search","web_search"],"tool_consent":True}).status_code==422
+    assert authenticated_client.post("/api/v1/business-chat",json={**body,"tools":["execute_shell"],"tool_consent":True}).status_code==422
+    monkeypatch.setenv("META_RUN_BUDGET_CENTS","6");body["tool_consent"]=True
+    response=authenticated_client.post("/api/v1/business-chat",json=body)
+    assert response.status_code==429,response.text
+    saved=authenticated_client.get("/api/v1/business-chat",params={"workspace_id":wid,"thread_id":body["thread_id"]}).json()[0]
+    assert [item["status"] for item in saved["tool_results"]]==["completed","failed"]
+    assert authenticated_client.post("/api/v1/business-chat",json=body).status_code==409 and len(calls)==1
