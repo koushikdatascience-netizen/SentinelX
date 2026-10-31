@@ -42,23 +42,22 @@ def test_public_campaign_access_rejected():
     assert c.get("/api/v1/campaigns",params={"workspace_id":"abc"}).status_code==401
 
 
-def test_campaign_allowance_ignores_unrelated_legacy_usage_but_retains_actual_campaign_cap(authenticated_client,monkeypatch):
+def test_campaign_usage_is_uncapped_and_ignores_legacy_counters(authenticated_client, monkeypatch):
     from app.campaign_routes import claim_campaign_attempt
-    from app.workspace_store import SessionLocal,CampaignQuota,CampaignProject
-    from fastapi import HTTPException
-    wid=authenticated_client.post("/api/v1/workspaces",json={"name":"Scoped allowance"}).json()["id"]
-    monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","2")
+    from app.workspace_store import SessionLocal, CampaignQuota, CampaignProject
+    from app.budget import ApiBudget
+    import hashlib
+    wid = authenticated_client.post("/api/v1/workspaces", json={"name": "Scoped allowance"}).json()["id"]
+    monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS", "0")
     with SessionLocal() as db:
-        db.add(CampaignQuota(workspace_id=wid,attempts=200))
-        db.add(CampaignProject(workspace_id=wid,business_description="Real previous campaign",goal="Qualified inquiries",language="en",audit_json="{}",provenance="live_meta"));db.commit()
-        claim_campaign_attempt(db,wid)
-        with pytest.raises(HTTPException) as error:claim_campaign_attempt(db,wid)
-        assert error.value.status_code==429 and "not your Meta credit balance" in error.value.detail
-        assert db.get(CampaignQuota,wid).attempts==200
-    monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","0")
-    with SessionLocal() as db:
-        with pytest.raises(HTTPException) as error:claim_campaign_attempt(db,wid)
-        assert error.value.status_code==403
+        db.add(CampaignQuota(workspace_id=wid, attempts=200))
+        db.add(CampaignProject(workspace_id=wid, business_description="Previous campaign", goal="Qualified inquiries", language="en", audit_json="{}", provenance="live_meta"))
+        db.commit()
+        claim_campaign_attempt(db, wid)
+        claim_campaign_attempt(db, wid)
+        assert db.get(CampaignQuota, wid).attempts == 200
+        key = "cq:" + hashlib.sha256(wid.encode()).hexdigest()[:32]
+        assert db.get(ApiBudget, key).reserved_cents == 3
 
 def test_nonnative_sample_languages(authenticated_client):
     c=authenticated_client
