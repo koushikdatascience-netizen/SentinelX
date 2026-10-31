@@ -79,7 +79,7 @@ def test_social_research_rejects_unsaved_profiles_missing_consent_and_foreign_wo
 
 def test_failed_social_search_does_not_pay_for_synthesis_or_replay(authenticated_client,monkeypatch):
     workspace=profile(authenticated_client,socials=[{"platform":"instagram","url":URL}])["workspace_id"];enable(monkeypatch);calls=[]
-    def fail(*a):calls.append(1);raise ValueError("private-payload")
+    def fail(*a,**kwargs):calls.append(1);raise ValueError("private-payload")
     monkeypatch.setattr(socials.MetaClient,"search",fail)
     monkeypatch.setattr(socials.MetaClient,"text",lambda *a:pytest.fail("No synthesis without evidence"))
     response=authenticated_client.post(f"/api/v1/workspaces/{workspace}/business-profile/research/profile/social-insights",json={"request_id":str(uuid4()),"urls":[URL],"consent":True})
@@ -95,7 +95,7 @@ def test_failed_social_search_does_not_pay_for_synthesis_or_replay(authenticated
 def test_failed_synthesis_retains_search_evidence_and_has_safe_diagnostics(authenticated_client,monkeypatch,failure,expected):
     workspace=profile(authenticated_client,socials=[{"platform":"instagram","url":URL}])["workspace_id"];enable(monkeypatch)
     calls=[]
-    def search(self,query):
+    def search(self,query,**kwargs):
         calls.append("search")
         return {"provenance":"live_meta","data":{"results":[{"url":URL,"title":"Workshop","snippet":"Custom wooden parts in Kalyani."}]}}
     def text(self,system,user,schema):
@@ -123,7 +123,7 @@ def test_failed_synthesis_retains_search_evidence_and_has_safe_diagnostics(authe
 def test_explicit_retry_reuses_saved_searches_only_for_unchanged_owned_inputs(authenticated_client,monkeypatch):
     workspace=profile(authenticated_client,socials=[{"platform":"instagram","url":URL}])["workspace_id"];enable(monkeypatch)
     calls=[]
-    def search(self,query):
+    def search(self,query,**kwargs):
         calls.append("search")
         return {"provenance":"live_meta","data":{"results":[{"url":URL,"title":"Workshop","snippet":"Custom wooden parts in Kalyani."}]}}
     def text(self,*args):
@@ -169,3 +169,77 @@ def test_bounded_synthesis_does_not_trim_persisted_search_evidence(monkeypatch):
     assert report["social_research"]["status"]=="ready"
     assert len(report["social_research"]["sources"])==18
     assert report["social_research"]["sources"][0]["text"]=="Saved public search evidence. "*40
+
+
+
+def test_social_search_instructions_target_owner_not_generic_competitors(authenticated_client,monkeypatch):
+    from tests.test_engine_inputs import grounded
+    from tests.test_business_visuals import enable
+    from tests.test_business_onboarding import profile
+    from app.workspace_routes import create_model_run
+    from app.workspace_store import SessionLocal,Workspace
+    workspace=profile(authenticated_client)["workspace_id"];enable(monkeypatch);calls=[]
+    def handle(request):
+        payload=json.loads(request.content);calls.append(payload)
+        assert "owner is the primary research target" in payload["instructions"]
+        assert "do not list the owner" not in payload["instructions"]
+        return httpx.Response(200,json=grounded())
+    monkeypatch.setattr(meta_client,"OpenAI",lambda **kwargs:SDK(**kwargs,http_client=httpx.Client(transport=httpx.MockTransport(handle))))
+    with SessionLocal() as db:
+        owner=db.get(Workspace,workspace).owner_id
+        run=create_model_run(db,workspace,"owner-social","Social search")
+        response=meta_client.MetaClient(owner_id=owner,workspace_id=workspace,run_id=run.id,max_tokens=1800).search("Find https://instagram.com/workshop",purpose="social")
+    assert response["provenance"]=="live_meta" and len(calls)==1
+
+
+def test_unrelated_directories_do_not_trigger_paid_social_synthesis(monkeypatch):
+    from types import SimpleNamespace
+    selected=[{"url":URL,"platform":"instagram"}]
+    report={};calls=[]
+    def search(self,query,**kwargs):
+        calls.append(kwargs)
+        return {"provenance":"live_meta","data":{"results":[{"url":"https://directory.example/furniture","title":"Furniture directory","snippet":"Local furniture companies and quotations."}]}}
+    monkeypatch.setattr(socials.MetaClient,"search",search)
+    monkeypatch.setattr(socials.MetaClient,"text",lambda *args:pytest.fail("Do not synthesize unrelated evidence"))
+    job=SimpleNamespace(id="run",workspace_id="workspace",input_json=json.dumps({"profile":{"name":"Workshop"},"selected_socials":selected}))
+    socials.execute(None,SimpleNamespace(id="owner"),job,report,lambda:None,lambda *args:None)
+    assert calls==[{"purpose":"social"}]
+    assert report["social_research"]["status"]=="needs_evidence"
+    assert len(report["social_research"]["sources"])==1
+
+
+def test_partial_retry_preserves_completed_search_and_only_repeats_failed_platform(monkeypatch):
+    from types import SimpleNamespace
+    selected=[{"url":URL,"platform":"instagram"},{"url":"https://facebook.com/workshop","platform":"facebook"}]
+    report={"social_research":{"reuse_saved_searches":True,"sources":sources(),"attempts":[{**selected[0],"status":"completed"},{**selected[1],"status":"failed"}]}}
+    calls=[]
+    def search(self,query,**kwargs):
+        calls.append(query)
+        return {"provenance":"live_meta","data":{"results":[{"url":selected[1]["url"],"title":"Workshop","snippet":"Custom wooden parts in Kalyani."}]}}
+    def text(self,system,user,schema):
+        payload=json.loads(user);assert len(payload["sources"])==2
+        data=result();second=json.loads(json.dumps(data["platforms"][0]));second.update(url=selected[1]["url"],platform="facebook");second["findings"][0]["source_id"]="S2.W1";data["platforms"].append(second)
+        return {"provenance":"live_meta","data":data}
+    monkeypatch.setattr(socials.MetaClient,"search",search);monkeypatch.setattr(socials.MetaClient,"text",text)
+    job=SimpleNamespace(id="run",workspace_id="workspace",input_json=json.dumps({"profile":{"name":"Workshop"},"selected_socials":selected}))
+    socials.execute(None,SimpleNamespace(id="owner"),job,report,lambda:None,lambda *args:None)
+    assert len(calls)==1 and "facebook.com/workshop" in calls[0]
+    assert report["social_research"]["status"]=="ready"
+
+
+
+def test_owner_hit_after_unrelated_results_is_not_lost_before_synthesis(monkeypatch):
+    from types import SimpleNamespace
+    job=SimpleNamespace(id="run",workspace_id="workspace",input_json=json.dumps({"profile":{"name":"Workshop"},"selected_socials":[{"url":URL,"platform":"instagram"}]}));report={}
+    hits=[{"url":f"https://directory.example/{i}","title":"Unrelated company","snippet":"Unrelated furniture directory."} for i in range(3)]
+    hits.append({"url":URL,"title":"Workshop","snippet":"Custom wooden parts in Kalyani."})
+    monkeypatch.setattr(socials.MetaClient,"search",lambda *args,**kwargs:{"provenance":"live_meta","data":{"results":hits}})
+    def text(self,system,user,schema):
+        payload=json.loads(user)
+        assert payload["selected"][0]["owner_source_ids"]==["S1.W1"]
+        assert all(source["url"]==URL for source in payload["sources"])
+        return {"provenance":"live_meta","data":result()}
+    monkeypatch.setattr(socials.MetaClient,"text",text)
+    socials.execute(None,SimpleNamespace(id="owner"),job,report,lambda:None,lambda *args:None)
+    assert report["social_research"]["status"]=="ready"
+    assert len(report["social_research"]["sources"])==3

@@ -11,6 +11,12 @@ test("owner entry offers account access without demo entry points",async({page})
 });
 
 
+async function openTool(page:Page,title:string){
+ const card=page.locator(".tool-card").filter({hasText:title});
+ if(!await card.isVisible())await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
+ await card.click();
+}
+
 async function accountAndWorkspace(page:Page) {
  await page.goto("/");
  const email=`browser-${crypto.randomUUID()}@example.org`;
@@ -156,6 +162,8 @@ test("saved screenshot visual insights require consent, show design changes and 
   jobs=[result];await route.fulfill({status:202,json:result});
  });
  await page.reload();await page.getByRole("tab",{name:"Visual design",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Visual report has not been requested",exact:true})).toBeVisible();
+ expect(requests).toHaveLength(0);
  await page.getByRole("button",{name:"Choose visual review",exact:true}).click();
  const consentDialog=page.getByRole("dialog",{name:"Request visual design insights",exact:true});
  await expect(consentDialog.getByRole("option",{name:/Candidate Workshop/})).toHaveCount(1);
@@ -260,7 +268,7 @@ test("dashboard document parser and image editor run locally in dedicated modals
  await accountAndWorkspace(page);
  const nav=page.getByRole("navigation",{name:"Main navigation"});
  await nav.getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"Document parser"}).click();
+ await openTool(page,"Document parser");
  const parser=page.getByRole("dialog",{name:"Document parser & converter"});
  await expect(parser).toBeVisible();
  await parser.getByLabel("Business document",{exact:true}).setInputFiles({name:"business.txt",mimeType:"text/plain",buffer:Buffer.from("Workshop services include custom components and owner-reviewed quotations.")});
@@ -271,7 +279,7 @@ test("dashboard document parser and image editor run locally in dedicated modals
  const exported=page.waitForEvent("download");await parser.getByRole("button",{name:"Download Markdown"}).click();
  expect((await exported).suggestedFilename()).toBe("sentinelx-documents.md");
  await parser.getByRole("button",{name:"Close dialog"}).click();
- await page.locator(".tool-card").filter({hasText:"Image editor"}).click();
+ await openTool(page,"Image editor");
  const editor=page.getByRole("dialog",{name:"Image editor",exact:true});
  await editor.getByLabel("Image to edit").setInputFiles({name:"fixture.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
  await editor.getByLabel("I am authorized to process this file",{exact:false}).check();
@@ -279,14 +287,14 @@ test("dashboard document parser and image editor run locally in dedicated modals
  await editor.getByRole("button",{name:"Apply image edits"}).click();
  await expect(editor.getByRole("img",{name:"Saved business visual"})).toBeVisible();
  await editor.getByRole("button",{name:"Close dialog"}).click();
- await page.locator(".tool-card").filter({hasText:"Competitor research"}).click();
+ await openTool(page,"Competitor research");
  const research=page.getByRole("dialog",{name:"Competitor research",exact:true});
  await expect(research.getByLabel("Use my saved business details",{exact:false})).toBeChecked();
  await research.getByLabel("Location",{exact:true}).fill("Kalyani");
  await research.getByLabel("Your prompt",{exact:true}).fill("Find comparable local wooden parts workshops.");
  await expect(research.getByRole("checkbox",{name:"Send this recording to Meta for transcription"})).toHaveCount(0);
  await expect(research.getByRole("button",{name:"Record voice prompt"})).toBeDisabled();
- await expect(research.getByText("Voice dictation needs live Meta inference enabled.",{exact:false})).toBeVisible();
+ await expect(research.locator(".voice-field-mic")).toHaveAttribute("title","Voice input requires live Meta transcription");
  await expect(research.getByRole("button",{name:"Start research",exact:true})).toBeDisabled();
  await expect(research.getByText("Live AI is not configured.",{exact:false})).toBeVisible();
 });
@@ -330,16 +338,17 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  const navigation=page.getByRole("navigation",{name:"Main navigation"});
  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Your business workspace"})).toBeVisible();
+  await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
   await expect(page.locator(".tool-card")).toHaveCount(10);
  await page.screenshot({path:"test-results/dashboard-desktop.png",fullPage:true});
- await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
+ await openTool(page,"Create campaign");
  await expect(page.getByRole("heading",{name:"Create a campaign"})).toBeVisible();
  await expect(page.getByLabel("What do you offer?")).toHaveCount(0);
  await expect(page.getByLabel("Business name",{exact:true})).toHaveCount(0);
  await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill("Focus on custom woodworking quotations, showing the design and quantity needed for a complete inquiry.");
  await page.getByRole("combobox",{name:"Campaign goal",exact:true}).selectOption("Generate qualified inquiries");
  await expect(page.getByRole("checkbox",{name:"Send this recording to Meta for transcription"})).toHaveCount(0);
- await expect(page.getByRole("button",{name:"Record voice prompt",exact:true})).toBeDisabled();
+ await expect(page.getByRole("dialog",{name:"Create a campaign",exact:true}).getByRole("button",{name:"Record voice prompt",exact:true})).toBeDisabled();
  const platforms=page.getByRole("group",{name:"Where will you share it?"});
  for(const platform of ["LinkedIn","X (Twitter)","Google Business Profile","YouTube","Blogger"])await expect(platforms.getByLabel(platform,{exact:true})).toBeVisible();
  await page.getByText("Generation options",{exact:true}).click();
@@ -348,7 +357,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await expect(page.getByRole("heading",{name:"Campaign calendar",exact:true})).toBeVisible();
  const sheet=page.locator(".campaign-sheet");
  await expect(sheet.locator("tbody tr")).toHaveCount(7);
- await expect(sheet.locator("thead th")).toHaveText(["Day / status","Platform","Format","Caption","Hashtags","Call to action","Image guidance","Image prompt","Reel / video script","Actions"]);
+ await expect(sheet.locator("thead th")).toHaveText(["Day / status","Platform","Format","Caption","Hashtags","Call to action","Image guidance","Image prompt","Reel / video script","Saved visual","Actions"]);
  async function expectAlignedColumns(){
   const aligned=await sheet.evaluate(table=>{
    const headers=Array.from(table.querySelectorAll("thead th"));
@@ -429,7 +438,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
  // This request stub is explicit offline test data; the product keeps live mode as its default.
  await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"sample",is_guest:false,live_enabled:false,message:"Offline browser test fixture"}}));
- await page.locator(".tool-card").filter({hasText:"Review a photo"}).click();
+ await openTool(page,"Review a photo");
  await page.getByLabel("Upload a product photo").setInputFiles({name:"fixture-product.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
  await page.getByRole("button",{name:"Analyze photo",exact:true}).click();
  await expect(page.locator(".photo-result").getByText("fixture-product.png",{exact:true})).toBeVisible();
@@ -449,7 +458,7 @@ test("campaign duration and tone create complete 10 and 30 day sheets using the 
  const navigation=page.getByRole("navigation",{name:"Main navigation"});
  for(const days of [10,30]){
   await navigation.getByRole("button",{name:"Dashboard",exact:true}).click();
-  await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
+  await openTool(page,"Create campaign");
   await expect(page.getByLabel("What do you offer?")).toHaveCount(0);
   await page.getByRole("combobox",{name:"Campaign duration",exact:true}).selectOption(String(days));
   await page.getByRole("combobox",{name:"Campaign tone",exact:true}).selectOption("friendly");
@@ -491,16 +500,20 @@ test("campaign mic requests permission directly and inserts an editable Meta tra
  page.on("request",request=>{if(request.method()==="POST"&&request.url().endsWith("/api/v1/campaigns"))campaigns++});
  await page.route("**/api/v1/prompts/transcribe",async route=>{calls.push(route.request().postDataBuffer()!);await route.fulfill({json:{provenance:"live_meta",model:"mock-voice",transcript:"Show the custom inquiry process with product examples."}})});
  await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
+ await openTool(page,"Create campaign");
  await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill("Focus on trade buyers.");
  await expect(page.getByRole("checkbox",{name:/Send this recording/})).toHaveCount(0);
- await page.getByRole("button",{name:"Record voice prompt",exact:true}).click();
+ const embedded=page.locator(".voice-field").filter({has:page.getByRole("textbox",{name:"Campaign requirements",exact:true})});
+ const bounds=await embedded.evaluate(element=>{const input=element.querySelector("textarea")!.getBoundingClientRect();const mic=element.querySelector("button")!.getBoundingClientRect();return mic.left>=input.left&&mic.right<=input.right&&mic.top>=input.top&&mic.bottom<=input.bottom});
+ expect(bounds).toBe(true);
+ await page.getByRole("dialog",{name:"Create a campaign",exact:true}).getByRole("button",{name:"Record voice prompt",exact:true}).click();
  await expect(page.getByRole("button",{name:"Stop and transcribe voice prompt",exact:true})).toBeVisible();
+ await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill("Focus on trade buyers. Keep this latest typed note.");
  await expect(page.getByRole("button",{name:"Generate campaign",exact:true})).toBeDisabled();
  // Synthetic audio must have enough duration to satisfy the real WAV intake bound.
  await page.waitForTimeout(900);
  await page.getByRole("button",{name:"Stop and transcribe voice prompt",exact:true}).click();
- await expect(page.getByRole("textbox",{name:"Campaign requirements",exact:true})).toHaveValue("Focus on trade buyers. Show the custom inquiry process with product examples.");
+ await expect(page.getByRole("textbox",{name:"Campaign requirements",exact:true})).toHaveValue("Focus on trade buyers. Keep this latest typed note. Show the custom inquiry process with product examples.");
  expect(calls).toHaveLength(1);expect(calls[0].includes(Buffer.from("RIFF"))).toBe(true);expect(calls[0].includes(Buffer.from('name="request_id"'))).toBe(true);expect(campaigns).toBe(0);
  await page.screenshot({path:"test-results/campaign-requirements-mic.png",fullPage:true});
 });
@@ -511,9 +524,9 @@ test("campaign mic permission denial preserves typed requirements and makes no t
  await page.addInitScript(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException("Denied","NotAllowedError")}});
  await page.reload();let calls=0;page.on("request",r=>{if(r.url().endsWith("/api/v1/prompts/transcribe"))calls++});
  await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"Create campaign"}).click();
+ await openTool(page,"Create campaign");
  await page.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill("Keep my typed campaign requirements.");
- await page.getByRole("button",{name:"Record voice prompt",exact:true}).click();
+ await page.getByRole("dialog",{name:"Create a campaign",exact:true}).getByRole("button",{name:"Record voice prompt",exact:true}).click();
  await expect(page.locator(".prompt-voice").getByRole("alert")).toContainText("Microphone access was denied");
  await expect(page.getByRole("textbox",{name:"Campaign requirements",exact:true})).toHaveValue("Keep my typed campaign requirements.");expect(calls).toBe(0);
 });
@@ -549,7 +562,7 @@ test("failed social synthesis exposes saved evidence and distinguishes completed
 test("document parser explains non-JSON upload rejection and retries the same file explicitly",async({page})=>{
  await accountAndWorkspace(page);
  await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"Document parser"}).click();
+ await openTool(page,"Document parser");
  const parser=page.getByRole("dialog",{name:"Document parser & converter"});
  await parser.getByLabel("Business document",{exact:true}).setInputFiles({name:"notes.txt",mimeType:"text/plain",buffer:Buffer.from("Useful business document notes.")});
  await parser.getByLabel("I am authorized to process this file",{exact:false}).check();
@@ -575,7 +588,7 @@ test("document parser explains non-JSON upload rejection and retries the same fi
 test("scanned document results distinguish OCR text from unreadable pages",async({page})=>{
  await accountAndWorkspace(page);
  await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"Document parser"}).click();
+ await openTool(page,"Document parser");
  const parser=page.getByRole("dialog",{name:"Document parser & converter"});
  await parser.getByLabel("Business document",{exact:true}).setInputFiles({name:"scan.pdf",mimeType:"application/pdf",buffer:Buffer.from("synthetic PDF upload fixture; endpoint stubbed")});
  await parser.getByLabel("I am authorized to process this file",{exact:false}).check();
@@ -608,7 +621,7 @@ test("competitor and keyword tools submit distinct briefs and reopen source-link
  const nav=page.getByRole("navigation",{name:"Main navigation"});
  await nav.getByRole("button",{name:"Dashboard",exact:true}).click();
  for(const item of [{tool:"competitors",title:"Competitor research",card:"Competitor research"},{tool:"keywords",title:"SEO keyword researcher",card:"SEO keywords & hashtags"}]){
-  await page.locator(".tool-card").filter({hasText:item.card}).click();
+  await openTool(page,item.card);
   const dialog=page.getByRole("dialog",{name:item.title,exact:true});
   await dialog.getByRole("textbox",{name:"Your prompt",exact:true}).fill(`Research ${item.tool} for trade wood components; exclude retail furniture shops.`);
   await dialog.getByRole("textbox",{name:"Location",exact:true}).fill("Kalyani");
@@ -617,7 +630,7 @@ test("competitor and keyword tools submit distinct briefs and reopen source-link
   await expect(dialog.getByRole("link",{name:"Research source",exact:true})).toHaveAttribute("href","https://example.org/research");
   expect(calls.at(-1)?.tool).toBe(item.tool);expect(calls.at(-1)?.location).toBe("Kalyani");expect(calls.at(-1)?.use_business).toBe(true);
   await dialog.getByRole("button",{name:"Close dialog",exact:true}).click();
-  await page.locator(".tool-card").filter({hasText:item.card}).click();
+  await openTool(page,item.card);
   const reopened=page.getByRole("dialog",{name:item.title,exact:true});
   await reopened.getByRole("combobox",{name:"Saved tool results",exact:true}).selectOption(String(calls.at(-1)?.request_id));
   await expect(reopened.getByText(`Saved ${item.tool} research for trade wood components.`,{exact:true})).toBeVisible();
@@ -637,7 +650,7 @@ test("AI research results render readable sections tables emphasis and safe link
   return route.fulfill({status:201,json:{id:"formatted-report",tool:"keywords",status:"completed",provenance:"live_meta",model:"offline-test",data:{summary,citations:[{title:"Public research source",url:"https://example.org/evidence"}],limitation:"Keyword volume is unmeasured."}}});
  });
  await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"SEO keywords & hashtags"}).click();
+ await openTool(page,"SEO keywords & hashtags");
  const dialog=page.getByRole("dialog",{name:"SEO keyword researcher",exact:true});
  await dialog.getByRole("textbox",{name:"Your prompt",exact:true}).fill("Find trade inquiry keyword opportunities for custom wooden components.");
  await dialog.getByRole("button",{name:"Start research",exact:true}).click();
@@ -664,7 +677,7 @@ test("post drafts visually separate captions hashtags scenes prompts and calls t
  await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{live_enabled:true}}));
  await page.route("**/api/v1/workbench",route=>route.fulfill({status:201,json:{id:"formatted-post",tool:"post",status:"completed",provenance:"live_meta",model:"offline-test",data:{title:"Make your next trade inquiry count",caption:"Have a **custom wooden component** in mind?\nSend a drawing, quantity and preferred date so we can discuss your requirements.",hashtags:["#Woodworking","#TradeComponents","#CustomWoodwork"],image_prompt:"Show an owner-approved component in a clean workshop setting, with space for a short headline.",video_scenes:["Open with the product detail and a clear design reference.","Show the drawing, quantity and required date, then invite an inquiry."],call_to_action:"Send your drawing and quantity for review.",assumptions:["Owner must confirm product availability."]}}}));
  await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
- await page.locator(".tool-card").filter({hasText:"Post generator"}).click();
+ await openTool(page,"Post generator");
  const dialog=page.getByRole("dialog",{name:"Post generator",exact:true});
  await dialog.getByRole("textbox",{name:"Your prompt",exact:true}).fill("Explain the details trade customers should send with an inquiry.");
  await dialog.getByRole("button",{name:"Generate",exact:true}).click();
@@ -674,4 +687,128 @@ test("post drafts visually separate captions hashtags scenes prompts and calls t
  await expect(dialog.locator(".ai-cta-card")).toContainText("Send your drawing and quantity");
  await expect(dialog.locator(".ai-brief-card")).toContainText("owner-approved component");
  await page.screenshot({path:"test-results/ai-post-polished-desktop.png",fullPage:true});
+});
+
+
+test("campaign history editable visual handoff bulk generation final approval and downloads persist",async({page})=>{
+ test.setTimeout(120000);
+ await accountAndWorkspace(page);
+ const nav=page.getByRole("navigation",{name:"Main navigation"});
+ async function createCampaign(requirements:string){
+  await nav.getByRole("button",{name:"Dashboard",exact:true}).click();
+  await openTool(page,"Create campaign");
+  const modal=page.getByRole("dialog",{name:"Create a campaign",exact:true});
+  await modal.getByRole("textbox",{name:"Campaign requirements",exact:true}).fill(requirements);
+  await modal.getByText("Generation options",{exact:true}).click();
+  await modal.getByLabel("Use sample data (no credits)").check();
+  await modal.getByRole("button",{name:"Create sample campaign",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Campaign calendar",exact:true})).toBeVisible();
+  return page.getByRole("combobox",{name:"Campaign history",exact:true}).inputValue();
+ }
+ const first=await createCampaign("Explain trade order requirements for custom wood components.");
+ const second=await createCampaign("Prepare a distinct campaign introducing custom turning and bulk inquiries.");
+ expect(first).not.toBe(second);
+ const history=page.getByRole("combobox",{name:"Campaign history",exact:true});
+ await expect(history.locator("option")).toHaveCount(2);
+ await history.selectOption(first);
+ await page.reload();await expect(history).toHaveValue(first);
+ const sheet=page.locator(".campaign-sheet");
+ await sheet.locator("tbody tr").nth(1).getByRole("button",{name:"Create or view visuals",exact:true}).click();
+ const prompt=page.getByRole("textbox",{name:"Image generation prompt",exact:true});
+ await expect(prompt).toHaveValue(/day 2/);
+ await prompt.fill("Use an owner-approved wooden component, clean workshop lighting and a neutral background.");
+ await page.getByRole("button",{name:"Generate visuals",exact:true}).click();
+ await expect(page.locator(".visual-card img")).toBeVisible();
+ await page.getByRole("button",{name:"Use this concept",exact:true}).click();
+ await nav.getByRole("button",{name:"Campaigns",exact:true}).click();
+ await expect(sheet.locator("tbody tr").nth(1).locator("td").nth(7)).toContainText("owner-approved wooden component, clean workshop lighting");
+ await page.getByRole("button",{name:"Generate all missing visuals",exact:true}).click();
+ const batch=page.getByRole("dialog",{name:"Generate campaign visuals",exact:true});
+ await expect(batch.getByRole("button",{name:"Generate and save draft visuals",exact:true})).toBeDisabled();
+ await batch.getByLabel("I want to generate the missing visuals",{exact:false}).check();
+ await batch.getByRole("button",{name:"Generate and save draft visuals",exact:true}).click();
+ await expect(page.getByText("7/7 processed",{exact:false})).toContainText("completed",{timeout:60000});
+ await expect(sheet.locator("img")).toHaveCount(7);
+ await page.reload();await expect(history).toHaveValue(first);await expect(sheet.locator("img")).toHaveCount(7);
+ await page.getByRole("button",{name:"Review & finalize campaign",exact:true}).click();
+ const review=page.getByRole("dialog",{name:"Final campaign review",exact:true});
+ await expect(review.locator(".campaign-final-review article")).toHaveCount(7);
+ await expect(review.getByRole("button",{name:"Approve and save final campaign",exact:true})).toBeDisabled();
+ await review.getByLabel("I reviewed all posts and selected images",{exact:false}).check();
+ await review.getByRole("button",{name:"Approve and save final campaign",exact:true}).click();
+ await expect(page.getByText("Final campaign saved",{exact:true})).toBeVisible();
+ for(const name of ["Download JSON","Download CSV","Download Excel","Download posts + images"])await expect(page.getByRole("button",{name,exact:true})).toBeVisible();
+ const jsonDownload=page.waitForEvent("download");await page.getByRole("button",{name:"Download JSON",exact:true}).click();
+ const artifact=await jsonDownload;const stream=await artifact.createReadStream();const chunks=[];for await(const chunk of stream!)chunks.push(chunk);
+ const final=JSON.parse(Buffer.concat(chunks).toString());
+ expect(final.manifest.campaign_id).toBe(first);expect(final.manifest.posts).toHaveLength(7);expect(final.manifest.externally_published).toBe(false);
+ const excelDownload=page.waitForEvent("download");await page.getByRole("button",{name:"Download Excel",exact:true}).click();
+ expect((await excelDownload).suggestedFilename()).toBe("sentinelx-final-campaign.xlsx");
+ await page.screenshot({path:"test-results/campaign-final-delivery.png",fullPage:true});
+ await page.reload();await expect(page.getByText("Final campaign saved",{exact:true})).toBeVisible();await expect(history.locator("option")).toHaveCount(2);
+ await history.selectOption(second);await expect(sheet.locator("tbody tr")).toHaveCount(7);await expect(sheet.locator("img")).toHaveCount(0);
+});
+
+
+test("business chat keeps the dashboard clean opens tools from plus and restores conversations",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"live",live_enabled:true,is_guest:false}}));
+ const saved:Record<string,unknown>[]=[];const requests:Record<string,unknown>[]=[];
+ await page.route("**/api/v1/business-chat**",async route=>{
+  const url=new URL(route.request().url());
+  if(route.request().method()==="GET"){
+   if(url.pathname.endsWith("/threads"))return route.fulfill({json:saved.map(row=>({id:row.thread_id,title:row.message}))});
+   return route.fulfill({json:saved.filter(row=>row.thread_id===url.searchParams.get("thread_id"))});
+  }
+  const body=route.request().postDataJSON();requests.push(body);
+  const row={id:body.request_id,thread_id:body.thread_id,message:body.message,status:"completed",provenance:"live_meta",answer:"## Prioritize inquiry quality\nUse your saved business context to ask for **design, quantity and required date**.",citations:[{source_id:"B1",quote:"Browser workshop"}],sources:[{id:"B1",filename:"Business profile",origin:"user_supplied"}],analysis:null};saved.push(row);return route.fulfill({status:201,json:row});
+ });
+ await page.reload();await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"What should we work on?",exact:true})).toBeVisible();
+ await expect(page.locator(".tool-card")).toHaveCount(0);
+ await page.locator(".chat-context-options summary").click();
+ await page.getByRole("group",{name:"Advisor focus areas"}).getByRole("button",{name:"marketing",exact:true}).click();
+ const question=page.getByRole("textbox",{name:"Message your business assistant",exact:true});
+ await question.fill("How can we improve the quality of trade inquiries?");
+ await page.getByRole("button",{name:"Send business message",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Prioritize inquiry quality",exact:true})).toBeVisible();
+ expect(requests).toHaveLength(1);expect(requests[0].focus).toEqual(["strategy","marketing"]);expect(requests[0].use_knowledge).toBe(true);
+ await page.reload();await expect(page.getByRole("heading",{name:"Prioritize inquiry quality",exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
+ const picker=page.getByRole("dialog",{name:"Business tools",exact:true});await expect(picker.locator(".tool-card")).toHaveCount(10);
+ await picker.locator(".tool-card").filter({hasText:"Post generator"}).click();
+ const post=page.getByRole("dialog",{name:"Post generator",exact:true});
+ const inside=await post.locator(".voice-field").evaluate(element=>{const input=element.querySelector("textarea")!.getBoundingClientRect();const mic=element.querySelector("button")!.getBoundingClientRect();return mic.top>=input.top&&mic.bottom<=input.bottom&&mic.left>=input.left&&mic.right<=input.right});
+ expect(inside).toBe(true);await post.getByRole("button",{name:"Close dialog",exact:true}).click();
+ expect(requests).toHaveLength(1);
+ await page.screenshot({path:"test-results/business-chat-desktop.png",fullPage:true});
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/business-chat-mobile.png",fullPage:true});
+});
+
+
+test("knowledge uploads profile sales locally and calculate real chart values without AI",async({page})=>{
+ await accountAndWorkspace(page);
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
+ const saved=page.waitForResponse(response=>response.request().method()==="POST"&&response.url().endsWith("/api/v1/business-profile"));
+ await page.getByRole("button",{name:"Save business details",exact:true}).click();
+ expect((await saved).ok()).toBe(true);
+ await page.getByRole("tab",{name:"Knowledge base",exact:true}).click();
+ await page.getByLabel("Knowledge documents",{exact:true}).setInputFiles({name:"sales-2025.csv",mimeType:"text/csv",buffer:Buffer.from("Region,Sales\nNorth,100.10\nSouth,40.20\nNorth,80.30\n")});
+ await expect(page.getByRole("button",{name:"Save to knowledge base",exact:true})).toBeDisabled();
+ await page.getByLabel("I am authorized to store these documents",{exact:false}).check();
+ await page.getByRole("button",{name:"Save to knowledge base",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"sales-2025.csv",exact:true})).toBeVisible();
+ await page.getByRole("combobox",{name:"Saved dataset",exact:true}).selectOption({label:"sales-2025.csv"});
+ await page.getByRole("combobox",{name:"Metric column",exact:true}).selectOption("Sales");
+ await page.getByRole("combobox",{name:"Group by",exact:true}).selectOption("Region");
+ await page.getByRole("button",{name:"Calculate locally",exact:true}).click();
+ const result=page.getByRole("region",{name:"Locally calculated data result",exact:true});
+ await expect(result.getByRole("cell",{name:"180.40",exact:true})).toBeVisible();
+ await expect(result.getByRole("cell",{name:"40.20",exact:true})).toBeVisible();
+ await expect(result.getByRole("img",{name:"Chart of locally calculated values",exact:true})).toBeVisible();
+ await page.screenshot({path:"test-results/knowledge-data-analysis.png",fullPage:true});
+ await page.reload();await page.getByRole("tab",{name:"Knowledge base",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"sales-2025.csv",exact:true})).toBeVisible();
 });

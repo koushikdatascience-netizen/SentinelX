@@ -4,7 +4,7 @@ import os
 import hashlib
 from typing import Literal
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Query
 from pydantic import BaseModel, Field, HttpUrl,model_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, update,func
@@ -158,6 +158,10 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
         raise HTTPException(422,"Sample mission evidence cannot be used in a live campaign")
     evidence=[{"id":"E1","type":"user_supplied_unverified","text":body.business_description[:1000]}]
     if body.requirements:evidence.append({"id":"R1","type":"user_supplied_unverified","text":body.requirements})
+    if profile and profile.consent_at:
+        from app.knowledge import workspace_sources
+        evidence.extend({"id":source["id"],"type":"user_supplied_unverified","text":source["text"],"filename":source["filename"],"sha256":source["sha256"]} for source in workspace_sources(db,body.workspace_id,body.goal+" "+body.requirements,limit=3))
+
     if body.website: evidence.append({"id":"URL1","type":"user_supplied_unverified","url":str(body.website),
                                           "note":"Website was not fetched"})
     if mission:
@@ -253,12 +257,13 @@ def create(body:CreateCampaign,user:User=Depends(current_user),db:Session=Depend
     return serialize(campaign,db)
 
 @router.get("")
-def list_campaigns(workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
+def list_campaigns(workspace_id:str,offset:int=Query(0,ge=0),limit:int=Query(100,ge=1,le=100),user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,workspace_id)
     rows=db.scalars(select(CampaignProject).where(CampaignProject.workspace_id==workspace_id)
-                    .order_by(CampaignProject.created_at.desc()).limit(100)).all()
+                    .order_by(CampaignProject.created_at.desc(),CampaignProject.id.desc()).offset(offset).limit(limit)).all()
     return [{"id":c.id,"goal":c.goal,"language":c.language,"provenance":c.provenance,
-             "mission_id":json.loads(c.audit_json).get("mission_id")} for c in rows]
+             "mission_id":json.loads(c.audit_json).get("mission_id"),"created_at":c.created_at.isoformat(),
+             "post_count":db.scalar(select(func.count()).select_from(CampaignItem).where(CampaignItem.campaign_id==c.id))} for c in rows]
 
 @router.get("/{campaign_id}")
 def get_campaign(campaign_id:str,workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):

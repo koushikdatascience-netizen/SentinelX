@@ -151,3 +151,30 @@ def test_foreign_screenshot_references_are_not_selected(authenticated_client):
     other=profile(authenticated_client)["workspace_id"]
     with SessionLocal() as db:
         assert visuals.select_assets(db,other,{"pages":[{"screenshot_ids":[asset_id]}]})==[]
+
+
+def test_visually_identical_normalized_images_are_reviewed_once(authenticated_client,monkeypatch):
+    workspace,source_id,_=saved_source(authenticated_client);enable(monkeypatch);calls=[]
+    # Different PNG metadata changes the original hash but not pixels or normalized JPEG.
+    from PIL.PngImagePlugin import PngInfo
+    with Image.open(io.BytesIO(png("blue"))) as original:
+        info=PngInfo();info.add_text("capture","second page");out=io.BytesIO();original.save(out,format="PNG",pnginfo=info)
+    with SessionLocal() as db:
+        job=db.get(BrandResearchJob,source_id);report=json.loads(job.report_json)
+        other=store_asset(db,workspace,"screenshot","same-pixels.png","image/png",out.getvalue(),job_id=job.id,metadata={"viewport":"mobile"})
+        report["pages"][0]["screenshot_ids"].append(other.id);job.report_json=json.dumps(report);db.commit();duplicate=other.id
+    def vision(self,*args):calls.append(1);return {"provenance":"live_meta","data":output()}
+    monkeypatch.setattr(visuals.MetaClient,"vision",vision)
+    response=authenticated_client.post(f"/api/v1/workspaces/{workspace}/business-profile/research/{source_id}/visual-insights",json={"request_id":str(uuid4()),"consent":True})
+    research.execute_job(response.json()["id"]);research.execute_job(response.json()["id"])
+    with SessionLocal() as db:
+        report=json.loads(db.get(BrandResearchJob,response.json()["id"]).report_json)
+        assert report["visual_status"]=="ready",report["visual_error"]
+        assert report["visual_review"]["duplicate_asset_ids"]==[duplicate]
+        assert len(report["visual_review"]["panels"])==1 and calls==[1]
+
+
+def test_visual_diagnostics_are_specific_and_never_expose_payloads():
+    assert "panel" in research.insight_failure(visuals.VisualReportError("mapping"))
+    assert "No vision request" in research.insight_failure(visuals.VisualReportError("integrity"))
+    assert "private-payload" not in research.insight_failure(ValueError("private-payload"))

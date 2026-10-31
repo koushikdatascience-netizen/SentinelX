@@ -324,8 +324,8 @@ def generate_social_insights(workspace_id:str,job_id:str,body:SocialInsightsRequ
     saved_social=report.get("social_research",{})
     old_inputs=json.loads(source.input_json) if source else {}
     if (old_inputs.get("social_signature")==signature and saved_social.get("status")=="failed"
-        and saved_social.get("sources") and len(saved_social.get("attempts",[]))==len(selected)
-        and all(attempt.get("status")=="completed" for attempt in saved_social["attempts"])):
+        and len(saved_social.get("attempts",[]))==len(selected)
+        and any(attempt.get("status")=="completed" for attempt in saved_social["attempts"])):
         new_report["social_research"]={**saved_social,"status":"queued","stage":"synthesis","error":"","reuse_saved_searches":True}
 
     job=BrandResearchJob(workspace_id=workspace_id,request_id=str(body.request_id),state="queued",
@@ -351,7 +351,7 @@ def assets(workspace_id:str,user:User=Depends(current_user),db:Session=Depends(s
 
 
 @router.post("/workspaces/{workspace_id}/business-profile/assets",status_code=201)
-def upload(workspace_id:str,kind:Literal["logo","document","image"]=Form("document"),consent:bool=Form(False),
+def upload(workspace_id:str,kind:Literal["logo","document","image","knowledge"]=Form("document"),consent:bool=Form(False),
     sha256:str|None=Form(None),file:UploadFile=File(...),user:User=Depends(current_user),db:Session=Depends(session)):
     profile=profile_owned(db,user,workspace_id)
     if user.is_demo:raise HTTPException(403,"Owner account required")

@@ -95,9 +95,9 @@ def insight_sources(profile,pages,documents=(),searches=()):
         sources.append({"id":page["id"],"text":text,"url":page.get("url",""),
             "title":page.get("title","")[:160],"origin":"retrieved_public_page",
             "coverage":"Selected excerpts; absence here does not establish absence on the page."})
-    for index,document in enumerate(documents[:2],1):
-        excerpt=json.loads(document.metadata_json).get("text_excerpt","")[:800]
-        if excerpt:sources.append({"id":"D"+str(index),"text":excerpt,"origin":"user_supplied","filename":document.filename[:160]})
+    if documents:
+        from app.knowledge import retrieve
+        sources.extend(retrieve(documents,json.dumps(profile,ensure_ascii=False)+" website products customers sales marketing improvements",limit=6))
     seen=set()
     for search in searches:
         if not search or search.get("provenance")!="live_meta":continue
@@ -128,8 +128,12 @@ def insight_sources(profile,pages,documents=(),searches=()):
 
 
 def insight_failure(exc):
+    from app.meta_client import MetaError
     from app.business_socials import SocialReportError
-    if isinstance(exc,SocialReportError):return str(exc)
+    from app.business_visuals import VisualReportError
+    if isinstance(exc,(SocialReportError,VisualReportError)):return str(exc)
+    if isinstance(exc,MetaError) and str(exc).startswith(("Meta search validation", "Meta grounded search")):
+        return "The Meta web search did not return a complete, valid source-linked response. This does not establish that the social platform blocked access. No automatic retry was made; usage may have been consumed."
     # Never expose arbitrary exception details (which can contain provider payloads).
     if isinstance(exc,ValueError) and str(exc).startswith("Meta budget reached"):
         return "The configured AI budget is exhausted. No external request was made. Review the workspace/app budget before requesting insights again. Saved evidence is unchanged."
@@ -359,8 +363,8 @@ def execute_job(job_id):
             report["remaining_urls"]=list(dict.fromkeys(url for url in queue if url not in visited))[:100]
             report["coverage"]["complete"]=not report["remaining_urls"]
             if report["remaining_urls"]:report["limitations"].append("Page limit reached. More discovered pages remain; continue collection explicitly.")
-            documents=db.scalars(select(BrandAsset).where(BrandAsset.workspace_id==job.workspace_id,BrandAsset.kind=="document")
-                .order_by(BrandAsset.created_at.desc()).limit(2)).all()
+            documents=db.scalars(select(BrandAsset).where(BrandAsset.workspace_id==job.workspace_id,BrandAsset.kind.in_(["document","knowledge"]))
+                .order_by(BrandAsset.created_at.desc()).limit(50)).all()
             sources=insight_sources(details["profile"],report["pages"],documents,[report.get("search"),*report.get("market_searches",[])])
             report["insight_sources"]=sources
             if live:
