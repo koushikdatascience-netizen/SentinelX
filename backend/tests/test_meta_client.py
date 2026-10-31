@@ -153,27 +153,33 @@ def test_unsupported_adapters_never_charge(live,monkeypatch):
     reserve.assert_not_called()
 
 
-@pytest.mark.parametrize("limit",["META_APP_BUDGET_CENTS","META_WORKSPACE_BUDGET_CENTS","META_RUN_BUDGET_CENTS"])
-def test_budget_rolls_back_all_scopes(live,monkeypatch,limit):
-    monkeypatch.setenv(limit,"0")
-    with SessionLocal() as db: before={row.provider:row.reserved_cents for row in db.scalars(select(ApiBudget))}
-    calls=transport(monkeypatch,chat())
-    with pytest.raises(ValueError):MetaClient(**live).text("System","User")
-    with SessionLocal() as db: after={row.provider:row.reserved_cents for row in db.scalars(select(ApiBudget))}
-    assert before==after and calls==[]
+@pytest.mark.parametrize("legacy_limit", ["META_APP_BUDGET_CENTS", "META_WORKSPACE_BUDGET_CENTS", "META_RUN_BUDGET_CENTS"])
+def test_legacy_limit_flags_do_not_block_transport(live, monkeypatch, legacy_limit):
+    monkeypatch.setenv(legacy_limit, "0")
+    calls = transport(monkeypatch, chat())
+    MetaClient(**live).text("System", "User")
+    assert len(calls) == 1
+    with SessionLocal() as db:
+        assert db.get(ApiBudget, "meta").reserved_cents >= 5
 
 
-def test_run_cap_and_workspace_cap_accumulate(live,monkeypatch):
-    calls=transport(monkeypatch,chat())
-    monkeypatch.setenv("META_RUN_BUDGET_CENTS","5")
-    client=MetaClient(**live);client.text("System","User")
-    with pytest.raises(ValueError):client.text("System","User")
+def test_run_and_workspace_usage_counters_accumulate(live, monkeypatch):
+    calls = transport(monkeypatch, chat())
+    monkeypatch.setenv("META_RUN_BUDGET_CENTS", "0")
+    client = MetaClient(**live)
+    client.text("System", "User")
+    client.text("System", "User")
     with SessionLocal.begin() as db:
-        run=WorkflowRun(workspace_id=live["workspace_id"],website="https://example.invalid",objective="Second run")
-        db.add(run);db.flush();run_id=run.id
-    MetaClient(**{**live,"run_id":run_id}).text("System","User")
-    with pytest.raises(ValueError):MetaClient(**{**live,"run_id":run_id}).text("System","User")
-    assert len(calls)==2
+        run = WorkflowRun(workspace_id=live["workspace_id"], website="https://example.invalid", objective="Second run")
+        db.add(run)
+        db.flush()
+        run_id = run.id
+    MetaClient(**{**live, "run_id": run_id}).text("System", "User")
+    assert len(calls) == 3
+    import hashlib
+    key = "mw:" + hashlib.sha256(live["workspace_id"].encode()).hexdigest()[:32]
+    with SessionLocal() as db:
+        assert db.get(ApiBudget, key).reserved_cents >= 15
 
 
 def test_wrong_owner_or_missing_scope_never_calls(live,monkeypatch):
@@ -183,17 +189,20 @@ def test_wrong_owner_or_missing_scope_never_calls(live,monkeypatch):
     assert calls==[]
 
 
-def test_concurrent_budget_is_atomic(live,monkeypatch):
+def test_concurrent_usage_accounting_is_atomic(live, monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
-    monkeypatch.setenv("META_WORKSPACE_BUDGET_CENTS","5")
-    barrier=Barrier(2)
+    import hashlib
+    monkeypatch.setenv("META_WORKSPACE_BUDGET_CENTS", "0")
+    barrier = Barrier(2)
     def attempt(_):
         barrier.wait(timeout=5)
-        try:reserve_meta(**live,cents=5);return "reserved"
-        except ValueError:return "blocked"
+        reserve_meta(**live, cents=5)
     with ThreadPoolExecutor(max_workers=2) as pool:
-        assert sorted(pool.map(attempt,range(2)))==["blocked","reserved"]
+        list(pool.map(attempt, range(2)))
+    key = "mr:" + hashlib.sha256((live["workspace_id"] + ":" + live["run_id"]).encode()).hexdigest()[:32]
+    with SessionLocal() as db:
+        assert db.get(ApiBudget, key).reserved_cents == 10
 
 
 def test_sample_structured_schema_and_valid_image(live,monkeypatch):
@@ -205,12 +214,16 @@ def test_sample_structured_schema_and_valid_image(live,monkeypatch):
     with Image.open(io.BytesIO(base64.b64decode(data["b64_json"]))) as image:image.verify()
 
 
-def test_failed_call_keeps_reservation(live,monkeypatch):
-    monkeypatch.setenv("META_RUN_BUDGET_CENTS","5")
-    calls=transport(monkeypatch,{"error":{"message":"private"}},500)
-    with pytest.raises(MetaError):MetaClient(**live).text("System","User")
-    with pytest.raises(ValueError):MetaClient(**live).text("System","User")
-    assert len(calls)==1
+def test_failed_call_records_usage_without_restricting_next_call(live, monkeypatch):
+    calls = transport(monkeypatch, {"error": {"message": "private"}}, 500)
+    for _ in range(2):
+        with pytest.raises(MetaError):
+            MetaClient(**live).text("System", "User")
+    assert len(calls) == 2
+    import hashlib
+    key = "mr:" + hashlib.sha256((live["workspace_id"] + ":" + live["run_id"]).encode()).hexdigest()[:32]
+    with SessionLocal() as db:
+        assert db.get(ApiBudget, key).reserved_cents == 10
 
 
 def test_missing_key_or_unverified_model_no_charge(live,monkeypatch):
