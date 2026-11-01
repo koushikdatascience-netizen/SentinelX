@@ -39,6 +39,10 @@ def test_business_chat_retrieves_knowledge_is_idempotent_and_restores_owned_hist
     assert history.status_code==200 and history.json()[0]["answer"]==first.json()["answer"]
     assert authenticated_client.get("/api/v1/business-chat/threads",params={"workspace_id":wid}).json()[0]["id"]==body["thread_id"]
     assert authenticated_client.get("/api/v1/business-chat",params={"workspace_id":"foreign","thread_id":body["thread_id"]}).status_code==404
+    delete_url=f"/api/v1/business-chat/threads/{body['thread_id']}"
+    assert authenticated_client.delete(delete_url,params={"workspace_id":"foreign"}).status_code==404
+    assert authenticated_client.delete(delete_url,params={"workspace_id":wid}).json()=={"deleted":1}
+    assert authenticated_client.get("/api/v1/business-chat/threads",params={"workspace_id":wid}).json()==[]
 
 
 def test_chat_data_question_uses_one_model_plan_and_real_local_calculations(authenticated_client,monkeypatch):
@@ -154,6 +158,30 @@ def test_selected_chat_tools_execute_once_and_share_parent_budget(authenticated_
     for item in response.json()["tool_results"]:
         if item["tool"]=="image":assert authenticated_client.get(f"/api/v1/workspaces/{wid}/business-profile/assets/{item['data']['asset_id']}").status_code==200
         if item["tool"]=="campaign":assert authenticated_client.get(f"/api/v1/campaigns/{item['data']['campaign_id']}",params={"workspace_id":wid}).status_code==200
+
+
+def test_chat_can_edit_an_uploaded_image_with_muse_image(authenticated_client,monkeypatch):
+    import base64
+    from tests.test_business_visuals import png
+    wid=profile(authenticated_client)["workspace_id"];enable(monkeypatch);calls=[];output=png("blue")
+    uploaded=authenticated_client.post(f"/api/v1/workspaces/{wid}/business-profile/assets",data={"kind":"image","consent":"true"},files={"file":("product.png",png("green"),"image/png")})
+    assert uploaded.status_code==201,uploaded.text
+    def handle(req):
+        calls.append(req)
+        if req.url.path.endswith("/images/edits"):
+            assert b"preserve the wood grain" in req.content
+            return httpx.Response(200,json={"created":1,"data":[{"b64_json":base64.b64encode(output).decode()}]})
+        return httpx.Response(200,json=chat(json.dumps({"answer":"I created the requested image edit for review.","citations":[],"analysis":None})))
+    monkeypatch.setattr(meta_client,"OpenAI",lambda **kwargs:SDK(**kwargs,http_client=httpx.Client(transport=httpx.MockTransport(handle))))
+    body=request(wid,image_id=uploaded.json()["id"],image_consent=True,tools=["image_edit"],tool_consent=True,message="Brighten this product photo and preserve the wood grain.")
+    response=authenticated_client.post("/api/v1/business-chat",json=body)
+    assert response.status_code==201,response.text
+    result=response.json();edit=next(item for item in result["tool_results"] if item["tool"]=="image_edit")
+    assert edit["status"]=="completed" and len(calls)==2
+    saved=authenticated_client.get(f"/api/v1/workspaces/{wid}/business-profile/assets/{edit['data']['asset_id']}")
+    assert saved.status_code==200 and saved.content==output
+    original=authenticated_client.get(f"/api/v1/workspaces/{wid}/business-profile/assets/{uploaded.json()['id']}")
+    assert original.status_code==200 and original.content==png("green")
 
 
 def test_tool_consent_invalid_selections_and_zero_budget_does_not_stop(authenticated_client,monkeypatch):

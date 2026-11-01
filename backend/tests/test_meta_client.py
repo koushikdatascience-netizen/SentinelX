@@ -59,14 +59,15 @@ def chat(text="OK", reason="stop", choices=True):
                      "completion_tokens_details":{"reasoning_tokens":38}}}
 
 
-@pytest.mark.parametrize("capability",["text","vision","image","segment"])
+@pytest.mark.parametrize("capability",["text","vision","image","image_edit","segment"])
 @pytest.mark.parametrize("disabled",["ALLOW_PAID_INFERENCE","ENABLE_LIVE_MULTIMODAL","INFERENCE_PROVIDER","SENTINELX_MODE"])
 def test_off_flags_never_construct_transport(live,monkeypatch,capability,disabled):
     monkeypatch.setenv(disabled,"demo" if disabled=="INFERENCE_PROVIDER" else "false")
     factory=Mock();monkeypatch.setattr(meta_client,"OpenAI",factory)
     client=MetaClient(**live)
     operations={"text":lambda:client.text("System","User"),"vision":lambda:client.vision(png(),"image/png","Describe"),
-                "image":lambda:client.image("A blue circle","1024x1024"),"segment":lambda:client.segment(png(),"image/png")}
+                "image":lambda:client.image("A blue circle","1024x1024"),"image_edit":lambda:client.image_edit(png(),"image/png","Brighten the image"),
+                "segment":lambda:client.segment(png(),"image/png")}
     first=operations[capability]();assert first==operations[capability]()
     assert first["provenance"]=="sample"
     factory.assert_not_called()
@@ -103,6 +104,17 @@ def test_image_contract(live,monkeypatch):
     assert str(calls[0].url)=="https://api.meta.ai/v1/images/generations"
     body=json.loads(calls[0].content)
     assert body=={"model":"muse-image-1.0","prompt":"A blue circle","size":"1024x1536","n":1,"response_format":"b64_json"}
+
+
+def test_image_edit_contract(live,monkeypatch):
+    encoded=base64.b64encode(png()).decode()
+    calls=transport(monkeypatch,{"created":1,"data":[{"b64_json":encoded}]})
+    result=MetaClient(**live).image_edit(png(),"image/png","Brighten the product and preserve its shape")
+    assert result["data"]["b64_json"]==encoded and result["provenance"]=="live_meta"
+    request=calls[0]
+    assert str(request.url)=="https://api.meta.ai/v1/images/edits"
+    assert b"muse-image-1.0" in request.content and b"Brighten the product and preserve its shape" in request.content
+    assert b"reference.png" in request.content and b"b64_json" in request.content
 
 
 @pytest.mark.parametrize("payload",[chat(""),chat("partial","length"),chat(choices=False),chat(None)])

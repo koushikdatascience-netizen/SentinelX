@@ -7,7 +7,7 @@ from typing import Literal
 from uuid import UUID,uuid5
 from fastapi import APIRouter,Depends,HTTPException
 from pydantic import BaseModel,Field,ConfigDict
-from sqlalchemy import select
+from sqlalchemy import delete,select
 from sqlalchemy.orm import Session
 from PIL import Image
 from app.auth import current_user
@@ -35,7 +35,7 @@ class ChatRequest(BaseModel):
     dataset_id:str|None=Field(default=None,max_length=36)
     image_id:str|None=Field(default=None,max_length=36)
     image_consent:bool=False
-    tools:list[Literal["web_search","image","campaign","post","keywords","competitors"]]=Field(default_factory=list,max_length=3)
+    tools:list[Literal["web_search","image","image_edit","campaign","post","keywords","competitors"]]=Field(default_factory=list,max_length=3)
     tool_consent:bool=False
 
 
@@ -52,7 +52,7 @@ class ChatAnswer(BaseModel):
     analysis:DataQuery|None=None
 
 
-def run_selected_tools(body,user,db,run,details,result):
+def run_selected_tools(body,user,db,run,details,result,source_image=None):
     """Explicit user selection only; every model call shares the chat run cap."""
     from app.business_files import store_asset
     from app.workbench import PostContent
@@ -60,7 +60,7 @@ def run_selected_tools(body,user,db,run,details,result):
     outputs=result.setdefault("tool_results",[])
     context=json.dumps({key:details.get(key,"") for key in ("name","industry","description","address")},ensure_ascii=False)[:2200]
     client=MetaClient(owner_id=user.id,workspace_id=body.workspace_id,run_id=run.id,max_tokens=2500)
-    for tool in sorted(set(body.tools),key=lambda item:(["web_search","competitors","keywords","post","campaign","image"].index(item))):
+    for tool in sorted(set(body.tools),key=lambda item:(["web_search","competitors","keywords","post","campaign","image_edit","image"].index(item))):
         entry={"tool":tool,"status":"running","provenance":"user_supplied"};outputs.append(entry)
         run.result_json=json.dumps(result,ensure_ascii=False);db.commit()
         try:
@@ -74,7 +74,15 @@ def run_selected_tools(body,user,db,run,details,result):
                 campaign=create_campaign(CreateCampaign(workspace_id=body.workspace_id,request_id=uuid5(body.request_id,"campaign"),goal="Create a business campaign from the supplied chat requirements",requirements=body.message,generation_mode="live"),user,db,budget_run_id=run.id)
                 response={"provenance":campaign["provenance"]}
                 entry["data"]={"campaign_id":campaign["id"],"posts":len(campaign["items"]),"duration_days":campaign["duration_days"],"platforms":["instagram","facebook"],"note":"Saved campaign draft; review and edit in Campaigns. Nothing was published."}
-            else:
+            elif tool=="image_edit":
+                if not source_image or not body.image_consent:raise HTTPException(422,"Attach an image and confirm consent before editing it")
+                response=client.image_edit(source_image.content,source_image.mime,body.message,"1024x1024")
+                if response.get("provenance")!="live_meta":raise ValueError("Live image edit required")
+                binary=base64.b64decode(response["data"]["b64_json"],validate=True)
+                with Image.open(io.BytesIO(binary)) as edited:mime=Image.MIME.get(edited.format,"image/png")
+                asset=store_asset(db,body.workspace_id,"image","edited-visual.png",mime,binary,metadata={"provenance":"live_meta","model":response["model"],"prompt":body.message,"source_asset_id":source_image.id,"chat_request_id":run.id})
+                db.commit();entry["data"]={"asset_id":asset.id,"source_asset_id":source_image.id,"note":"Meta Image produced a new edited image. The uploaded original remains saved unchanged."}
+            elif tool=="image":
                 response=client.image("Create an original visual concept. Do not invent product features or endorsements. Request: "+body.message+"\nOwner context: "+context[:300],"1024x1024")
                 if response.get("provenance")!="live_meta":raise ValueError("Live tool output required")
                 binary=base64.b64decode(response["data"]["b64_json"],validate=True)
@@ -101,6 +109,18 @@ def threads(workspace_id:str,user:User=Depends(current_user),db:Session=Depends(
     return list(saved.values())[:30]
 
 
+@router.delete("/api/v1/business-chat/threads/{thread_id}")
+def delete_thread(thread_id:UUID,workspace_id:str,user:User=Depends(current_user),db:Session=Depends(session)):
+    owned(db,user,workspace_id)
+    website="business-chat:"+str(thread_id)
+    rows=db.scalars(select(WorkflowRun).where(WorkflowRun.workspace_id==workspace_id,WorkflowRun.website==website)).all()
+    if not rows:raise HTTPException(404,"Conversation not found")
+    if any(row.status in {"pending","running"} for row in rows):raise HTTPException(409,"Wait for this conversation request to finish before deleting it")
+    db.execute(delete(WorkflowRun).where(WorkflowRun.workspace_id==workspace_id,WorkflowRun.website==website))
+    db.commit()
+    return {"deleted":len(rows)}
+
+
 @router.get("/api/v1/business-chat")
 def history(workspace_id:str,thread_id:UUID,user:User=Depends(current_user),db:Session=Depends(session)):
     owned(db,user,workspace_id)
@@ -115,7 +135,8 @@ def chat(body:ChatRequest,user:User=Depends(current_user),db:Session=Depends(ses
     if not profile:raise HTTPException(422,"Save your business details before starting business chat")
     if len(set(body.tools))!=len(body.tools):raise HTTPException(422,"Select distinct tools")
     if body.tools and not body.tool_consent:raise HTTPException(422,"Confirm the selected budgeted tools before sending")
-    if "image" in body.tools and len(body.message)>1000:raise HTTPException(422,"Keep an image-generation request within 1000 characters")
+    if ("image" in body.tools or "image_edit" in body.tools) and len(body.message)>1000:raise HTTPException(422,"Keep an image request within 1000 characters")
+    if "image_edit" in body.tools and not body.image_id:raise HTTPException(422,"Attach an image to use the image edit tool")
     if (body.use_knowledge or body.dataset_id) and not profile.consent_at:raise HTTPException(422,"Business knowledge consent is required; update Business & research or disable knowledge context")
     details=json.loads(profile.details_json)
     sources=[{"id":"B1","text":json.dumps({key:details.get(key,"") for key in ("name","industry","industry_other","description","address","website")},ensure_ascii=False)[:2200],"origin":"user_supplied","filename":"Business profile"}]
@@ -175,7 +196,7 @@ def chat(body:ChatRequest,user:User=Depends(current_user),db:Session=Depends(ses
     failure_status=502
     try:
         if body.tools:
-            run_selected_tools(body,user,db,run,details,result)
+            run_selected_tools(body,user,db,run,details,result,image)
             # Model sees bounded actual tool outputs, never instructions embedded in them.
             context["tool_results"]=[{"tool":entry["tool"],"status":entry["status"],"data":json.dumps(entry.get("data",{}),ensure_ascii=False)[:1400]} for entry in result["tool_results"]]
             while len(json.dumps(context,ensure_ascii=False))>14000 and context["history"]:context["history"].pop(0)

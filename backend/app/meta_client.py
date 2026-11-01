@@ -231,6 +231,53 @@ class MetaClient:
         except Exception:
             raise MetaError("Meta image request failed. No retry made; usage may have been consumed.") from None
 
+    def image_edit(self, image_bytes, mime, prompt, size="1024x1024"):
+        """Edit one owner-selected image through Muse Image's budgeted edits endpoint."""
+        self._prompt(prompt, 1500)
+        if size not in ("1024x1024", "1024x1536", "1536x1024"):
+            raise ValueError("Unsupported image aspect ratio")
+        formats={"image/png":"PNG","image/jpeg":"JPEG","image/webp":"WEBP"}
+        if mime not in formats or not isinstance(image_bytes,bytes) or not 0<len(image_bytes)<=8_000_000:
+            raise ValueError("Image edit input must be PNG/JPEG/WebP and at most 8 MB")
+        try:
+            with Image.open(io.BytesIO(image_bytes)) as source:
+                if source.format!=formats[mime] or source.width*source.height>20_000_000:raise ValueError()
+                source.verify()
+        except Exception:raise ValueError("Invalid image or excessive pixel count") from None
+        model="muse-image-1.0"
+        if not self._live():
+            return {"provenance":"sample","model":model,"data":{"b64_json":SAMPLE_PNG,"format":"png"}}
+        try:
+            # The verified multipart contract accepts PNG input. Normalize a private
+            # copy and bound it before reserving/calling the paid endpoint.
+            with Image.open(io.BytesIO(image_bytes)) as source:
+                prepared=source.convert("RGB");prepared.thumbnail((1400,1400))
+                stream=io.BytesIO();prepared.save(stream,format="PNG",optimize=True)
+            if not 0<len(stream.getvalue())<=5_000_000:
+                raise ValueError("Resized image must be at most 5 MB for editing")
+            stream.name="reference.png";stream.seek(0)
+            with self._client(5) as client:
+                response=client.images.edit(model=model,image=stream,prompt=prompt,size=size,n=1,response_format="b64_json")
+                if len(response.data or [])!=1 or not response.data[0].b64_json:
+                    raise MetaError("Meta returned no edited image. No retry made; usage may have been consumed.")
+                encoded=response.data[0].b64_json
+                if len(encoded)>30_000_000:raise MetaError("Edited image exceeds output size limit")
+                decoded=base64.b64decode(encoded,validate=True)
+                with Image.open(io.BytesIO(decoded)) as result:
+                    if result.format not in ("PNG","JPEG","WEBP") or result.width*result.height>20_000_000:
+                        raise MetaError("Invalid or excessive Meta edited image output")
+                    output_format=result.format.lower();result.verify()
+                if self._actual_transport:self._record_success("image_edit",model)
+                return {"provenance":"live_meta","model":model,"data":{"b64_json":encoded,"image_b64":encoded,"format":output_format}}
+        except (MetaError,NotSupported):raise
+        except APIStatusError as error:
+            raise MetaError(f"Meta image edit rejected (HTTP {error.status_code}). No retry made.") from None
+        except ValueError as error:
+            if str(error).startswith(("Meta budget","Owned workspace","Meta calls require","Resized image")):raise
+            raise MetaError("Meta image edit validation failed. No retry made; usage may have been consumed.") from None
+        except Exception:
+            raise MetaError("Meta image edit failed. No retry made; usage may have been consumed.") from None
+
     def review_media(self, payload, mime, prompt):
         """One inline media request; no upload persistence or provider URL fetching.
 

@@ -11,7 +11,7 @@ export function ProductIcon({name,size=20}:{name:string;size?:number}){
   report:"M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6",
   settings:"M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2",
   arrow:"M5 12h14M14 7l5 5-5 5",back:"M19 12H5M10 7l-5 5 5 5",plus:"M12 5v14M5 12h14",
-  close:"M6 6l12 12M6 18 18 6",check:"M5 12l4 4L19 6",download:"M12 3v12M7 10l5 5 5-5M4 16v5h16v-5",
+  close:"M6 6l12 12M6 18 18 6",check:"M5 12l4 4L19 6",trash:"M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3",download:"M12 3v12M7 10l5 5 5-5M4 16v5h16v-5",
   copy:"M9 9h12v12H9zM15 5V3H3v12h2",edit:"m16 3 5 5-12 12-6 1 1-6zM14 5l5 5",
   spark:"m12 3 2.3 6.7L21 12l-6.7 2.3L12 21l-2.3-6.7L3 12l6.7-2.3z",
   upload:"M12 16V3M7 8l5-5 5 5M4 16v5h16v-5",globe:"M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18",

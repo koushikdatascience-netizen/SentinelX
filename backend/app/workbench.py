@@ -200,8 +200,11 @@ class DocumentError(ValueError):
 
 def extract_document(payload,filename,start_page,page_limit):
     if not 1<=start_page or not 1<=page_limit<=25:raise DocumentError("Choose a starting page of at least 1 and a batch of 1 to 25 pages")
-    if not 0<len(payload)<=20_000_000:raise DocumentError("Use a document up to 20 MB")
-    if filename.lower().endswith(".pdf"):
+    suffix=filename.lower().rsplit(".",1)[-1] if "." in filename else ""
+    if suffix not in ("pdf","txt","csv","md"):raise DocumentError("Use PDF, TXT, CSV or Markdown; video and audio files are not supported for text extraction")
+    max_bytes=20_000_000 if suffix=="pdf" else 8_000_000
+    if not 0<len(payload)<=max_bytes:raise DocumentError(f"Use a {suffix.upper()} document up to {max_bytes//1_000_000} MB")
+    if suffix=="pdf":
         from pypdf import PdfReader
         if not payload.startswith(b"%PDF-"):raise DocumentError("Invalid PDF")
         try:reader=PdfReader(io.BytesIO(payload))
@@ -217,7 +220,6 @@ def extract_document(payload,filename,start_page,page_limit):
             pages.append({"page":index+1,"text":text[:20000],"truncated":len(text)>20000,"needs_ocr":not text.strip(),"extraction_method":"text_layer","provenance":"user_supplied"})
         return {"pages":pages,"total_pages":total,"next_page":pages[-1]["page"]+1 if pages[-1]["page"]<total else None,
             "limitation":"Text-layer extraction only for this result. Scanned pages need an explicitly consented Meta PDF request. Verify extracted text against the original; table/layout reconstruction is not guaranteed."}
-    if not filename.lower().endswith((".txt",".csv",".md")):raise DocumentError("Use PDF, TXT, CSV or Markdown")
     try:text=payload.decode("utf-16" if payload.startswith((b"\xff\xfe",b"\xfe\xff")) else "utf-8-sig")
     except UnicodeError:raise DocumentError("Text encoding is unsupported. Save as UTF-8 or UTF-16 with a byte-order mark, then upload again.") from None
     if "\x00" in text:raise DocumentError("Invalid text document")
