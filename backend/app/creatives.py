@@ -7,7 +7,7 @@ from typing import Literal
 from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File, Form
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -167,6 +167,24 @@ def image_bytes(campaign_id:str,item_id:str,variant_id:str,workspace_id:str,
     v=_get(db,campaign_id,item_id,variant_id)
     return Response(content=v.image_blob,media_type=v.mime,
         headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})
+
+@router.post("/api/v1/campaigns/{campaign_id}/items/{item_id}/creatives/{variant_id}/edits",status_code=201)
+def save_edited_variant(campaign_id:str,item_id:str,variant_id:str,workspace_id:str,
+        consent:bool=Form(False),file:UploadFile=File(...),
+        user:User=Depends(current_user),db:Session=Depends(session)):
+    scope(db,workspace_id,campaign_id,item_id,user)
+    source=_get(db,campaign_id,item_id,variant_id)
+    if not consent:raise HTTPException(422,"Consent is required to save this edited image")
+    payload=file.file.read(5_000_001)
+    try:measurement=measure_image(payload)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from None
+    mime={"PNG":"image/png","JPEG":"image/jpeg","WEBP":"image/webp"}[measurement["format"]]
+    edited=CampaignCreative(campaign_id=campaign_id,item_id=item_id,
+        prompt=f"Owner-edited version of saved concept {source.id}",mime=mime,image_blob=payload,
+        scores_json=json.dumps({"local":{"technical_readiness":measurement["technical_readiness"]},"brief_match":None,"final_score":None}),
+        provenance="user_supplied",selected=False)
+    db.add(edited);db.commit();db.refresh(edited)
+    return {**_variant_dict(edited),"note":"Edited image saved as a new draft. Select and review it before export; nothing was published."}
 
 @router.post("/api/v1/campaigns/{campaign_id}/items/{item_id}/creatives/{variant_id}/select")
 def select_variant(campaign_id:str,item_id:str,variant_id:str,workspace_id:str,

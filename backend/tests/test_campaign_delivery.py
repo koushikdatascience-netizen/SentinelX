@@ -58,12 +58,26 @@ def test_bulk_visuals_are_persisted_reused_and_tenant_isolated(authenticated_cli
     assert authenticated_client.post(base+f"/visual-batches/{bid}/next",params={"workspace_id":"foreign"}).status_code==404
 
 
+def test_edited_visual_is_saved_as_private_user_supplied_variant(authenticated_client,monkeypatch):
+    wid,plan,base,_=prepare(authenticated_client,monkeypatch)
+    item=plan["items"][0];variant=authenticated_client.get(base+f"/items/{item['id']}/creatives",params={"workspace_id":wid}).json()[0]
+    path=base+f"/items/{item['id']}/creatives/{variant['id']}/edits"
+    file={"file":("edited.png",png(),"image/png")}
+    assert authenticated_client.post(path,params={"workspace_id":wid},data={"consent":"false"},files=file).status_code==422
+    saved=authenticated_client.post(path,params={"workspace_id":wid},data={"consent":"true"},files=file)
+    assert saved.status_code==201,saved.text
+    result=saved.json();assert result["provenance"]=="user_supplied" and result["selected"] is False
+    fetched=authenticated_client.get(base+f"/items/{item['id']}/creatives/{result['id']}/image",params={"workspace_id":wid})
+    assert fetched.status_code==200 and fetched.content==png()
+    assert authenticated_client.get(base+f"/items/{item['id']}/creatives/{result['id']}/image",params={"workspace_id":"foreign"}).status_code==404
+
+
 def test_final_review_is_complete_immutable_exportable_and_revocable(authenticated_client,monkeypatch):
     wid,plan,base,bid=prepare(authenticated_client,monkeypatch)
     iid=plan["items"][0]["id"]
     # CSV must neutralize formulas; JSON preserves the exact owner-approved text.
     caption="=HYPERLINK(\"https://example.org\",\"A saved owner caption\")"
-    assert authenticated_client.patch(base+f"/items/{iid}",params={"workspace_id":wid},json={"caption":caption}).status_code==200
+    assert authenticated_client.patch(base+f"/items/{iid}",params={"workspace_id":wid},json={"caption":caption,"scheduled_at":"2026-11-10T09:30"}).status_code==200
     body={"request_id":str(uuid4()),"reviewed":True}
     assert authenticated_client.post(base+"/finalize",params={"workspace_id":wid},json={**body,"reviewed":False}).status_code==422
     final=authenticated_client.post(base+"/finalize",params={"workspace_id":wid},json=body)
@@ -72,13 +86,15 @@ def test_final_review_is_complete_immutable_exportable_and_revocable(authenticat
     path=base+f"/finalized/{final.json()['id']}/export"
     raw=authenticated_client.get(path,params={"workspace_id":wid,"format":"json"})
     assert raw.status_code==200 and raw.json()["manifest"]["posts"][0]["caption"]==caption
+    assert raw.json()["manifest"]["posts"][0]["scheduled_at"]=="2026-11-10T09:30"
     assert all(post["state"]=="approved" and post["visual"]["sha256"] for post in raw.json()["manifest"]["posts"])
     csv_response=authenticated_client.get(path,params={"workspace_id":wid,"format":"csv"})
     rows=list(csv.DictReader(io.StringIO(csv_response.content.decode("utf-8-sig"))))
     assert len(rows)==7 and rows[0]["caption"].startswith("'=") and rows[0]["visual_file"].startswith("creatives/")
+    assert rows[0]["scheduled_at"]=="2026-11-10T09:30"
     excel=authenticated_client.get(path,params={"workspace_id":wid,"format":"xlsx"})
     book=load_workbook(io.BytesIO(excel.content));assert book.active.max_row==8
-    assert book.active["D2"].data_type=="s" and book.active["D2"].value==caption
+    assert book.active["E2"].data_type=="s" and book.active["E2"].value==caption
     packed=authenticated_client.get(path,params={"workspace_id":wid,"format":"zip"})
     with zipfile.ZipFile(io.BytesIO(packed.content)) as archive:
         assert {"campaign.json","posts.csv","posts.xlsx"}<=set(archive.namelist())

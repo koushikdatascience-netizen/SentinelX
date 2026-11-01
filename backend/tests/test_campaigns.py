@@ -24,16 +24,23 @@ def test_demo_campaign_seven_days_isolation_and_edits(authenticated_client):
     changed=c.patch(f"/api/v1/campaigns/{cid}/items/{iid}",params={"workspace_id":wid},
                     json={"caption":"An improved and more useful furniture campaign sample caption.",
                           "hashtags":["#CustomFurniture","#MadeToOrder"],
+                          "day":2,"platform":"linkedin","post_type":"buyer story","scheduled_at":"2026-11-10T09:30",
                           "image_prompt":"Use an owner-approved furniture image in a bright, natural workshop setting.",
                           "video_script":"Scene 1: show the owner-provided cabinet image. Scene 2: invite questions."})
     assert changed.status_code==200,changed.text
     assert changed.json()["provenance"]=="user_supplied"
     got=c.get(f"/api/v1/campaigns/{cid}",params={"workspace_id":wid})
     assert got.status_code==200
-    assert got.json()["items"][0]["provenance"]=="user_supplied"
-    assert got.json()["items"][0]["hashtags"]==["#CustomFurniture","#MadeToOrder"]
-    assert got.json()["items"][0]["image_prompt"].startswith("Use an owner-approved")
-    assert got.json()["items"][0]["video_script"].startswith("Scene 1")
+    edited=next(item for item in got.json()["items"] if item["id"]==iid)
+    assert edited["provenance"]=="user_supplied"
+    assert edited["hashtags"]==["#CustomFurniture","#MadeToOrder"]
+    assert edited["image_prompt"].startswith("Use an owner-approved")
+    assert edited["video_script"].startswith("Scene 1")
+    assert edited["day"]==2 and edited["platform"]=="linkedin"
+    assert edited["post_type"]=="buyer story" and edited["scheduled_at"]=="2026-11-10T09:30"
+    assert c.patch(f"/api/v1/campaigns/{cid}/items/{iid}",params={"workspace_id":wid},json={"scheduled_at":"not-a-date"}).status_code==422
+    assert c.patch(f"/api/v1/campaigns/{cid}/items/{iid}",params={"workspace_id":wid},json={"scheduled_at":None}).status_code==200
+    assert next(item for item in c.get(f"/api/v1/campaigns/{cid}",params={"workspace_id":wid}).json()["items"] if item["id"]==iid)["scheduled_at"] is None
     assert c.get("/api/v1/campaigns",params={"workspace_id":wid}).json()[0]["id"]==cid
     assert c.get(f"/api/v1/campaigns/{cid}",params={"workspace_id":"invalid"}).status_code==404
 

@@ -117,7 +117,7 @@ def manifest(db,campaign):
         if len(visuals)!=1:raise HTTPException(409,f"Choose exactly one saved visual for day {item.day} before final approval")
         visual=visuals[0];content=json.loads(item.item_json)
         posts.append({"item_id":item.id,"day":item.day,"platform":item.platform,"state":item.state,"provenance":item.provenance,
-            **{key:content.get(key) for key in ("post_type","caption","hashtags","cta","creative_brief","image_prompt","video_script","evidence_ids","unsupported_claims")},
+            **{key:content.get(key) for key in ("post_type","caption","hashtags","cta","creative_brief","image_prompt","video_script","scheduled_at","evidence_ids","unsupported_claims")},
             "visual":{"id":visual.id,"mime":visual.mime,"provenance":visual.provenance,"generation_prompt":visual.prompt,
                 "sha256":hashlib.sha256(visual.image_blob).hexdigest(),"file":"creatives/"+visual.id+"."+{"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}.get(visual.mime,"bin"),
                 "image_url":f"/api/v1/campaigns/{campaign.id}/items/{item.id}/creatives/{visual.id}/image?workspace_id={campaign.workspace_id}"}})
@@ -179,7 +179,7 @@ def finalized(cid:str,workspace_id:str,user:User=Depends(current_user),db:Sessio
 
 
 def spreadsheet_rows(data):
-    columns=["day","platform","post_type","caption","hashtags","cta","creative_brief","image_prompt","video_script","provenance","visual_file","visual_provenance","visual_sha256","image_url","generation_prompt"]
+    columns=["day","scheduled_at","platform","post_type","caption","hashtags","cta","creative_brief","image_prompt","video_script","provenance","visual_file","visual_provenance","visual_sha256","image_url","generation_prompt"]
     rows=[]
     for post in data["posts"]:
         item={**post,"hashtags":" ".join(post.get("hashtags") or []),**{"visual_file":post["visual"]["file"],"visual_provenance":post["visual"]["provenance"],"visual_sha256":post["visual"]["sha256"],"image_url":post["visual"]["image_url"],"generation_prompt":post["visual"]["generation_prompt"]}}

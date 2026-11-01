@@ -2,6 +2,7 @@
 import json
 import os
 import hashlib
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException,Query
@@ -40,12 +41,23 @@ class CreateCampaign(BaseModel):
         return self
 
 class EditItem(BaseModel):
+    day: int | None=Field(default=None,ge=1,le=30)
+    platform: Platform | None=None
+    post_type: str | None=Field(default=None,min_length=3,max_length=80)
     caption: str | None=Field(default=None,min_length=10,max_length=1500)
     hashtags: list[str] | None=Field(default=None,max_length=12)
     cta: str | None=Field(default=None,min_length=5,max_length=180)
     creative_brief: str | None=Field(default=None,min_length=10,max_length=600)
     image_prompt: str | None=Field(default=None,min_length=15,max_length=1000)
     video_script: str | None=Field(default=None,max_length=1800)
+    scheduled_at: str | None=Field(default=None,max_length=35)
+
+    @model_validator(mode="after")
+    def valid_schedule(self):
+        if self.scheduled_at:
+            try:datetime.fromisoformat(self.scheduled_at.replace("Z","+00:00"))
+            except ValueError:raise ValueError("scheduled_at must be a valid local date and time") from None
+        return self
 
 def serialize(c:CampaignProject,db:Session)->dict:
     rows=db.scalars(select(CampaignItem).where(CampaignItem.campaign_id==c.id).order_by(CampaignItem.day)).all()
@@ -273,11 +285,16 @@ def update_item(campaign_id:str,item_id:str,body:EditItem,workspace_id:str,
     if item.state!="proposed": raise HTTPException(409,"Reviewed items cannot be silently edited")
     data=json.loads(item.item_json)
     updates=body.model_dump(exclude_none=True)
+    for nullable_field in ("scheduled_at","video_script"):
+        if nullable_field in body.model_fields_set and getattr(body,nullable_field) is None:
+            updates[nullable_field]=None
     if not updates:raise HTTPException(422,"No edits submitted")
+    if "day" in updates:item.day=updates["day"]
+    if "platform" in updates:item.platform=updates["platform"]
     data.update(updates)
     data["unsupported_claims"]=unsupported_claims(data["caption"]+" "+data["cta"])
     data["edit_source"]="user_supplied"
     item.item_json=json.dumps(data,ensure_ascii=False)
     item.provenance="user_supplied"
     db.commit()
-    return {"id":item.id,"state":item.state,"provenance":item.provenance,**data}
+    return {"id":item.id,"day":item.day,"platform":item.platform,"state":item.state,"provenance":item.provenance,**data}
