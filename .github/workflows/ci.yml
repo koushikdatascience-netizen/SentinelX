@@ -60,7 +60,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       NEXT_PUBLIC_API_URL: http://127.0.0.1:18081
       E2E_BROWSER_CHANNEL: chrome
