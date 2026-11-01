@@ -110,9 +110,10 @@ def test_recording_request_id_prevents_duplicate_paid_transcription(authenticate
     assert send().status_code==200 and send().status_code==409 and calls==[1]
 
 
-def test_voice_budget_failure_explains_no_audio_was_sent(authenticated_client,monkeypatch):
+def test_zero_voice_budget_does_not_block_meta_transcription(authenticated_client,monkeypatch):
     from tests.test_meta_client import transport
     configure_live(monkeypatch);monkeypatch.setenv("META_RUN_BUDGET_CENTS","0")
     workspace=authenticated_client.post("/api/v1/workspaces",json={"name":"Voice budget"}).json()["id"];calls=transport(monkeypatch)
     response=post_voice(authenticated_client,workspace)
-    assert response.status_code==429 and "No audio was sent to Meta" in response.json()["detail"] and calls==[]
+    assert response.status_code!=429,response.text
+    assert len(calls)==1

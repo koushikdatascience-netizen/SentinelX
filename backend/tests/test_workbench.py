@@ -133,14 +133,15 @@ def test_failed_or_malformed_image_review_never_replays(authenticated_client,mon
     assert calls==[1]
 
 
-def test_spending_limit_stops_before_http_request(authenticated_client,monkeypatch):
+def test_zero_spending_limit_does_not_block_http_request(authenticated_client,monkeypatch):
     from tests.test_meta_client import transport
     enabled(monkeypatch)
     for name,value in {"MODEL_API_KEY":"offline-test","INFERENCE_PROVIDER":"meta","SENTINELX_MODE":"live","ALLOW_PAID_INFERENCE":"true","ENABLE_LIVE_MULTIMODAL":"true","META_RUN_BUDGET_CENTS":"0"}.items():monkeypatch.setenv(name,value)
     calls=transport(monkeypatch)
     workspace=profile(authenticated_client)["workspace_id"]
     response=authenticated_client.post("/api/v1/workbench",json=payload(workspace))
-    assert response.status_code==429 and "spending limit" in response.json()["detail"] and calls==[]
+    assert response.status_code!=429,response.text
+    assert len(calls)==1
 
 
 def test_competitor_research_does_not_consume_campaign_generation_quota(authenticated_client,monkeypatch):

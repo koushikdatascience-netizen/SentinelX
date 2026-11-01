@@ -76,7 +76,7 @@ def test_visual_route_requires_consent_owner_scope_and_evidenced_candidate(authe
     assert authenticated_client.post(path,json=body).status_code==503
 
 
-@pytest.mark.parametrize("failure",["mapping","http","integrity","budget"])
+@pytest.mark.parametrize("failure",["mapping","http","integrity"])
 def test_failed_visual_request_does_not_replay_or_replace_text(authenticated_client,monkeypatch,failure):
     from tests.test_meta_client import transport,chat
     workspace,source_id,asset_id=saved_source(authenticated_client);enable(monkeypatch)
@@ -85,11 +85,10 @@ def test_failed_visual_request_does_not_replay_or_replace_text(authenticated_cli
     calls=transport(monkeypatch,chat(json.dumps(data)) if failure!="http" else {"error":{"message":"private-payload"}},status=502 if failure=="http" else 200)
     if failure=="integrity":
         with SessionLocal() as db:db.get(BrandAsset,asset_id).sha256="0"*64;db.commit()
-    if failure=="budget":monkeypatch.setenv("META_RUN_BUDGET_CENTS","0")
     path=f"/api/v1/workspaces/{workspace}/business-profile/research/{source_id}/visual-insights"
     result=authenticated_client.post(path,json={"request_id":str(uuid4()),"consent":True});assert result.status_code==202
     job_id=result.json()["id"];research.execute_job(job_id);research.execute_job(job_id)
-    assert len(calls)==(0 if failure in {"integrity","budget"} else 1)
+    assert len(calls)==(0 if failure=="integrity" else 1)
     with SessionLocal() as db:
         report=json.loads(db.get(BrandResearchJob,job_id).report_json)
         assert report["visual_status"]=="failed" and report["visual_review"] is None

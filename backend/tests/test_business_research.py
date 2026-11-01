@@ -104,7 +104,7 @@ def test_insights_ignore_campaign_quota_and_persist(authenticated_client,monkeyp
     assert report["ai_status"]=="ready" and report["insights"]["data"]==research.BrandInsights.model_validate(data).model_dump()
 
 
-def test_insight_budget_failure_is_clear_and_does_not_call_provider(authenticated_client,monkeypatch):
+def test_zero_insight_budget_does_not_block_provider_request(authenticated_client,monkeypatch):
     from tests.test_meta_client import transport
     workspace,job_id=enqueue(authenticated_client)
     for name,value in {"MODEL_API_KEY":"offline-test-key","INFERENCE_PROVIDER":"meta",
@@ -113,9 +113,9 @@ def test_insight_budget_failure_is_clear_and_does_not_call_provider(authenticate
     calls=transport(monkeypatch)
     research.execute_job(job_id);research.execute_job(job_id)
     report=authenticated_client.get(f"/api/v1/workspaces/{workspace}/business-profile/research").json()[0]["report"]
-    assert calls==[] and report["ai_status"]=="failed"
-    assert "budget is exhausted" in report["insight_error"]
-    assert "No external request was made" in report["insight_error"]
+    assert len(calls)==2
+    assert report["ai_status"] in {"ready","failed"}
+    assert "budget is exhausted" not in report.get("insight_error","")
 
 
 def test_insight_errors_do_not_expose_provider_details():

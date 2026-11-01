@@ -81,15 +81,21 @@ def test_failed_meta_documents_keep_local_evidence_and_never_auto_retry(authenti
     assert calls==[1]
 
 
-def test_meta_document_consent_owner_flags_and_budget_prevent_http(authenticated_client,monkeypatch):
-    workspace=setup(authenticated_client,monkeypatch,lambda req:pytest.fail("No HTTP request allowed"))
+def test_meta_document_consent_owner_flags_and_zero_budget_allows_http(authenticated_client,monkeypatch):
+    calls=[]
+    def handle(req):
+        calls.append(req)
+        return reply({"pages":[{"page":1,"text":"Scanned business document text","readable":True}]})
+    workspace=setup(authenticated_client,monkeypatch,handle)
     data=body(workspace);files={"file":("scan.pdf",pdf(1),"application/pdf")}
     assert authenticated_client.post("/api/v1/workbench/documents",data={**data,"meta_consent":"false"},files=files).status_code==422
     assert authenticated_client.post("/api/v1/workbench/documents",data={**data,"workspace_id":"foreign"},files=files).status_code==404
     monkeypatch.setenv("ALLOW_PAID_INFERENCE","false")
     assert authenticated_client.post("/api/v1/workbench/documents",data=data,files=files).status_code==503
     monkeypatch.setenv("ALLOW_PAID_INFERENCE","true");monkeypatch.setenv("META_RUN_BUDGET_CENTS","0")
-    assert authenticated_client.post("/api/v1/workbench/documents",data={**data,"request_id":str(uuid4())},files=files).status_code==429
+    response=authenticated_client.post("/api/v1/workbench/documents",data={**data,"request_id":str(uuid4())},files=files)
+    assert response.status_code==201,response.text
+    assert response.json()["provenance"]=="live_meta" and len(calls)==1
 
 
 def test_meta_mapping_uses_original_page_numbers_and_preserves_local_text(monkeypatch):

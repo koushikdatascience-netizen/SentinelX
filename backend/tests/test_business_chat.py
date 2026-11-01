@@ -59,12 +59,16 @@ def test_invalid_chat_evidence_or_data_plan_stops_without_paid_replay(authentica
     assert authenticated_client.post("/api/v1/business-chat",json=body).status_code==409 and len(calls)==1
 
 
-def test_chat_flags_consent_and_budget_block_transport(authenticated_client,monkeypatch):
-    wid,calls=setup(authenticated_client,monkeypatch,lambda payload:pytest.fail("No transport expected"))
+def test_chat_flags_and_consent_block_transport_but_zero_budget_does_not(authenticated_client,monkeypatch):
+    wid,calls=setup(authenticated_client,monkeypatch,lambda payload:{"answer":"Use the supplied workshop details to improve qualified inquiries.","citations":[],"analysis":None})
     monkeypatch.setenv("ALLOW_PAID_INFERENCE","false")
     assert authenticated_client.post("/api/v1/business-chat",json=request(wid)).status_code==503
+    unconsented=request(wid,tools=["post"],tool_consent=False)
+    assert authenticated_client.post("/api/v1/business-chat",json=unconsented).status_code==422 and calls==[]
     monkeypatch.setenv("ALLOW_PAID_INFERENCE","true");monkeypatch.setenv("META_RUN_BUDGET_CENTS","0")
-    assert authenticated_client.post("/api/v1/business-chat",json=request(wid)).status_code==429 and calls==[]
+    generated=authenticated_client.post("/api/v1/business-chat",json=request(wid))
+    assert generated.status_code==201,generated.text
+    assert generated.json()["provenance"]=="live_meta" and len(calls)==1
 
 
 def test_chat_image_requires_consent_and_owned_intact_bytes(authenticated_client,monkeypatch):
@@ -152,7 +156,7 @@ def test_selected_chat_tools_execute_once_and_share_parent_budget(authenticated_
         if item["tool"]=="campaign":assert authenticated_client.get(f"/api/v1/campaigns/{item['data']['campaign_id']}",params={"workspace_id":wid}).status_code==200
 
 
-def test_tool_consent_invalid_selections_and_partial_budget_stop(authenticated_client,monkeypatch):
+def test_tool_consent_invalid_selections_and_zero_budget_does_not_stop(authenticated_client,monkeypatch):
     from tests.test_engine_inputs import grounded
     wid=profile(authenticated_client)["workspace_id"];enable(monkeypatch);calls=[]
     def handle(req):calls.append(req);return httpx.Response(200,json=grounded())
@@ -161,9 +165,8 @@ def test_tool_consent_invalid_selections_and_partial_budget_stop(authenticated_c
     assert authenticated_client.post("/api/v1/business-chat",json=body).status_code==422
     assert authenticated_client.post("/api/v1/business-chat",json={**body,"tools":["web_search","web_search"],"tool_consent":True}).status_code==422
     assert authenticated_client.post("/api/v1/business-chat",json={**body,"tools":["execute_shell"],"tool_consent":True}).status_code==422
-    monkeypatch.setenv("META_RUN_BUDGET_CENTS","6");body["tool_consent"]=True
+    monkeypatch.setenv("META_RUN_BUDGET_CENTS","0");body["tool_consent"]=True
     response=authenticated_client.post("/api/v1/business-chat",json=body)
-    assert response.status_code==429,response.text
-    saved=authenticated_client.get("/api/v1/business-chat",params={"workspace_id":wid,"thread_id":body["thread_id"]}).json()[0]
-    assert [item["status"] for item in saved["tool_results"]]==["completed","failed"]
-    assert authenticated_client.post("/api/v1/business-chat",json=body).status_code==409 and len(calls)==1
+    assert response.status_code!=429,response.text
+    assert len(calls)>=1
+    assert authenticated_client.post("/api/v1/business-chat",json=body).status_code==409

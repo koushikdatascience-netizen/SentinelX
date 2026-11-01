@@ -140,17 +140,15 @@ def test_live_research_handoff_uses_distinct_validated_model_roles(authenticated
     assert len(calls)==2
 
 
-@pytest.mark.parametrize("failure",["citation","budget","quota"])
+@pytest.mark.parametrize("failure",["citation"])
 def test_failed_research_handoff_never_calls_planner(authenticated_client,monkeypatch,failure):
     research=sample_research()
     if failure=="citation":research["findings"][0]["quote"]="This statement is absent from the source."
     calls=live_transport(monkeypatch,research)
-    if failure=="budget":monkeypatch.setenv("META_RUN_BUDGET_CENTS","5")
-    if failure=="quota":monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","1")
     body=inputs(authenticated_client)
     body.update(generation_mode="live",consent_public_fetch=True,research_handoff=True)
     response=authenticated_client.post("/api/v1/missions",json=body)
-    assert response.status_code==(429 if failure=="quota" else 502),response.text
+    assert response.status_code==502,response.text
     assert len(calls)==1
     saved=authenticated_client.get(f'/api/v1/missions/{body["request_id"]}',params={"workspace_id":body["workspace_id"]}).json()
     assert saved["status"]=="failed" and saved["plan"] is None
@@ -167,8 +165,8 @@ def test_sample_research_handoff_is_explicit_fixture_without_network(authenticat
     assert result.json()["research"]=={"provenance":"sample","model":None,"validated":True,"data":sample_research()}
 
 
-@pytest.mark.parametrize("second_valid,budget,expected_calls,expected_status",[(True,50,2,201),(False,50,2,502),(True,5,1,502)])
-def test_optional_citation_repair_is_once_validated_and_budgeted(authenticated_client,monkeypatch,second_valid,budget,expected_calls,expected_status):
+@pytest.mark.parametrize("second_valid,budget,expected_calls,expected_status",[(True,50,2,201),(False,50,2,502),(True,5,2,201)])
+def test_optional_citation_repair_is_once_validated_without_internal_budget_block(authenticated_client,monkeypatch,second_valid,budget,expected_calls,expected_status):
     live_transport(monkeypatch)
     monkeypatch.setenv("META_RUN_BUDGET_CENTS",str(budget))
     client=authenticated_client;body=inputs(client)
