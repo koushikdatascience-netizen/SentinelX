@@ -15,8 +15,10 @@ def test_budget_reservation_fails_closed(monkeypatch):
     status=budget_status(provider)
     assert status["remaining_usd"]==0
 
-def test_zero_budget_prevents_spending(monkeypatch):
+def test_zero_meta_budget_tracks_usage_without_blocking(monkeypatch):
     init_db()
     monkeypatch.setenv("META_APP_BUDGET_CENTS","0")
-    with pytest.raises(ValueError,match="budget"):
-        reserve("meta",5)
+    reserve("meta",5)
+    status=budget_status("meta")
+    assert status["unlimited"] is True
+    assert status["cap_usd"] is None and status["remaining_usd"] is None

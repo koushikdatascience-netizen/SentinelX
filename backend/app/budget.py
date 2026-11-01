@@ -1,7 +1,8 @@
-"""Application-side conservative reservation guard for model operations.
+"""Application-side usage accounting and optional reservation caps.
 
-This is not an account-level financial guarantee: other keys/apps bypass it.
-Meta reservations cover app/workspace/run scopes. Default paid calls disabled.
+Meta usage is always recorded at app/workspace/run scopes. A positive configured
+ceiling blocks requests; zero disables the SentinelX ceiling. This is not provider
+billing or a guarantee about credits available on the Meta account.
 """
 import os
 from sqlalchemy import Integer, String, update, select
@@ -15,7 +16,7 @@ class ApiBudget(Base):
 
 def reserve(provider:str, cents:int)->None:
     if cents<=0: raise ValueError("Invalid reservation")
-    ceiling=int(os.getenv("META_APP_BUDGET_CENTS","500") if provider=="meta" else os.getenv("OTHER_APP_BUDGET_CENTS","100"))
+    ceiling=int(os.getenv("META_APP_BUDGET_CENTS","0") if provider=="meta" else os.getenv("OTHER_APP_BUDGET_CENTS","100"))
     if ceiling<0: raise ValueError("Invalid budget")
     with SessionLocal.begin() as db:
         # Create the sentinel row if absent. Conflict-safe across concurrent workers.
@@ -23,28 +24,35 @@ def reserve(provider:str, cents:int)->None:
         from sqlalchemy.dialects.sqlite import insert as sq_insert
         stmt=(pg_insert if db.bind.dialect.name=="postgresql" else sq_insert)(ApiBudget).values(provider=provider,reserved_cents=0).on_conflict_do_nothing(index_elements=["provider"])
         db.execute(stmt)
-        result=db.execute(update(ApiBudget).where(ApiBudget.provider==provider,ApiBudget.reserved_cents+cents<=ceiling).values(reserved_cents=ApiBudget.reserved_cents+cents))
+        conditions=[ApiBudget.provider==provider]
+        if ceiling>0:conditions.append(ApiBudget.reserved_cents+cents<=ceiling)
+        result=db.execute(update(ApiBudget).where(*conditions).values(reserved_cents=ApiBudget.reserved_cents+cents))
         if result.rowcount!=1: raise ValueError("App inference budget reached; no external call made")
 
 def budget_status(provider:str)->dict:
-    ceiling=int(os.getenv("META_APP_BUDGET_CENTS","500") if provider=="meta" else os.getenv("OTHER_APP_BUDGET_CENTS","100"))
+    ceiling=int(os.getenv("META_APP_BUDGET_CENTS","0") if provider=="meta" else os.getenv("OTHER_APP_BUDGET_CENTS","100"))
     with SessionLocal() as db:
         used=db.scalar(select(ApiBudget.reserved_cents).where(ApiBudget.provider==provider)) or 0
-    return {"provider":provider,"reserved_usd":round(used/100,2),"cap_usd":round(ceiling/100,2),"remaining_usd":round(max(0,ceiling-used)/100,2),"note":"Conservative app reservations; not provider billing or account-wide hard cap."}
+    unlimited=provider=="meta" and ceiling==0
+    return {"provider":provider,"reserved_usd":round(used/100,2),
+            "cap_usd":None if unlimited else round(ceiling/100,2),
+            "remaining_usd":None if unlimited else round(max(0,ceiling-used)/100,2),
+            "unlimited":unlimited,
+            "note":"Meta reservations are usage estimates, not provider billing. Meta account credits and provider limits apply."}
 
 
 def reserve_meta(owner_id: str, workspace_id: str, run_id: str, cents: int) -> None:
-    """Atomically reserve all three scopes; never refund uncertain provider failures.
+    """Atomically account for all three scopes; never refund uncertain failures.
 
-    Existing budget rows also store hashed scope counters (no schema migration).
-    Scope ceilings default to zero until explicitly configured by an operator.
+    Existing rows store hashed counters without a schema migration. Positive
+    ceilings are optional; zero records usage without imposing a hard stop.
     """
     import hashlib
     from app.workspace_store import Workspace, WorkflowRun
     if cents <= 0 or not all((owner_id, workspace_id, run_id)):
         raise ValueError("Meta calls require owner, workspace and persisted run")
     key = lambda prefix, value: prefix + hashlib.sha256(value.encode()).hexdigest()[:32]
-    limits = [("meta", int(os.getenv("META_APP_BUDGET_CENTS", "500"))),
+    limits = [("meta", int(os.getenv("META_APP_BUDGET_CENTS", "0"))),
               (key("mw:", workspace_id), int(os.getenv("META_WORKSPACE_BUDGET_CENTS", "0"))),
               (key("mr:", workspace_id + ":" + run_id), int(os.getenv("META_RUN_BUDGET_CENTS", "0")))]
     with SessionLocal.begin() as db:
@@ -57,12 +65,16 @@ def reserve_meta(owner_id: str, workspace_id: str, run_id: str, cents: int) -> N
         insert = pg_insert if db.bind.dialect.name == "postgresql" else sq_insert
         # Consistent ordering serializes competing reservations without partial debits.
         for scope, ceiling in limits:
-            if ceiling < cents:
+            if ceiling < 0:
+                raise ValueError("Invalid Meta budget")
+            if ceiling > 0 and ceiling < cents:
                 raise ValueError("Meta budget reached; no external call made")
             db.execute(insert(ApiBudget).values(provider=scope, reserved_cents=0)
                        .on_conflict_do_nothing(index_elements=["provider"]))
-            changed = db.execute(update(ApiBudget).where(
-                ApiBudget.provider == scope, ApiBudget.reserved_cents + cents <= ceiling
-            ).values(reserved_cents=ApiBudget.reserved_cents + cents))
+            conditions=[ApiBudget.provider == scope]
+            if ceiling > 0:
+                conditions.append(ApiBudget.reserved_cents + cents <= ceiling)
+            changed = db.execute(update(ApiBudget).where(*conditions)
+                                 .values(reserved_cents=ApiBudget.reserved_cents + cents))
             if changed.rowcount != 1:
                 raise ValueError("Meta budget reached; no external call made")

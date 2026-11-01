@@ -1,6 +1,9 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from app.campaign import unsupported_claims
+from app.campaign_routes import claim_attempt
+from app.workspace_store import CampaignQuota, SessionLocal
+from sqlalchemy import select
 
 def payload(wid):
     return {"workspace_id":wid,"business_description":"We make custom wooden furniture and cabinetry. Buyers can request a consultation.",
@@ -36,6 +39,16 @@ def test_demo_campaign_seven_days_isolation_and_edits(authenticated_client):
 def test_public_campaign_access_rejected():
     c=TestClient(app)
     assert c.get("/api/v1/campaigns",params={"workspace_id":"abc"}).status_code==401
+
+def test_zero_campaign_attempt_limit_means_unlimited(authenticated_client,monkeypatch):
+    monkeypatch.setenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","0")
+    c=authenticated_client
+    wid=c.post("/api/v1/workspaces",json={"name":"Unlimited campaign tests"}).json()["id"]
+    with SessionLocal() as db:
+        for _ in range(25):claim_attempt(db,wid)
+    with SessionLocal() as db:
+        row=db.scalar(select(CampaignQuota).where(CampaignQuota.workspace_id==wid))
+        assert row.attempts==25
 
 def test_nonnative_sample_languages(authenticated_client):
     c=authenticated_client

@@ -217,7 +217,7 @@ def test_budget_rejection_makes_no_request_and_can_be_retried(authenticated_clie
     from app.workspace_store import WorkflowRun
     from sqlalchemy import select
     client=authenticated_client;wid,jid,path,files=_visual_screenshot_job(client,monkeypatch)
-    _enable_fake_paid_meta(monkeypatch);monkeypatch.setenv("META_RUN_BUDGET_CENTS","0")
+    _enable_fake_paid_meta(monkeypatch);monkeypatch.setenv("META_RUN_BUDGET_CENTS","4")
     response_payload=chat(json.dumps(_structured_findings(1)))
     calls=transport(monkeypatch,response_payload)
     def reserved(scope):

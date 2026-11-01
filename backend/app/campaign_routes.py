@@ -51,12 +51,13 @@ def claim_attempt(db:Session,workspace_id:str):
     from sqlalchemy.dialects.postgresql import insert as pg_insert
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
     maximum=max(0,int(os.getenv("CAMPAIGN_WORKSPACE_MAX_ATTEMPTS","0")))
-    if maximum<1:raise HTTPException(403,"Live campaign generation quota not enabled")
     insert=(pg_insert if db.bind.dialect.name=="postgresql" else sqlite_insert)
     db.execute(insert(CampaignQuota).values(workspace_id=workspace_id,attempts=0).on_conflict_do_nothing(
         index_elements=["workspace_id"]))
-    changed=db.execute(update(CampaignQuota).where(CampaignQuota.workspace_id==workspace_id,
-        CampaignQuota.attempts<maximum).values(attempts=CampaignQuota.attempts+1))
+    conditions=[CampaignQuota.workspace_id==workspace_id]
+    if maximum>0:
+        conditions.append(CampaignQuota.attempts<maximum)
+    changed=db.execute(update(CampaignQuota).where(*conditions).values(attempts=CampaignQuota.attempts+1))
     if changed.rowcount!=1:
         db.rollback()
         raise HTTPException(429,"Campaign generation attempt limit reached")

@@ -155,12 +155,30 @@ def test_unsupported_adapters_never_charge(live,monkeypatch):
 
 @pytest.mark.parametrize("limit",["META_APP_BUDGET_CENTS","META_WORKSPACE_BUDGET_CENTS","META_RUN_BUDGET_CENTS"])
 def test_budget_rolls_back_all_scopes(live,monkeypatch,limit):
-    monkeypatch.setenv(limit,"0")
+    monkeypatch.setenv(limit,"4")
     with SessionLocal() as db: before={row.provider:row.reserved_cents for row in db.scalars(select(ApiBudget))}
     calls=transport(monkeypatch,chat())
     with pytest.raises(ValueError):MetaClient(**live).text("System","User")
     with SessionLocal() as db: after={row.provider:row.reserved_cents for row in db.scalars(select(ApiBudget))}
     assert before==after and calls==[]
+
+
+def test_zero_meta_budgets_record_usage_without_blocking(live,monkeypatch):
+    for name in ("META_APP_BUDGET_CENTS","META_WORKSPACE_BUDGET_CENTS","META_RUN_BUDGET_CENTS"):
+        monkeypatch.setenv(name,"0")
+    calls=transport(monkeypatch,chat())
+    client=MetaClient(**live)
+    with SessionLocal() as db:
+        app_before=db.get(ApiBudget,"meta").reserved_cents if db.get(ApiBudget,"meta") else 0
+    client.text("System","First request")
+    client.text("System","Second request")
+    assert len(calls)==2
+    with SessionLocal() as db:
+        workspace_scope="mw:"+__import__("hashlib").sha256(live["workspace_id"].encode()).hexdigest()[:32]
+        run_scope="mr:"+__import__("hashlib").sha256((live["workspace_id"]+":"+live["run_id"]).encode()).hexdigest()[:32]
+        assert db.get(ApiBudget,"meta").reserved_cents==app_before+10
+        assert db.get(ApiBudget,workspace_scope).reserved_cents==10
+        assert db.get(ApiBudget,run_scope).reserved_cents==10
 
 
 def test_run_cap_and_workspace_cap_accumulate(live,monkeypatch):

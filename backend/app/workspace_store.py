@@ -92,7 +92,7 @@ class CampaignItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=utcnow)
 
 class CampaignQuota(Base):
-    """Lifetime upper bound on two-call campaign generation attempts per workspace."""
+    """Per-workspace paid generation counter; an operator may optionally cap attempts."""
     __tablename__="campaign_quotas"
     workspace_id: Mapped[str]=mapped_column(ForeignKey("workspaces.id"),primary_key=True)
     attempts: Mapped[int]=mapped_column(Integer,default=0)

@@ -14,8 +14,10 @@ def configure(env_path:Path,key_path:Path)->bool:
         original=env_path.read_text()
         updates={"MODEL_API_KEY":key,"INFERENCE_PROVIDER":"meta","SENTINELX_MODE":"live",
                  "ALLOW_PAID_INFERENCE":"true","ENABLE_LIVE_MULTIMODAL":"true",
-                 "META_APP_BUDGET_CENTS":"200","META_WORKSPACE_BUDGET_CENTS":"200",
-                 "META_RUN_BUDGET_CENTS":"50","CAMPAIGN_WORKSPACE_MAX_ATTEMPTS":"20",
+                 # Zero means usage is recorded without an application-imposed hard cap.
+                 "META_APP_BUDGET_CENTS":"0","META_WORKSPACE_BUDGET_CENTS":"0",
+                 "META_RUN_BUDGET_CENTS":"0","CAMPAIGN_WORKSPACE_MAX_ATTEMPTS":"0",
+                 "ALLOW_PUBLIC_REGISTRATION":"true",
                  "ENABLE_PUBLIC_DEMO_SESSION":"true"}
         # dotenv single-quoted values are literal, never evaluated as shell code.
         def quote(value):return "'"+value.replace("\\","\\\\").replace("'","\\'")+"'"

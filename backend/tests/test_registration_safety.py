@@ -26,6 +26,16 @@ def test_registration_gate_and_existing_login(monkeypatch):
         assert client.post("/api/v1/auth/login", json=body).status_code == 200
 
 
+def test_public_registration_when_enabled(monkeypatch):
+    init_db()
+    monkeypatch.setenv("JWT_SECRET", "registration-test-secret-at-least-32-characters")
+    monkeypatch.setenv("ALLOW_PUBLIC_REGISTRATION", "true")
+    monkeypatch.delenv("REGISTRATION_ALLOWED_EMAILS", raising=False)
+    body = {"email": f"public-{uuid.uuid4()}@example.org", "password": "StrongPassword123"}
+    with TestClient(app) as client:
+        assert client.post("/api/v1/auth/register", json=body).status_code == 201
+
+
 def test_unicode_password_bcrypt_limit_is_validation_error():
     with TestClient(app) as client:
         body = {"email": "unicode@example.org", "password": "\u00e9" * 37}

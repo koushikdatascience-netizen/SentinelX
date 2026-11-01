@@ -13,7 +13,11 @@ def test_runtime_key_install_preserves_database_and_removes_transfer(tmp_path):
     assert runtime.configure(env,key)
     content=env.read_text()
     assert "SENTINELX_POSTGRES_PASSWORD=existing-private-value" in content
-    assert "INFERENCE_PROVIDER='meta'" in content and "META_APP_BUDGET_CENTS='200'" in content
+    assert "INFERENCE_PROVIDER='meta'" in content and "META_APP_BUDGET_CENTS='0'" in content
+    assert "META_WORKSPACE_BUDGET_CENTS='0'" in content
+    assert "META_RUN_BUDGET_CENTS='0'" in content
+    assert "CAMPAIGN_WORKSPACE_MAX_ATTEMPTS='0'" in content
+    assert "ALLOW_PUBLIC_REGISTRATION='true'" in content
     assert not key.exists()
     assert env.with_name(".env.sentinelx.before-meta").read_text()==original
 
