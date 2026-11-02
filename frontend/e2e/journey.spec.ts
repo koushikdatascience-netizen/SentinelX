@@ -524,7 +524,14 @@ test("campaign mic requests permission directly and inserts an editable Meta tra
  await accountAndWorkspace(page);
  await page.route("**/api/v1/campaigns/runtime",route=>route.fulfill({json:{mode:"live",live_enabled:true,is_guest:false,message:"Mock live test"}}));
  await page.addInitScript(()=>{
-  navigator.mediaDevices.getUserMedia=async()=>{const context=new AudioContext();const oscillator=context.createOscillator();const destination=context.createMediaStreamDestination();oscillator.connect(destination);oscillator.start();return destination.stream};
+  navigator.mediaDevices.getUserMedia=async()=>new MediaStream();
+  class DeterministicRecorder{
+   state="inactive";mimeType="audio/wav";ondataavailable:((event:{data:Blob})=>void)|null=null;onstop:(()=>void)|null=null;onerror:(()=>void)|null=null;
+   constructor(_stream:MediaStream){}
+   start(){this.state="recording"}
+   stop(){this.state="inactive";const samples=24000;const bytes=new ArrayBuffer(44+samples*2);const view=new DataView(bytes);const text=(offset:number,value:string)=>[...value].forEach((character,index)=>view.setUint8(offset+index,character.charCodeAt(0)));text(0,"RIFF");view.setUint32(4,36+samples*2,true);text(8,"WAVE");text(12,"fmt ");view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,24000,true);view.setUint32(28,48000,true);view.setUint16(32,2,true);view.setUint16(34,16,true);text(36,"data");view.setUint32(40,samples*2,true);this.ondataavailable?.({data:new Blob([bytes],{type:"audio/wav"})});this.onstop?.()}
+  }
+  Object.defineProperty(window,"MediaRecorder",{configurable:true,value:DeterministicRecorder});
  });
  await page.reload();
  const calls:Buffer[]=[];let campaigns=0;
