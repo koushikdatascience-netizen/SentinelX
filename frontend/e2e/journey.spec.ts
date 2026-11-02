@@ -44,7 +44,7 @@ test("business onboarding skips collection, saves editable details and uploads, 
  page.on("request",request=>{if(request.method()==="POST"&&request.url().endsWith("/business-profile/research"))starts.push(request.url())});
  await accountAndWorkspace(page);
  expect(starts).toHaveLength(0);
- await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business profile",exact:true}).click();
  await page.getByLabel("Business name",{exact:true}).fill("My saved workshop");
  await page.getByLabel("Industry",{exact:true}).selectOption("Other");
  await page.getByLabel("Your industry",{exact:true}).fill("Custom workshop components");
@@ -60,7 +60,7 @@ test("business onboarding skips collection, saves editable details and uploads, 
  await page.getByRole("tab",{name:/Brand assets/}).click();
  await expect(page.getByRole("img",{name:"logo.png"})).toBeVisible();
  await page.reload();
- await expect(page.getByRole("heading",{name:"Business & research",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Business profile & research",exact:true})).toBeVisible();
  await expect(page.getByLabel("Business name",{exact:true})).toHaveValue("My saved workshop");
  await expect(page.getByLabel("Your industry",{exact:true})).toHaveValue("Custom workshop components");
  await expect(page.getByLabel("Page link 1",{exact:true})).toHaveValue("https://instagram.com/fixture-workshop");
@@ -81,7 +81,7 @@ test("business insights show actionable priorities, evidence, gaps and an export
  Object.assign(report.insights.data,{competitor_comparisons:[{name:"Candidate Workshop",source_id:"W1",quote:"Bulk custom parts in Kalyani.",url:"https://example.org/competitor",relevance:"Matching offering and stated area.",comparison:"Compare order requirements and product clarity.",suggested_response:"Explain the information required for a quotation."}],keyword_opportunities:[{phrase:"custom wooden parts Kalyani",intent:"local",suggested_use:"Test a local product information page.",evidence:"hypothesis",source_id:"",quote:""}]});
  let generations=0;
  await page.route("**/business-profile/research",async route=>{if(route.request().method()==="GET")await route.fulfill({json:[{id:"fixture-insights",state:"completed",created_at:"2026-10-30T10:00:00Z",input_profile:{name:"Browser workshop"},report}]});else{generations++;await route.abort()}});
- await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business profile",exact:true}).click();
  await page.getByRole("tab",{name:"Insights",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Your business improvement report"})).toBeVisible();
  await expect(page.getByText("high priority · AI suggested")).toBeVisible();
@@ -109,7 +109,7 @@ test("business insights show actionable priorities, evidence, gaps and an export
 
 test("brand image review prepares an editable linked generation brief only after explicit consent",async({page})=>{
  await accountAndWorkspace(page);
- await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business profile",exact:true}).click();
  await page.getByText("Add a logo, images or business documents",{exact:false}).click();
  await page.getByLabel("Business documents & images",{exact:true}).setInputFiles({name:"social-post.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
  await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
@@ -145,7 +145,7 @@ test("brand image review prepares an editable linked generation brief only after
 
 test("saved screenshot visual insights require consent, show design changes and prepare a linked brief",async({page})=>{
  await accountAndWorkspace(page);
- await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business profile",exact:true}).click();
  await page.getByText("Add a logo, images or business documents",{exact:false}).click();
  await page.getByLabel("Business logo",{exact:true}).setInputFiles({name:"brand.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")});
  await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
@@ -185,7 +185,7 @@ test("saved screenshot visual insights require consent, show design changes and 
 
 test("social-only businesses request a consented platform report and prepare content without extra inference",async({page})=>{
  await accountAndWorkspace(page);
- await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business profile",exact:true}).click();
  await page.getByRole("button",{name:"Add social page",exact:true}).click();
  await page.getByLabel("Platform 1",{exact:true}).selectOption("instagram");await page.getByLabel("Page link 1",{exact:true}).fill("https://instagram.com/workshop");
  await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
@@ -238,7 +238,7 @@ test("owner evidence, recorded review and downloadable audit",async({page})=>{
 test("single business consent wraps on mobile and research stays off the chat canvas",async({page})=>{
  await accountAndWorkspace(page);
  const nav=page.getByRole("navigation",{name:"Main navigation"});
- await nav.getByRole("button",{name:"Business & research",exact:true}).click();
+ await nav.getByRole("button",{name:"Business profile",exact:true}).click();
  const consent=page.getByLabel("I am authorized to provide these business materials.",{exact:false});
  await expect(consent).toHaveCount(1);
  await page.setViewportSize({width:390,height:844});
@@ -392,7 +392,7 @@ test("dashboard tools, modal edits, saved visuals, landing review and export",as
  await page.getByRole("button",{name:"Edit day 1 post",exact:true}).click();
  await page.keyboard.press("Escape");
  await expect(edit).not.toBeVisible();
- await page.getByRole("button",{name:"Create or view visuals"}).first().click();
+ await page.getByRole("button",{name:"Edit or regenerate visual"}).first().click();
  await page.getByRole("button",{name:"Generate visuals",exact:true}).click();
  await expect(page.locator(".visual-card")).toHaveCount(1);
  const days=page.getByLabel("Choose campaign day");
@@ -545,7 +545,7 @@ test("failed social synthesis exposes saved evidence and distinguishes completed
  await accountAndWorkspace(page);
  const job={id:"failed-social-report",state:"partial",created_at:"2026-10-30T10:00:00Z",input_profile:{name:"Browser workshop",socials:[]},report:{pages:[],remaining_urls:[],activity:[],limitations:[],coverage:{pages_collected:0,screenshots_saved:0},insights:null,visual_review:null,social_research:{status:"failed",stage:"validation",error:"A social finding could not be matched to the correct saved source or account.",attempts:[{platform:"instagram",url:"https://instagram.com/workshop",status:"completed"}],sources:[{id:"S1.W1",url:"https://instagram.com/workshop",text:"Custom wooden parts in Kalyani.",origin:"search_pointer"}]}}};
  await page.route("**/business-profile/research",route=>route.fulfill({json:[job]}));
- await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business profile",exact:true}).click();
  await page.reload();await page.getByRole("tab",{name:"Social insights",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Social research needs attention",exact:true})).toBeVisible();
  await expect(page.getByText("Report stage: validation",{exact:true})).toBeVisible();
@@ -710,7 +710,7 @@ test("campaign history editable visual handoff bulk generation final approval an
  await history.selectOption(first);
  await page.reload();await expect(history).toHaveValue(first);
  const sheet=page.locator(".campaign-sheet");
- await sheet.locator("tbody tr").nth(1).getByRole("button",{name:"Create or view visuals",exact:true}).click();
+ await sheet.locator("tbody tr").nth(1).getByRole("button",{name:"Edit or regenerate visual",exact:true}).click();
  const prompt=page.getByRole("textbox",{name:"Image generation prompt",exact:true});
  await expect(prompt).toHaveValue(/day 2/);
  await prompt.fill("Use an owner-approved wooden component, clean workshop lighting and a neutral background.");
@@ -787,7 +787,7 @@ test("business chat keeps the dashboard clean opens tools from plus and restores
 
 test("knowledge uploads profile sales locally and calculate real chart values without AI",async({page})=>{
  await accountAndWorkspace(page);
- await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business & research",exact:true}).click();
+ await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Business profile",exact:true}).click();
  await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
  const saved=page.waitForResponse(response=>response.request().method()==="POST"&&response.url().endsWith("/api/v1/business-profile"));
  await page.getByRole("button",{name:"Save business details",exact:true}).click();
@@ -828,12 +828,13 @@ test("chat-only dashboard selects multiple real tool intents without running on 
  await page.screenshot({path:"test-results/chat-only-empty-desktop.png",fullPage:true});
  await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
  const picker=page.getByRole("group",{name:"Select chat tools",exact:true});
- await picker.getByRole("button",{name:/^Web search/}).click();await picker.getByRole("button",{name:/^Image generator/}).click();
- expect(calls).toHaveLength(0);await picker.getByRole("button",{name:"Done · 2 selected",exact:true}).click();
+ await picker.getByRole("button",{name:/^Web search/}).click();
  await expect(page.getByRole("group",{name:"Select chat tools",exact:true})).toHaveCount(0);
- await page.getByRole("button",{name:"Remove Image generator",exact:true}).click();
- await page.getByRole("button",{name:"Browse business tools",exact:true}).click();await picker.getByRole("button",{name:/^Image generator/}).click();
- await page.keyboard.press("Escape");expect(calls).toHaveLength(0);
+ await expect(page.getByRole("button",{name:"Remove Web search",exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
+ await page.getByRole("group",{name:"Select chat tools",exact:true}).getByRole("button",{name:/^Image generator/}).click();
+ await expect(page.getByRole("group",{name:"Select chat tools",exact:true})).toHaveCount(0);
+ expect(calls).toHaveLength(0);
  await page.getByRole("textbox",{name:"Message your business assistant",exact:true}).fill("Research a product presentation and generate an original image concept.");
  await page.getByRole("textbox",{name:"Message your business assistant",exact:true}).press("Enter");
  await expect(page.getByRole("heading",{name:"Your research and visual are ready",exact:true})).toBeVisible();
@@ -859,7 +860,7 @@ test("chat campaign result opens the exact saved draft rather than a previously 
   if(route.request().method()!=="POST")return route.continue();const body=route.request().postDataJSON();
   await route.fulfill({status:201,json:{id:body.request_id,status:"completed",provenance:"live_meta",message:body.message,answer:"The campaign draft is saved and ready for your review.",tool_results:[{tool:"campaign",status:"completed",provenance:"live_meta",data:{campaign_id:next.id,note:"Saved draft only."}}]}});
  });
- await page.getByRole("button",{name:"Browse business tools",exact:true}).click();await page.getByRole("group",{name:"Select chat tools",exact:true}).getByRole("button",{name:/^Create campaign/}).click();await page.getByRole("button",{name:"Done · 1 selected",exact:true}).click();
+ await page.getByRole("button",{name:"Browse business tools",exact:true}).click();await page.getByRole("group",{name:"Select chat tools",exact:true}).getByRole("button",{name:/^Create campaign/}).click();
  await page.getByRole("textbox",{name:"Message your business assistant",exact:true}).fill("Create a useful campaign for our workshop inquiries.");await page.getByRole("button",{name:"Send business message",exact:true}).click();
  await page.getByRole("button",{name:"Open saved campaign",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Campaign calendar",exact:true})).toBeVisible();
