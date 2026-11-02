@@ -39,6 +39,40 @@ async function accountAndWorkspace(page:Page) {
  await page.getByLabel("Owner-supplied website text (unverified)").fill("We create handmade solid-wood furniture and custom cabinetry. Customers can request consultations and quotations for bespoke projects.");
 }
 
+test("sign out stays visible in the dashboard header on desktop and mobile",async({page})=>{
+ await accountAndWorkspace(page);
+ const signOut=page.locator(".sign-out-topbar");
+ await expect(signOut).toBeVisible();
+ await page.setViewportSize({width:390,height:844});
+ await expect(signOut).toBeVisible();
+ await signOut.click();
+ await expect(page.getByRole("heading",{name:"Welcome back",exact:true})).toBeVisible();
+});
+
+test("first-run website research shows progress after opening the dashboard",async({page})=>{
+ await page.goto("/");
+ const email=`research-${crypto.randomUUID()}@example.org`;
+ await page.getByRole("button",{name:"New here? Create an account"}).click();
+ await page.getByLabel("Email address").fill(email);
+ await page.getByLabel("Password",{exact:true}).fill("StrongPassword123");
+ await page.getByRole("button",{name:"Create account",exact:false}).click();
+ await expect(page.getByRole("heading",{name:"Let’s get to know your business"})).toBeVisible();
+ await page.getByLabel("Business name",{exact:true}).fill("First-run workshop");
+ await page.getByLabel("Industry",{exact:true}).selectOption("Arts & crafts");
+ await page.getByLabel("I am authorized to provide these business materials.",{exact:false}).check();
+ await page.getByRole("button",{name:"Save & continue"}).click();
+ await expect(page.getByRole("heading",{name:"Start discovering your brand?"})).toBeVisible();
+ const complete=page.waitForRequest(request=>request.method()==="POST"&&request.url().endsWith("/business-profile/complete"));
+ await page.getByRole("button",{name:"Start research & open dashboard",exact:true}).click();
+ expect((await complete).postDataJSON().start_research).toBe(true);
+ await expect(page.getByRole("heading",{name:"What can I help you with?"})).toBeVisible();
+ const progress=page.locator(".business-summary");
+ await expect(progress).toBeVisible();
+ await expect(progress.getByRole("heading",{name:"First-run workshop",exact:true})).toBeVisible();
+ await expect(progress.getByRole("button",{name:"View research progress",exact:true})).toBeVisible();
+ await expect(progress).toContainText(/RESEARCH IN PROGRESS|LATEST RESEARCH/);
+});
+
 test("business onboarding skips collection, saves editable details and uploads, then starts background research explicitly",async({page})=>{
  const starts:string[]=[];
  page.on("request",request=>{if(request.method()==="POST"&&request.url().endsWith("/business-profile/research"))starts.push(request.url())});
@@ -824,7 +858,8 @@ test("chat-only dashboard selects multiple real tool intents without running on 
  await page.route("**/business-profile/assets/mock-chat-image",route=>route.fulfill({contentType:"image/png",body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOwiVoAAAIMATcAJ4DRAAAAAElFTkSuQmCC","base64")}));
  await page.reload();await page.getByRole("navigation",{name:"Main navigation"}).getByRole("button",{name:"Dashboard",exact:true}).click();
  await expect(page.getByRole("heading",{name:"What can I help you with?",exact:true})).toBeVisible();
- await expect(page.locator(".business-summary,.dashboard-saved-work,.product-page-head")).toHaveCount(0);
+ await expect(page.locator(".business-summary")).toBeVisible();
+ await expect(page.locator(".dashboard-saved-work,.product-page-head")).toHaveCount(0);
  await page.screenshot({path:"test-results/chat-only-empty-desktop.png",fullPage:true});
  await page.getByRole("button",{name:"Browse business tools",exact:true}).click();
  const picker=page.getByRole("group",{name:"Select chat tools",exact:true});
@@ -844,6 +879,10 @@ test("chat-only dashboard selects multiple real tool intents without running on 
  await page.getByText("Web sources (1)",{exact:true}).click();await expect(page.getByRole("link",{name:"Public workshop guide",exact:true})).toHaveAttribute("href","https://example.org/research");
  await page.reload();await expect(page.getByRole("img",{name:"Generated original concept",exact:true})).toBeVisible();expect(calls).toHaveLength(1);
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const attach=page.locator("button.chat-attach-button");
+ const toolsButton=page.locator("button.chat-tool-button");
+ const [attachBox,toolsBox]=await Promise.all([attach.boundingBox(),toolsButton.boundingBox()]);
+ expect(attachBox&&toolsBox&&toolsBox.x+toolsBox.width+6<=attachBox.x).toBe(true);
  await page.screenshot({path:"test-results/chat-only-tools-mobile.png",fullPage:true});
 });
 
