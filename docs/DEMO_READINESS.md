@@ -18,7 +18,7 @@ The empty-text smoke response was an earlier result, not the current integration
 ## Judge access
 
 - [Instant public walkthrough](https://sentinelx.kamalwoodcraft.in/demo): no account or model call, visibly labeled sample.
-- Homepage **Try the sample workspace — no sign in**: isolated sample workspace with a 20-minute token. Public demo sessions are enabled on Hostinger; public owner registration remains restricted. Guest paid generation is blocked server-side. Guest access does not expose the owner's saved records or key.
+- Homepage **Try the sample workspace — no sign in**: isolated sample workspace with a 20-minute token. Public owner registration is enabled on Hostinger. Guest paid generation is blocked server-side. Guest access does not expose the owner's saved records or key.
 - No-login sessions are rate-limited. With current reverse proxying, a shared proxy identity can constrain guests; the static walkthrough remains available. Do not advertise anonymous live paid inference.
 
 ## Current workflow versus older evidence tool
